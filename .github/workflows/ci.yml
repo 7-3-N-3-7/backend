@@ -1,0 +1,18 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [ main, staging, dev ]
+  push:
+    branches: [ main, staging, dev ]
+
+jobs:
+  security-governance:
+    name: Run Central Security & Governance Gate
+    uses: 7-3-N-3-7/api/.github/workflows/trufflehog-scan.yml@main
+
+  build-and-test:
+    name: Run Standard Backend CI
+    uses: 7-3-N-3-7/api/.github/workflows/standard-backend-ci.yml@main
+    with:
+      node_version: '20'

@@ -1,12 +1,63 @@
-name: Backend CI Pipeline
+name: Backend CI
 
 on:
   pull_request:
     branches: [ main, staging, dev ]
   push:
     branches: [ main, staging, dev ]
+    tags: [ 'v*' ]
+
+env:
+  REGISTRY: ghcr.io
 
 jobs:
   security-governance:
     name: Run Central Security & Governance Gate
-    uses: 7-3-N-3-7/api/.github/workflows/security-scan.yml@main
+    uses: 7-3-N-3-7/api/.github/workflows/trufflehog-scan.yml@main
+
+  build-and-test:
+    name: Run Standard Backend CI
+    uses: 7-3-N-3-7/api/.github/workflows/standard-backend-ci.yml@main
+    with:
+      node_version: '20'
+
+  build-and-push-image:
+    name: Build and Publish Backend Docker Image
+    needs: [security-governance, build-and-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set lower case repository name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/7-3-n-3-7/backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

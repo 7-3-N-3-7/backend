@@ -7,6 +7,8 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ghcr.io/7-3-n-3-7/backend
     permissions:
       contents: read
       packages: write
@@ -21,4 +23,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          tags: ${{ env.IMAGE_NAME }}:${{ github.ref_name }}

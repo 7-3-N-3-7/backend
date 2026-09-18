@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "API integration tests for the backend",
   "scripts": {
-    "test": "newman run collection.json"
+    "pretest": "docker compose -f ../infrastructure/docker-compose.yml up -d auth-db zitadel business-db mongodb minio redis zookeeper kafka && node -e \"setTimeout(()=>console.log('Waited 30s'), 30000)\"",
+    "start-backend": "mvn spring-boot:run",
+    "test": "npx start-server-and-test start-backend http://localhost:8081 'newman run collection.json'",
+    "posttest": "docker compose -f ../infrastructure/docker-compose.yml down"
   },
   "devDependencies": {
-    "newman": "^6.0.0"
+    "newman": "^6.0.0",
+    "start-server-and-test": "^3.0.12"
   }
 }

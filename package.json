@@ -1,0 +1,11 @@
+{
+  "name": "backend-tests",
+  "version": "1.0.0",
+  "description": "API integration tests for the backend",
+  "scripts": {
+    "test": "newman run collection.json"
+  },
+  "devDependencies": {
+    "newman": "^6.0.0"
+  }
+}

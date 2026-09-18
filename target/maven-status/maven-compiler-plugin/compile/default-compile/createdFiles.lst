@@ -1,0 +1,7 @@
+com\integrate\controller\SecureDataController.class
+com\integrate\config\SecurityConfig.class
+com\integrate\entity\Appointment.class
+com\integrate\repository\AppointmentRepository.class
+com\integrate\controller\AppointmentController.class
+com\integrate\IntegrateBackendApplication.class
+com\integrate\controller\PublicHealthController.class

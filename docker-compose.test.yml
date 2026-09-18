@@ -16,51 +16,7 @@ volumes:
   redis_data:
 
 services:
-  auth-db:
-    image: postgres:16-alpine
-    container_name: auth-db
-    restart: always
-    environment:
-      POSTGRES_DB: zitadel_auth
-      POSTGRES_USER: zitadel_user
-      POSTGRES_PASSWORD: zitadel_password
-    volumes:
-      - auth_db_data:/var/lib/postgresql/data
-    networks:
-      - zitadel-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zitadel_user -d zitadel_auth"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
-  zitadel:
-    image: ghcr.io/zitadel/zitadel:v2.50.0
-    container_name: zitadel
-    restart: always
-    command: start-from-init --masterkey "a-32-byte-long-secret-key-change" --tlsMode disabled
-    environment:
-      ZITADEL_MASTERKEY: "a-32-byte-long-secret-key-change"
-      ZITADEL_DATABASE_POSTGRES_HOST: "auth-db"
-      ZITADEL_DATABASE_POSTGRES_PORT: "5432"
-      ZITADEL_DATABASE_POSTGRES_DATABASE: "zitadel_auth"
-      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: "zitadel_user"
-      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: "zitadel_password"
-      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: "disable"
-      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: "zitadel_user"
-      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: "zitadel_password"
-      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: "disable"
-      ZITADEL_EXTERNALSECURE: "false"
-      ZITADEL_EXTERNALDOMAIN: "localhost"
-      ZITADEL_EXTERNALPORT: "8080"
-    ports:
-      - "8080:8080"
-    depends_on:
-      auth-db:
-        condition: service_healthy
-    networks:
-      - public-net
-      - zitadel-net
 
   business-db:
     image: postgres:16-alpine

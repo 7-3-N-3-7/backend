@@ -1,0 +1,13 @@
+### Create a new User
+POST http://localhost:8081/api/v1/users
+Content-Type: application/json
+Authorization: Bearer YOUR_ZITADEL_JWT_TOKEN
+
+{
+  "username": "testuser",
+  "email": "test@example.com"
+}
+
+### Get User Profile
+GET http://localhost:8081/api/v1/users/1
+Authorization: Bearer YOUR_ZITADEL_JWT_TOKEN

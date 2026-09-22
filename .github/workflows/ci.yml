@@ -11,11 +11,11 @@ env:
 jobs:
   security-governance:
     name: Run Central Security & Governance Gate
-    uses: 7-3-N-3-7/api/.github/workflows/trufflehog-scan.yml@main
+    uses: 7-3-N-3-7/infrastructure/.github/workflows/trufflehog-scan.yml@main
 
   build-and-test:
     name: Run Standard Backend CI
-    uses: 7-3-N-3-7/api/.github/workflows/standard-backend-ci.yml@main
+    uses: 7-3-N-3-7/infrastructure/.github/workflows/standard-backend-ci.yml@main
     with:
       node_version: '20'
 

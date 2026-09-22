@@ -1,6 +1,6 @@
-package com.journal.crm.repository;
+package com.integrate.crm.repository;
 
-import com.journal.crm.model.User;
+import com.integrate.crm.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

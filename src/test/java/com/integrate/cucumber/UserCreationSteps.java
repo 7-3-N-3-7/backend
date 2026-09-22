@@ -1,4 +1,4 @@
-package com.journal.crm.cucumber;
+package com.integrate.cucumber;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;

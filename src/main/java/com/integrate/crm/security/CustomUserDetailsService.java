@@ -1,7 +1,7 @@
-package com.journal.crm.security;
+package com.integrate.crm.security;
 
-import com.journal.crm.model.User;
-import com.journal.crm.repository.UserRepository;
+import com.integrate.crm.model.User;
+import com.integrate.crm.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

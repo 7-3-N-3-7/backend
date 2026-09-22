@@ -1,4 +1,4 @@
-package com.journal.crm.model;
+package com.integrate.crm.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

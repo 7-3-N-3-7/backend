@@ -1,8 +1,8 @@
-package com.journal.crm.component;
+package com.integrate.crm.component;
 
-import com.journal.crm.model.Role;
-import com.journal.crm.model.User;
-import com.journal.crm.repository.UserRepository;
+import com.integrate.crm.model.Role;
+import com.integrate.crm.model.User;
+import com.integrate.crm.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;

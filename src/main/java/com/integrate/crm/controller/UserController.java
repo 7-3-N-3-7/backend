@@ -1,7 +1,7 @@
-package com.journal.crm.controller;
+package com.integrate.crm.controller;
 
-import com.journal.crm.model.User;
-import com.journal.crm.repository.UserRepository;
+import com.integrate.crm.model.User;
+import com.integrate.crm.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;

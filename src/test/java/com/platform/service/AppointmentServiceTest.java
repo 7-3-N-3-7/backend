@@ -1,7 +1,7 @@
-package com.integrate.service;
+package com.platform.service;
 
-import com.integrate.entity.Appointment;
-import com.integrate.repository.AppointmentRepository;
+import com.platform.entity.Appointment;
+import com.platform.repository.AppointmentRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

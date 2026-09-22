@@ -1,7 +1,7 @@
-package com.integrate.controller;
+package com.platform.controller;
 
-import com.integrate.entity.Appointment;
-import com.integrate.repository.AppointmentRepository;
+import com.platform.entity.Appointment;
+import com.platform.repository.AppointmentRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

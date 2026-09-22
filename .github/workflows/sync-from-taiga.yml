@@ -1,0 +1,60 @@
+name: Sync Taiga Task to GitHub
+
+on:
+  repository_dispatch:
+    types: [taiga-webhook-event]
+
+jobs:
+  sync_to_github:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse and Sync Taiga Payload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          python3 -c '
+          import os, json, subprocess
+          
+          # Parse the incoming Taiga webhook payload
+          payload_str = os.environ.get("PAYLOAD", "{}")
+          try:
+              payload = json.loads(payload_str)
+          except Exception as e:
+              print(f"Error parsing JSON payload: {e}")
+              exit(1)
+              
+          action = payload.get("action")
+          type = payload.get("type")
+          data = payload.get("data", {})
+          
+          # We only care about user stories or tasks
+          if type not in ["userstory", "task"]:
+              print(f"Ignoring Taiga type: {type}")
+              exit(0)
+              
+          subject = data.get("subject", "No Title")
+          description = data.get("description", "")
+          taiga_id = data.get("id")
+          taiga_ref = data.get("ref")
+          
+          # Embed the Taiga ID in the description to map them later
+          body = f"{description}\n\n<!-- taiga-id: {taiga_id} -->\n*Sync from Taiga #{taiga_ref}*"
+          
+          # Check if an issue with this Taiga ID already exists
+          search_cmd = ["gh", "issue", "list", "--search", f"taiga-id: {taiga_id}", "--json", "number", "--jq", ".[0].number"]
+          result = subprocess.run(search_cmd, capture_output=True, text=True)
+          issue_number = result.stdout.strip()
+          
+          if action in ["create", "change"]:
+              if issue_number and issue_number != "null":
+                  print(f"Updating existing GitHub Issue #{issue_number}")
+                  subprocess.run(["gh", "issue", "edit", issue_number, "--title", subject, "--body", body])
+              elif action == "create":
+                  print(f"Creating new GitHub Issue for Taiga #{taiga_ref}")
+                  subprocess.run(["gh", "issue", "create", "--title", subject, "--body", body])
+          elif action == "delete" and issue_number and issue_number != "null":
+              print(f"Closing GitHub Issue #{issue_number} (deleted in Taiga)")
+              subprocess.run(["gh", "issue", "close", issue_number])
+          '
+

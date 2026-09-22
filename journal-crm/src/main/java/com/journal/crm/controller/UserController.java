@@ -20,14 +20,22 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
+    public ResponseEntity<?> createUser(@RequestBody User user) {
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("username already exists");
         }
         
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         User savedUser = userRepository.save(user);
         
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<String> handleHttpMessageNotReadableException(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        if (ex.getMessage() != null && ex.getMessage().contains("Role")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("invalid role");
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Bad Request");
     }
 }

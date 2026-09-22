@@ -21,12 +21,15 @@ public class JournalEntry {
     @JoinColumn(name = "client_id", nullable = false)
     private User client;
 
-    public JournalEntry() {}
-
-    public JournalEntry(String content, LocalDateTime timestamp, User client) {
-        this.content = content;
+    public JournalEntry
+    (    
+        String           content, 
+        LocalDateTime    timestamp, 
+        User             client)
+    {
+        this.content   = content;
         this.timestamp = timestamp;
-        this.client = client;
+        this.client    = client;
     }
 
     @PrePersist

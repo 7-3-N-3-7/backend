@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.integrate.crm.repository.JournalEntryRepository;
+
 @Entity
 @Table(name = "appointments")
 public class Appointment {
@@ -30,15 +32,21 @@ public class Appointment {
     @Column
     private String status;
 
-    public Appointment() {}
-
-    public Appointment(UUID clientUuid, UUID therapistUuid, LocalDateTime startTime, LocalDateTime endTime, String title, String status) {
-        this.clientUuid = clientUuid;
-        this.therapistUuid = therapistUuid;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.title = title;
-        this.status = status;
+    public Appointment
+    (
+        UUID                    clientUuid,
+        UUID                    therapistUuid,
+        LocalDateTime           startTime,
+        LocalDateTime           endTime,
+        String                  title,
+        String                  status
+    ) {
+        this.clientUuid      =  clientUuid;
+        this.therapistUuid   =  therapistUuid;
+        this.startTime       =  startTime;
+        this.endTime         =  endTime;
+        this.title           =  title;
+        this.status          =  status;
     }
 
     public UUID getId() { return id; }
@@ -61,4 +69,5 @@ public class Appointment {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    
 }

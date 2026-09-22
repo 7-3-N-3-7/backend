@@ -1,5 +1,5 @@
-package com.null.crm.model;
-    
+package com.integrate.crm.model;
+
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 

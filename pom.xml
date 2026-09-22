@@ -7,10 +7,10 @@
     <version>3.3.0</version>
     <relativePath />
   </parent>
-  <groupId>com.integrate</groupId>
-  <artifactId>integrate-backend</artifactId>
+  <groupId>com.73N37</groupId>
+  <artifactId>backend</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <name>integrate-backend</name>
+  <name>backend</name>
   <description>Integrate Platform Java GraalVM Backend Service</description>
   <properties>
     <java.version>17</java.version>

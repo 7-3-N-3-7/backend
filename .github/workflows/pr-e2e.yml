@@ -28,7 +28,7 @@ jobs:
 
   call-central-e2e:
     needs: build-pr-image
-    uses: 7-3-N-3-7/api/.github/workflows/e2e-pipeline.yml@main
+    uses: 7-3-N-3-7/infrastructure/.github/workflows/e2e-pipeline.yml@main
     with:
       backend_tag: pr-${{ github.event.number }}
     secrets: inherit

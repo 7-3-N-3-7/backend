@@ -10,9 +10,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class SecurityTests {
+@ActiveProfiles("test")
+public class SecurityTests {
 
     @LocalServerPort
     private int port;

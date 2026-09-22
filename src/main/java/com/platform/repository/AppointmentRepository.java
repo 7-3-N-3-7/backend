@@ -1,6 +1,6 @@
-package com.integrate.repository;
+package com.platform.repository;
 
-import com.integrate.entity.Appointment;
+import com.platform.entity.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

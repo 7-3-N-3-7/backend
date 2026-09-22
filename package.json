@@ -4,7 +4,7 @@
   "description": "API integration tests for the backend",
   "scripts": {
     "pretest": "docker compose -f docker-compose.test.yml up -d && node -e \"setTimeout(()=>console.log('Waited 30s'), 30000)\"",
-    "start-backend": "mvn spring-boot:run",
+    "start-backend": "mvn spring-boot:run -Dspring-boot.run.arguments=--spring.security.oauth2.resourceserver.jwt.issuer-uri=http://127.0.0.1:8085",
     "test": "npx start-server-and-test start-backend http://localhost:8081/actuator/health 'node fetch-token.js'",
     "posttest": "docker compose -f docker-compose.test.yml down"
   },

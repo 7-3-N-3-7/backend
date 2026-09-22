@@ -14,14 +14,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(Customizer.withDefaults()) // Enables CORS using the WebMvcConfigurer we just created
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for local testing/prototype
+            .cors(Customizer.withDefaults())
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/h2-console/**").permitAll() // Allow access to H2 console
-                .anyRequest().authenticated() // Require basic auth for all other requests
+                .requestMatchers("/h2-console/**", "/h2-console").permitAll()
+                .anyRequest().authenticated()
             )
-            .headers(headers -> headers.frameOptions(frame -> frame.disable())) // Required for H2 console to work in an iframe
-            .httpBasic(Customizer.withDefaults()); // Enable Basic Authentication
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
+            .httpBasic(Customizer.withDefaults());
 
         return http.build();
     }

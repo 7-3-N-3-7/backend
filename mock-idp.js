@@ -30,9 +30,9 @@ app.get('/oauth/v2/keys', (req, res) => {
 
 const PORT = 8085;
 app.listen(PORT, "127.0.0.1", () => {
-  console.log(`Mock ZITADEL Identity Provider listening on port ${PORT}`);
+  console.log(`Mock Keycloak Identity Provider listening on port ${PORT}`);
   
-  const token = jwt.sign({ sub: 'admin-user', roles: ['admin'] }, privateKey, {
+  const token = jwt.sign({ sub: 'admin-user', realm_access: { roles: ['admin'] } }, privateKey, {
     algorithm: 'RS256',
     keyid: 'mock-key-1',
     expiresIn: '24h',

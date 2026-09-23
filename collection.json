@@ -50,7 +50,7 @@
       ]
     },
     {
-      "name": "Secure Endpoints (ZITADEL RBAC)",
+      "name": "Secure Endpoints (Keycloak RBAC)",
       "item": [
         {
           "name": "Access Secure Data (No Token)",
@@ -128,7 +128,7 @@
                 "secure-data"
               ]
             },
-            "description": "Validates that an Admin JWT from ZITADEL allows access."
+            "description": "Validates that an Admin JWT from Keycloak allows access."
           },
           "response": []
         }

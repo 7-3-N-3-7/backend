@@ -9,3 +9,6 @@ target/
 .settings/
 *.log
 diagrams/
+diagrams/docker-compose.local.yml
+docker-compose.test.yml
+*.txt

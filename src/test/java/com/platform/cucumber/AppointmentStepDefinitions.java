@@ -1,6 +1,6 @@
-package com.integrate.cucumber;
+package com.platform.cucumber;
 
-import com.integrate.entity.Appointment;
+import com.platform.entity.Appointment;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;

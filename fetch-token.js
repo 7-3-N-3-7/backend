@@ -43,7 +43,7 @@ app.post('/oauth/v2/token', (req, res) => {
 
 const PORT = 8085;
 const server = app.listen(PORT, async () => {
-  console.log(`Mock ZITADEL listening on port ${PORT}`);
+  console.log(`Mock Keycloak listening on port ${PORT}`);
   
   try {
     const token = jwt.sign({ sub: 'admin-user', roles: ['admin'] }, privateKey, {

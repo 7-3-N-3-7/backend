@@ -17,19 +17,20 @@ public class JournalEntry {
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", nullable = false)
-    private User client;
+    @Column(name = "keycloak_user_id", nullable = false)
+    private String keycloakUserId;
+
+    public JournalEntry() {}
 
     public JournalEntry
     (    
         String           content, 
         LocalDateTime    timestamp, 
-        User             client)
+        String           keycloakUserId)
     {
         this.content   = content;
         this.timestamp = timestamp;
-        this.client    = client;
+        this.keycloakUserId = keycloakUserId;
     }
 
     @PrePersist
@@ -48,6 +49,6 @@ public class JournalEntry {
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 
-    public User getClient() { return client; }
-    public void setClient(User client) { this.client = client; }
+    public String getKeycloakUserId() { return keycloakUserId; }
+    public void setKeycloakUserId(String keycloakUserId) { this.keycloakUserId = keycloakUserId; }
 }

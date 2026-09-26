@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface JournalEntryRepository extends JpaRepository<JournalEntry, Long> {
-    List<JournalEntry> findByClientIdOrderByTimestampDesc(Long clientId);
+    List<JournalEntry> findByKeycloakUserIdOrderByTimestampDesc(String keycloakUserId);
 }

@@ -4,6 +4,6 @@ repos:
       - id: trufflehog
         name: TruffleHog
         description: Detect secrets in your data with TruffleHog.
-        entry: trufflesecurity/trufflehog:latest filesystem --fail
+        entry: trufflesecurity/trufflehog:latest --no-update filesystem --fail
         language: docker_image
         pass_filenames: true

@@ -151,7 +151,7 @@ public class MissingApiSteps {
     
     @Given("a valid Keycloak JWT token signed by {string}")
     public void a_valid_keycloak_jwt_token_signed_by(String string) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     
     @Given("the JWT token contains subject UUID {string}")
@@ -201,7 +201,7 @@ public class MissingApiSteps {
     
     @Given("client A with UUID {string}")
     public void client_a_with_uuid(String string) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @Given("client B with UUID {string}")
     public void client_b_with_uuid(String string) {
@@ -238,7 +238,7 @@ public class MissingApiSteps {
     }
     @Given("MongoDB contains locale {string} dictionary but does not contain locale {string}")
     public void mongo_db_contains_locale_dictionary_but_does_not_contain_locale(String string, String string2) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("the frontend sends a GET request to {string}")
     public void the_frontend_sends_a_get_request_to(String string) {
@@ -258,7 +258,7 @@ public class MissingApiSteps {
     }
     @Given("a MongoDB document in {string} for locale {string}:")
     public void a_mongo_db_document_in_for_locale(String string, String string2, String docString) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @Then("the HTTP status code should be {int} OK")
     public void the_http_status_code_should_be_ok(Integer int1) {
@@ -300,11 +300,13 @@ public class MissingApiSteps {
     }
     @Given("a valid client with UUID {string}")
     public void a_valid_client_with_uuid(String string) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("the client posts a new appointment booking request with:")
     public void the_client_posts_a_new_appointment_booking_request_with(io.cucumber.datatable.DataTable dataTable) {
-        lastResponse = requestSpec.contentType("application/json").body("{}").post("/api/v1/appointments");
+        java.util.Map<String, String> data = dataTable.asMap(String.class, String.class);
+        String json = "{ \"title\": \"" + data.get("title") + "\", \"startTime\": \"" + data.get("startTime") + "\", \"endTime\": \"" + data.get("endTime") + "\", \"therapistUuid\": \"" + data.get("therapistUuid") + "\" }";
+        lastResponse = requestSpec.contentType("application/json").body(json).post("/api/v1/appointments");
     }
     @Then("the returned appointment object should contain a generated UUID")
     public void the_returned_appointment_object_should_contain_a_generated_uuid() {
@@ -328,7 +330,7 @@ public class MissingApiSteps {
     }
     @Given("an authenticated client with UUID {string}")
     public void an_authenticated_client_with_uuid(String string) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("the client posts a new journal entry to {string} with body:")
     public void the_client_posts_a_new_journal_entry_to_with_body(String string, String docString) {
@@ -344,7 +346,7 @@ public class MissingApiSteps {
     }
     @Given("a completed assessment test for client UUID {string}")
     public void a_completed_assessment_test_for_client_uuid(String string) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @Given("supervising therapist UUID {string}")
     public void supervising_therapist_uuid(String string) {
@@ -389,11 +391,12 @@ public class MissingApiSteps {
     }
     @Given("a valid client UUID {string}")
     public void a_valid_client_uuid(String string) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("the client attempts to book an appointment with startTime {string} and endTime {string}")
     public void the_client_attempts_to_book_an_appointment_with_start_time_and_end_time(String string, String string2) {
-        lastResponse = requestSpec.contentType("application/json").body("{}").post("/api/v1/appointments");
+        String json = "{ \"startTime\": \"" + string + "\", \"endTime\": \"" + string2 + "\" }";
+        lastResponse = requestSpec.contentType("application/json").body(json).post("/api/v1/appointments");
     }
     @Then("the system should reject the creation with HTTP {int} Bad Request")
     public void the_system_should_reject_the_creation_with_http_bad_request(Integer int1) {
@@ -405,11 +408,12 @@ public class MissingApiSteps {
     }
     @Given("an existing confirmed appointment for therapist {string} from {string} to {string}")
     public void an_existing_confirmed_appointment_for_therapist_from_to(String string, String string2, String string3) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("another client attempts to book therapist {string} from {string} to {string}")
     public void another_client_attempts_to_book_therapist_from_to(String string, String string2, String string3) {
-        lastResponse = requestSpec.contentType("application/json").body("{}").post("/api/v1/appointments");
+        String json = "{ \"therapistUuid\": \"" + string + "\", \"startTime\": \"" + string2 + "\", \"endTime\": \"" + string3 + "\" }";
+        lastResponse = requestSpec.contentType("application/json").body(json).post("/api/v1/appointments");
     }
     @Then("the system should reject the request with HTTP {int} Conflict")
     public void the_system_should_reject_the_request_with_http_conflict(Integer int1) {
@@ -417,7 +421,7 @@ public class MissingApiSteps {
     }
     @Given("client {string} has {int} scheduled appointments in week {int} \\({word}-{word}-{word} to {word}-{word}-{word})")
     public void client_has_scheduled_appointments_in_week_to(String string, Integer int1, Integer int2, String s1, String s2, String s3, String s4, String s5, String s6) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("the client requests appointments for range {string} to {string}")
     public void the_client_requests_appointments_for_range_to(String string, String string2) {
@@ -434,7 +438,7 @@ public class MissingApiSteps {
 
     @Given("an active appointment with UUID {string} for client {string}")
     public void an_active_appointment_with_uuid_for_client(String string, String string2) {
-        // mock
+        requestSpec.header("Authorization", "Bearer dummy-token");
     }
 
     @When("the client sends a DELETE request to {string}")

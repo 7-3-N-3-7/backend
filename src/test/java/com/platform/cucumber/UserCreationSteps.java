@@ -36,7 +36,8 @@ public class UserCreationSteps {
 
     @When("I send a POST request to {string} with the following JSON:")
     public void i_send_a_post_request_to_with_the_following_json(String endpoint, String jsonPayload) {
-        lastResponse = given()
+        lastResponse = 
+        given()
             .header("Content-Type", "application/json")
             .header("Authorization", "Basic dGhlcmFwaXN0OnBhc3N3b3Jk") // therapist:password base64
             .body(jsonPayload)

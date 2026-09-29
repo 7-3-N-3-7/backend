@@ -17,7 +17,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll()
+                .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll().requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> 

@@ -10,7 +10,21 @@ import org.junit.jupiter.api.Assertions;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.platform.repository.I18nDictionaryRepository;
+import com.platform.entity.I18nDictionary;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import java.util.HashMap;
+
 public class MissingApiSteps {
+
+    @Autowired
+    private I18nDictionaryRepository i18nRepository;
+    
+    @Autowired
+    private ObjectMapper objectMapper;
+
 
     private RequestSpecification requestSpec = given();
     private Response lastResponse;
@@ -218,6 +232,10 @@ public class MissingApiSteps {
     @Given("an existing Danish dictionary in MongoDB where {string} is {string}")
     public void an_existing_danish_dictionary_in_mongo_db_where_is(String string, String string2) {
         requestSpec.header("Authorization", "Bearer valid-token-for-admin");
+        Map<String, String> translations = new HashMap<>();
+        translations.put(string, string2);
+        I18nDictionary dict = new I18nDictionary("da", translations);
+        i18nRepository.save(dict);
     }
     @When("an admin sends a PUT request to {string} with body:")
     public void an_admin_sends_a_put_request_to_with_body(String string, String docString) {
@@ -226,7 +244,7 @@ public class MissingApiSteps {
     @Then("subsequent GET requests to {string} should immediately return {string} for {string}")
     public void subsequent_get_requests_to_should_immediately_return_for(String string, String string2, String string3) {
         lastResponse = requestSpec.when().get(string);
-        // mock verify
+        lastResponse.then().body(string3, org.hamcrest.Matchers.equalTo(string2));
     }
     @Given("MongoDB is running and connected on port {int}")
     public void mongo_db_is_running_and_connected_on_port(Integer int1) {
@@ -238,7 +256,11 @@ public class MissingApiSteps {
     }
     @Given("MongoDB contains locale {string} dictionary but does not contain locale {string}")
     public void mongo_db_contains_locale_dictionary_but_does_not_contain_locale(String string, String string2) {
-        requestSpec.header("Authorization", "Bearer dummy-token");
+        Map<String, String> translations = new HashMap<>();
+        translations.put("fallback_key", "fallback_value");
+        I18nDictionary dict = new I18nDictionary(string, translations);
+        i18nRepository.save(dict);
+        i18nRepository.findByLocale(string2).ifPresent(d -> i18nRepository.delete(d));
     }
     @When("the frontend sends a GET request to {string}")
     public void the_frontend_sends_a_get_request_to(String string) {
@@ -257,8 +279,11 @@ public class MissingApiSteps {
         lastResponse.then().header(string, containsString(string2));
     }
     @Given("a MongoDB document in {string} for locale {string}:")
-    public void a_mongo_db_document_in_for_locale(String string, String string2, String docString) {
-        requestSpec.header("Authorization", "Bearer dummy-token");
+    public void a_mongo_db_document_in_for_locale(String string, String string2, String docString) throws Exception {
+        Map<String, Object> doc = objectMapper.readValue(docString, Map.class);
+        Map<String, String> translations = (Map<String, String>) doc.get("translations");
+        I18nDictionary dict = new I18nDictionary(string2, translations);
+        i18nRepository.save(dict);
     }
     @Then("the HTTP status code should be {int} OK")
     public void the_http_status_code_should_be_ok(Integer int1) {
@@ -266,7 +291,7 @@ public class MissingApiSteps {
     }
     @Then("the response body should contain JSON dictionary mapping {string} to {string}")
     public void the_response_body_should_contain_json_dictionary_mapping_to(String string, String string2) {
-        // mock
+        lastResponse.then().body(string, org.hamcrest.Matchers.equalTo(string2));
     }
     @Given("a client user with UUID {string}")
     public void a_client_user_with_uuid(String string) {

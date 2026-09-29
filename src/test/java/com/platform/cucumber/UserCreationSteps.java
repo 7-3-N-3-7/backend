@@ -14,10 +14,35 @@ import org.springframework.test.context.ActiveProfiles;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 public class UserCreationSteps {
+
+    @TestConfiguration
+    static class MockSecurityConfig {
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return token -> {
+                if (token.contains("expired") || token.contains("invalid")) {
+                    throw new JwtException("Jwt expired");
+                }
+                return Jwt.withTokenValue(token)
+                        .header("alg", "none")
+                        .claim("sub", "mock-user")
+                        .claim("realm_access", java.util.Map.of("roles", java.util.List.of("therapist")))
+                        .build();
+            };
+        }
+    }
 
     @LocalServerPort
     private int port;
@@ -39,7 +64,7 @@ public class UserCreationSteps {
         lastResponse = 
         given()
             .header("Content-Type", "application/json")
-            .header("Authorization", "Basic dGhlcmFwaXN0OnBhc3N3b3Jk") // therapist:password base64
+            .header("Authorization", "Bearer dummy-token")
             .body(jsonPayload)
         .when()
             .post(endpoint);

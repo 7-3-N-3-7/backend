@@ -10,6 +10,8 @@ import java.util.UUID;
 @Table(name = "appointments")
 public class Appointment {
 
+    protected Appointment() {}
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

@@ -13,19 +13,25 @@ import java.util.UUID;
 @CrossOrigin(origins = "*")
 public class AppointmentController {
 
-    private final AppointmentRepository appointmentRepository;
+    private final com.platform.service.AppointmentService appointmentService;
 
-    public AppointmentController(AppointmentRepository appointmentRepository) {
-        this.appointmentRepository = appointmentRepository;
+    public AppointmentController(com.platform.service.AppointmentService appointmentService) {
+        this.appointmentService = appointmentService;
     }
 
     @GetMapping("/client/{clientUuid}")
     public ResponseEntity<List<Appointment>> getAppointmentsForClient(@PathVariable UUID clientUuid) {
-        return ResponseEntity.ok(appointmentRepository.findByClientUuid(clientUuid));
+        return ResponseEntity.ok(appointmentService.getAppointmentsForClient(clientUuid));
     }
 
     @PostMapping
     public ResponseEntity<Appointment> createAppointment(@RequestBody Appointment appointment) {
-        return ResponseEntity.ok(appointmentRepository.save(appointment));
+        return ResponseEntity.ok(appointmentService.createAppointment(appointment));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancelAppointment(@PathVariable UUID id) {
+        appointmentService.cancelAppointment(id);
+        return ResponseEntity.ok().build();
     }
 }

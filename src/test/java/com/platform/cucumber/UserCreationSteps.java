@@ -21,13 +21,45 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration;
+
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@EnableAutoConfiguration(exclude = {MongoAutoConfiguration.class, MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
 public class UserCreationSteps {
 
     @TestConfiguration
     static class MockSecurityConfig {
+        @Bean
+        @Primary
+        public com.platform.repository.I18nDictionaryRepository i18nRepository() {
+            com.platform.repository.I18nDictionaryRepository mock = org.mockito.Mockito.mock(com.platform.repository.I18nDictionaryRepository.class);
+            java.util.Map<String, com.platform.entity.I18nDictionary> db = new java.util.concurrent.ConcurrentHashMap<>();
+
+            org.mockito.Mockito.when(mock.save(org.mockito.ArgumentMatchers.any(com.platform.entity.I18nDictionary.class))).thenAnswer(invocation -> {
+                com.platform.entity.I18nDictionary dict = invocation.getArgument(0);
+                db.put(dict.getLocale(), dict);
+                return dict;
+            });
+
+            org.mockito.Mockito.when(mock.findByLocale(org.mockito.ArgumentMatchers.anyString())).thenAnswer(invocation -> {
+                String loc = invocation.getArgument(0);
+                return java.util.Optional.ofNullable(db.get(loc));
+            });
+            
+            org.mockito.Mockito.doAnswer(invocation -> {
+                com.platform.entity.I18nDictionary dict = invocation.getArgument(0);
+                db.remove(dict.getLocale());
+                return null;
+            }).when(mock).delete(org.mockito.ArgumentMatchers.any(com.platform.entity.I18nDictionary.class));
+
+            return mock;
+        }
+
         @Bean
         @Primary
         public JwtDecoder jwtDecoder() {

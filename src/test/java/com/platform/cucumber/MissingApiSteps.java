@@ -23,6 +23,9 @@ public class MissingApiSteps {
     private I18nDictionaryRepository i18nRepository;
     
     @Autowired
+    private com.platform.repository.AppointmentRepository appointmentRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
 
@@ -323,14 +326,17 @@ public class MissingApiSteps {
     public void redisson_redis_cache_is_connected() {
         // mock
     }
+    private String currentClientUuid;
+
     @Given("a valid client with UUID {string}")
     public void a_valid_client_with_uuid(String string) {
+        this.currentClientUuid = string;
         requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("the client posts a new appointment booking request with:")
     public void the_client_posts_a_new_appointment_booking_request_with(io.cucumber.datatable.DataTable dataTable) {
         java.util.Map<String, String> data = dataTable.asMap(String.class, String.class);
-        String json = "{ \"title\": \"" + data.get("title") + "\", \"startTime\": \"" + data.get("startTime") + "\", \"endTime\": \"" + data.get("endTime") + "\", \"therapistUuid\": \"" + data.get("therapistUuid") + "\" }";
+        String json = "{ \"title\": \"" + data.get("title") + "\", \"startTime\": \"" + data.get("startTime") + "\", \"endTime\": \"" + data.get("endTime") + "\", \"therapistUuid\": \"" + data.get("therapistUuid") + "\", \"clientUuid\": \"" + currentClientUuid + "\" }";
         lastResponse = requestSpec.contentType("application/json").body(json).post("/api/v1/appointments");
     }
     @Then("the returned appointment object should contain a generated UUID")
@@ -416,11 +422,12 @@ public class MissingApiSteps {
     }
     @Given("a valid client UUID {string}")
     public void a_valid_client_uuid(String string) {
+        this.currentClientUuid = string;
         requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @When("the client attempts to book an appointment with startTime {string} and endTime {string}")
     public void the_client_attempts_to_book_an_appointment_with_start_time_and_end_time(String string, String string2) {
-        String json = "{ \"startTime\": \"" + string + "\", \"endTime\": \"" + string2 + "\" }";
+        String json = "{ \"startTime\": \"" + string + "\", \"endTime\": \"" + string2 + "\", \"clientUuid\": \"" + currentClientUuid + "\" }";
         lastResponse = requestSpec.contentType("application/json").body(json).post("/api/v1/appointments");
     }
     @Then("the system should reject the creation with HTTP {int} Bad Request")
@@ -433,11 +440,15 @@ public class MissingApiSteps {
     }
     @Given("an existing confirmed appointment for therapist {string} from {string} to {string}")
     public void an_existing_confirmed_appointment_for_therapist_from_to(String string, String string2, String string3) {
-        requestSpec.header("Authorization", "Bearer dummy-token");
+        String json = "{ \"therapistUuid\": \"" + string + "\", \"startTime\": \"" + string2 + "\", \"endTime\": \"" + string3 + "\", \"clientUuid\": \"00000000-0000-0000-0000-000000000001\" }";
+        requestSpec.header("Authorization", "Bearer dummy-token")
+                   .contentType("application/json")
+                   .body(json)
+                   .post("/api/v1/appointments");
     }
     @When("another client attempts to book therapist {string} from {string} to {string}")
     public void another_client_attempts_to_book_therapist_from_to(String string, String string2, String string3) {
-        String json = "{ \"therapistUuid\": \"" + string + "\", \"startTime\": \"" + string2 + "\", \"endTime\": \"" + string3 + "\" }";
+        String json = "{ \"therapistUuid\": \"" + string + "\", \"startTime\": \"" + string2 + "\", \"endTime\": \"" + string3 + "\", \"clientUuid\": \"00000000-0000-0000-0000-000000000002\" }";
         lastResponse = requestSpec.contentType("application/json").body(json).post("/api/v1/appointments");
     }
     @Then("the system should reject the request with HTTP {int} Conflict")
@@ -464,6 +475,15 @@ public class MissingApiSteps {
     @Given("an active appointment with UUID {string} for client {string}")
     public void an_active_appointment_with_uuid_for_client(String string, String string2) {
         requestSpec.header("Authorization", "Bearer dummy-token");
+        com.platform.entity.Appointment app = new com.platform.entity.Appointment(
+            java.util.UUID.fromString(string2),
+            java.util.UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8"),
+            java.time.LocalDateTime.parse("2026-09-09T10:00:00"),
+            java.time.LocalDateTime.parse("2026-09-09T11:00:00"),
+            "To Cancel", "CONFIRMED"
+        );
+        app.setId(java.util.UUID.fromString(string));
+        appointmentRepository.save(app);
     }
 
     @When("the client sends a DELETE request to {string}")

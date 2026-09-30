@@ -29,15 +29,15 @@ public class JournalGitService {
     public void init() {
         try {
             File repoDir = new File(repoPath);
-            if (!repoDir.exists()) {
+            File gitDir = new File(repoDir, ".git");
+            if (!gitDir.exists()) {
                 Files.createDirectories(Path.of(repoPath));
                 git = Git.init().setDirectory(repoDir).call();
                 log.info("Initialized new Git repository at {}", repoDir.getAbsolutePath());
             } else {
                 Repository repository = new FileRepositoryBuilder()
-                        .setGitDir(new File(repoDir, ".git"))
+                        .setGitDir(gitDir)
                         .readEnvironment()
-                        .findGitDir()
                         .build();
                 git = new Git(repository);
                 log.info("Loaded existing Git repository at {}", repoDir.getAbsolutePath());
@@ -65,5 +65,12 @@ public class JournalGitService {
 
     public Git getGit() {
         return git;
+    }
+
+    @jakarta.annotation.PreDestroy
+    public void close() {
+        if (git != null) {
+            git.close();
+        }
     }
 }

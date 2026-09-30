@@ -162,6 +162,19 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
+      <!-- Enforce H2 database during tests, ignoring local environment variables -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <environmentVariables>
+            <SPRING_DATASOURCE_URL>jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1</SPRING_DATASOURCE_URL>
+            <SPRING_DATASOURCE_DRIVERCLASSNAME>org.h2.Driver</SPRING_DATASOURCE_DRIVERCLASSNAME>
+            <SPRING_DATASOURCE_USERNAME>sa</SPRING_DATASOURCE_USERNAME>
+            <SPRING_DATASOURCE_PASSWORD></SPRING_DATASOURCE_PASSWORD>
+          </environmentVariables>
+        </configuration>
+      </plugin>
       <!-- GraalVM Native Build Plugin -->
       <plugin>
         <groupId>org.graalvm.buildtools</groupId>

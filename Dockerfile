@@ -10,5 +10,7 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+COPY entrypoint-secrets.sh /entrypoint-secrets.sh
+RUN chmod +x /entrypoint-secrets.sh
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["/entrypoint-secrets.sh", "java", "-jar", "app.jar"]

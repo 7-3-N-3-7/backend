@@ -23,69 +23,127 @@ services:
     container_name: business-db
     restart: always
     environment:
-      POSTGRES_DB: business_db
-      POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: app_password
+    - POSTGRES_DB_FILE=/run/secrets/postgres_db
+    - POSTGRES_USER_FILE=/run/secrets/postgres_user
+    - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
     ports:
-      - "5432:5432"
+    - "5432:5432"
     volumes:
-      - business_db_data:/var/lib/postgresql/data
+    - business_db_data:/var/lib/postgresql/data
     networks:
-      - backend-net
+    - backend-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app_user -d business_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+    secrets:
+    - postgres_db_file
+    - postgres_user_file
+    - postgres_password_file
   mongodb:
     image: mongo:7.0
     container_name: mongodb
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: mongo_user
-      MONGO_INITDB_ROOT_PASSWORD: mongo_password
+    - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongo_initdb_root_username
+    - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongo_initdb_root_password
     ports:
-      - "27017:27017"
+    - "27017:27017"
     volumes:
-      - mongo_data:/data/db
+    - mongo_data:/data/db
     networks:
-      - backend-net
+    - backend-net
 
+    secrets:
+    - mongo_initdb_root_username_file
+    - mongo_initdb_root_password_file
   redis:
     image: redis:7-alpine
     container_name: redis
     restart: always
     ports:
-      - "6379:6379"
+    - "6379:6379"
     volumes:
-      - redis_data:/data
+    - redis_data:/data
     networks:
-      - backend-net
+    - backend-net
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
     networks:
-      - kafka-net
+    - kafka-net
 
+    secrets:
+    - zookeeper_client_port
+    - zookeeper_tick_time
+    command: /bin/sh -c "export ZOOKEEPER_CLIENT_PORT=$(cat 
+      /run/secrets/zookeeper_client_port) && export ZOOKEEPER_TICK_TIME=$(cat 
+      /run/secrets/zookeeper_tick_time) && exec /etc/confluent/docker/run"
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
     depends_on:
-      - zookeeper
+    - zookeeper
     ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    - "9092:9092"
     networks:
-      - backend-net
-      - kafka-net
+    - backend-net
+    - kafka-net
+    secrets:
+    - kafka_broker_id
+    - kafka_zookeeper_connect
+    - kafka_advertised_listeners
+    - kafka_listener_security_protocol_map
+    - kafka_inter_broker_listener_name
+    - kafka_offsets_topic_replication_factor
+    command: /bin/sh -c "export KAFKA_BROKER_ID=$(cat 
+      /run/secrets/kafka_broker_id) && export KAFKA_ZOOKEEPER_CONNECT=$(cat 
+      /run/secrets/kafka_zookeeper_connect) && export 
+      KAFKA_ADVERTISED_LISTENERS=$(cat /run/secrets/kafka_advertised_listeners) 
+      && export KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=$(cat 
+      /run/secrets/kafka_listener_security_protocol_map) && export 
+      KAFKA_INTER_BROKER_LISTENER_NAME=$(cat 
+      /run/secrets/kafka_inter_broker_listener_name) && export 
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=$(cat 
+      /run/secrets/kafka_offsets_topic_replication_factor) && exec 
+      /etc/confluent/docker/run"
+secrets:
+  kafka_inter_broker_listener_name:
+    environment: KAFKA_INTER_BROKER_LISTENER_NAME
+  zookeeper_tick_time:
+    environment: ZOOKEEPER_TICK_TIME
+  postgres_db:
+    environment: POSTGRES_DB
+  mongo_initdb_root_password:
+    environment: MONGO_INITDB_ROOT_PASSWORD
+  kafka_listener_security_protocol_map:
+    environment: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+  mongo_initdb_root_username:
+    environment: MONGO_INITDB_ROOT_USERNAME
+  kafka_broker_id:
+    environment: KAFKA_BROKER_ID
+  kafka_advertised_listeners:
+    environment: KAFKA_ADVERTISED_LISTENERS
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+  kafka_zookeeper_connect:
+    environment: KAFKA_ZOOKEEPER_CONNECT
+  kafka_offsets_topic_replication_factor:
+    environment: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+  zookeeper_client_port:
+    environment: ZOOKEEPER_CLIENT_PORT
+  postgres_user:
+    environment: POSTGRES_USER
+  postgres_user_file:
+    environment: POSTGRES_USER_FILE
+  postgres_db_file:
+    environment: POSTGRES_DB_FILE
+  mongo_initdb_root_password_file:
+    environment: MONGO_INITDB_ROOT_PASSWORD_FILE
+  mongo_initdb_root_username_file:
+    environment: MONGO_INITDB_ROOT_USERNAME_FILE
+  postgres_password_file:
+    environment: POSTGRES_PASSWORD_FILE

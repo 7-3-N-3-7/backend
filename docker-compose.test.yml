@@ -7,25 +7,21 @@ networks:
     driver: bridge
   kafka-net:
     driver: bridge
-
 volumes:
   auth_db_data:
   business_db_data:
   mongo_data:
   minio_data:
   redis_data:
-
 services:
-
-
   business-db:
     image: postgres:16-alpine
     container_name: business-db
     restart: always
     environment:
-    - POSTGRES_DB_FILE=/run/secrets/postgres_db
-    - POSTGRES_USER_FILE=/run/secrets/postgres_user
-    - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    =/run/secrets/postgres_db
+    =/run/secrets/postgres_user
+    =/run/secrets/postgres_password
     ports:
     - "5432:5432"
     volumes:
@@ -37,28 +33,26 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
     secrets:
-    - postgres_db_file
-    - postgres_user_file
-    - postgres_password_file
+    - postgres_db
+    - postgres_user
+    - postgres_password
   mongodb:
     image: mongo:7.0
     container_name: mongodb
     restart: always
     environment:
-    - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongo_initdb_root_username
-    - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongo_initdb_root_password
+    =/run/secrets/mongo_initdb_root_username
+    =/run/secrets/mongo_initdb_root_password
     ports:
     - "27017:27017"
     volumes:
     - mongo_data:/data/db
     networks:
     - backend-net
-
     secrets:
-    - mongo_initdb_root_username_file
-    - mongo_initdb_root_password_file
+    - mongo_initdb_root_username
+    - mongo_initdb_root_password
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -69,13 +63,11 @@ services:
     - redis_data:/data
     networks:
     - backend-net
-
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: zookeeper
     networks:
     - kafka-net
-
     secrets:
     - zookeeper_client_port
     - zookeeper_tick_time
@@ -111,39 +103,29 @@ services:
       /run/secrets/kafka_offsets_topic_replication_factor) && exec 
       /etc/confluent/docker/run"
 secrets:
-  kafka_inter_broker_listener_name:
-    environment: KAFKA_INTER_BROKER_LISTENER_NAME
-  zookeeper_tick_time:
-    environment: ZOOKEEPER_TICK_TIME
-  postgres_db:
-    environment: POSTGRES_DB
-  mongo_initdb_root_password:
-    environment: MONGO_INITDB_ROOT_PASSWORD
-  kafka_listener_security_protocol_map:
-    environment: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
-  mongo_initdb_root_username:
-    environment: MONGO_INITDB_ROOT_USERNAME
-  kafka_broker_id:
-    environment: KAFKA_BROKER_ID
   kafka_advertised_listeners:
     environment: KAFKA_ADVERTISED_LISTENERS
-  postgres_password:
-    environment: POSTGRES_PASSWORD
-  kafka_zookeeper_connect:
-    environment: KAFKA_ZOOKEEPER_CONNECT
+  kafka_inter_broker_listener_name:
+    environment: KAFKA_INTER_BROKER_LISTENER_NAME
+  kafka_listener_security_protocol_map:
+    environment: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+  mongo_initdb_root_password:
+    environment: MONGO_INITDB_ROOT_PASSWORD
+  kafka_broker_id:
+    environment: KAFKA_BROKER_ID
   kafka_offsets_topic_replication_factor:
     environment: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+  zookeeper_tick_time:
+    environment: ZOOKEEPER_TICK_TIME
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+  mongo_initdb_root_username:
+    environment: MONGO_INITDB_ROOT_USERNAME
   zookeeper_client_port:
     environment: ZOOKEEPER_CLIENT_PORT
+  kafka_zookeeper_connect:
+    environment: KAFKA_ZOOKEEPER_CONNECT
   postgres_user:
     environment: POSTGRES_USER
-  postgres_user_file:
-    environment: POSTGRES_USER_FILE
-  postgres_db_file:
-    environment: POSTGRES_DB_FILE
-  mongo_initdb_root_password_file:
-    environment: MONGO_INITDB_ROOT_PASSWORD_FILE
-  mongo_initdb_root_username_file:
-    environment: MONGO_INITDB_ROOT_USERNAME_FILE
-  postgres_password_file:
-    environment: POSTGRES_PASSWORD_FILE
+  postgres_db:
+    environment: POSTGRES_DB

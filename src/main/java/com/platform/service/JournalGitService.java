@@ -51,7 +51,9 @@ public class JournalGitService {
     public void commitJournalEntry(String patientId, String entryContent, String commitMessage) {
         try {
             File entryFile = new File(repoPath, patientId + ".md");
-            Files.writeString(entryFile.toPath(), entryContent);
+            Files.writeString(entryFile.toPath(), entryContent + "\n\n", 
+                java.nio.file.StandardOpenOption.CREATE, 
+                java.nio.file.StandardOpenOption.APPEND);
 
             git.add().addFilepattern(patientId + ".md").call();
             git.commit().setMessage(commitMessage).call();

@@ -28,7 +28,7 @@ public class I18nServiceTest {
 
     @Test
     public void testGetDictionary_Found() {
-        Map<String, String> translations = new HashMap<>();
+        Map<String, Object> translations = new HashMap<>();
         translations.put("hello", "hej");
         I18nDictionary dict = new I18nDictionary("da", translations);
         
@@ -52,7 +52,7 @@ public class I18nServiceTest {
 
     @Test
     public void testUpdateTranslation_ExistingDictionary() {
-        Map<String, String> translations = new HashMap<>();
+        Map<String, Object> translations = new HashMap<>();
         translations.put("key1", "val1");
         I18nDictionary dict = new I18nDictionary("da", translations);
         

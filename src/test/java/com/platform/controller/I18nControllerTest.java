@@ -36,7 +36,7 @@ public class I18nControllerTest {
 
     @Test
     public void testGetDictionary_Success() throws Exception {
-        Map<String, String> translations = new HashMap<>();
+        Map<String, Object> translations = new HashMap<>();
         translations.put("key1", "val1");
         I18nDictionary dict = new I18nDictionary("da", translations);
 
@@ -51,7 +51,7 @@ public class I18nControllerTest {
     public void testGetDictionary_Fallback() throws Exception {
         Mockito.when(i18nService.getDictionary("de")).thenReturn(Optional.empty());
 
-        Map<String, String> fallbackTranslations = new HashMap<>();
+        Map<String, Object> fallbackTranslations = new HashMap<>();
         fallbackTranslations.put("hello", "world");
         I18nDictionary fallbackDict = new I18nDictionary("en", fallbackTranslations);
 

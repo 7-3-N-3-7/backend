@@ -13,11 +13,11 @@ public class I18nDictionary {
     
     private String locale;
     
-    private Map<String, String> translations;
+    private Map<String, Object> translations;
 
     public I18nDictionary() {}
 
-    public I18nDictionary(String locale, Map<String, String> translations) {
+    public I18nDictionary(String locale, Map<String, Object> translations) {
         this.locale = locale;
         this.translations = translations;
     }
@@ -38,11 +38,11 @@ public class I18nDictionary {
         this.locale = locale;
     }
 
-    public Map<String, String> getTranslations() {
+    public Map<String, Object> getTranslations() {
         return translations;
     }
 
-    public void setTranslations(Map<String, String> translations) {
+    public void setTranslations(Map<String, Object> translations) {
         this.translations = translations;
     }
 }

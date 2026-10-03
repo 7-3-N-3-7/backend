@@ -18,7 +18,7 @@ public class I18nController {
     }
 
     @GetMapping("/{locale}")
-    public ResponseEntity<Map<String, String>> getDictionary(@PathVariable String locale) {
+    public ResponseEntity<Map<String, Object>> getDictionary(@PathVariable String locale) {
         return i18nService.getDictionary(locale)
                 .map(dict -> ResponseEntity.ok(dict.getTranslations()))
                 .orElseGet(() -> i18nService.getDictionary("en")

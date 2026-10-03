@@ -235,7 +235,7 @@ public class MissingApiSteps {
     @Given("an existing Danish dictionary in MongoDB where {string} is {string}")
     public void an_existing_danish_dictionary_in_mongo_db_where_is(String string, String string2) {
         requestSpec.header("Authorization", "Bearer valid-token-for-admin");
-        Map<String, String> translations = new HashMap<>();
+        Map<String, Object> translations = new HashMap<>();
         translations.put(string, string2);
         I18nDictionary dict = new I18nDictionary("da", translations);
         i18nRepository.save(dict);
@@ -259,7 +259,7 @@ public class MissingApiSteps {
     }
     @Given("MongoDB contains locale {string} dictionary but does not contain locale {string}")
     public void mongo_db_contains_locale_dictionary_but_does_not_contain_locale(String string, String string2) {
-        Map<String, String> translations = new HashMap<>();
+        Map<String, Object> translations = new HashMap<>();
         translations.put("fallback_key", "fallback_value");
         I18nDictionary dict = new I18nDictionary(string, translations);
         i18nRepository.save(dict);
@@ -284,7 +284,7 @@ public class MissingApiSteps {
     @Given("a MongoDB document in {string} for locale {string}:")
     public void a_mongo_db_document_in_for_locale(String string, String string2, String docString) throws Exception {
         Map<String, Object> doc = objectMapper.readValue(docString, Map.class);
-        Map<String, String> translations = (Map<String, String>) doc.get("translations");
+        Map<String, Object> translations = (Map<String, Object>) doc.get("translations");
         I18nDictionary dict = new I18nDictionary(string2, translations);
         i18nRepository.save(dict);
     }
@@ -361,7 +361,7 @@ public class MissingApiSteps {
     }
     @Given("an authenticated client with UUID {string}")
     public void an_authenticated_client_with_uuid(String string) {
-        requestSpec.header("Authorization", "Bearer dummy-token");
+        requestSpec.header("Authorization", "Bearer " + string);
     }
     @When("the client posts a new journal entry to {string} with body:")
     public void the_client_posts_a_new_journal_entry_to_with_body(String string, String docString) {
@@ -472,18 +472,22 @@ public class MissingApiSteps {
         // mock
     }
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Given("an active appointment with UUID {string} for client {string}")
     public void an_active_appointment_with_uuid_for_client(String string, String string2) {
         requestSpec.header("Authorization", "Bearer dummy-token");
-        com.platform.entity.Appointment app = new com.platform.entity.Appointment(
+        
+        jdbcTemplate.update("INSERT INTO appointments (id, client_uuid, therapist_uuid, start_time, end_time, title, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            java.util.UUID.fromString(string),
             java.util.UUID.fromString(string2),
             java.util.UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8"),
             java.time.LocalDateTime.parse("2026-09-09T10:00:00"),
             java.time.LocalDateTime.parse("2026-09-09T11:00:00"),
-            "To Cancel", "CONFIRMED"
+            "To Cancel",
+            "CONFIRMED"
         );
-        app.setId(java.util.UUID.fromString(string));
-        appointmentRepository.save(app);
     }
 
     @When("the client sends a DELETE request to {string}")

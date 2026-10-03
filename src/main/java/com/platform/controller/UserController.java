@@ -35,4 +35,5 @@ public class UserController {
         String errorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         return ResponseEntity.badRequest().body(errorMessage);
     }
+
 }

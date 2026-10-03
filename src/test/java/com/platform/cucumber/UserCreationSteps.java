@@ -67,10 +67,25 @@ public class UserCreationSteps {
                 if (token.contains("expired") || token.contains("invalid")) {
                     throw new JwtException("Jwt expired");
                 }
+                String subject = "550e8400-e29b-41d4-a716-446655440000";
+                if (token.startsWith("valid-token-for-")) {
+                    subject = token.substring("valid-token-for-".length());
+                } else if (token.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
+                    subject = token;
+                }
+
+                // mock role logic based on token
+                java.util.List<String> roles = java.util.List.of("therapist");
+                if ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(token) && subject.equals("550e8400-e29b-41d4-a716-446655440000")) {
+                    roles = java.util.List.of("client");
+                }
+
                 return Jwt.withTokenValue(token)
                         .header("alg", "none")
-                        .claim("sub", "mock-user")
-                        .claim("realm_access", java.util.Map.of("roles", java.util.List.of("therapist")))
+                        .claim("sub", subject)
+                        .claim("realm_access", java.util.Map.of("roles", roles))
+                        .issuedAt(java.time.Instant.now())
+                        .expiresAt(java.time.Instant.now().plusSeconds(3600))
                         .build();
             };
         }

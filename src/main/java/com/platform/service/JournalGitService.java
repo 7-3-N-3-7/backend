@@ -65,6 +65,16 @@ public class JournalGitService {
         }
     }
 
+    public String readJournalEntry(String patientId) {
+        try {
+            File entryFile = new File(repoPath, patientId + ".md");
+            if (!entryFile.exists()) return "";
+            return Files.readString(entryFile.toPath());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read journal", e);
+        }
+    }
+
     public Git getGit() {
         return git;
     }

@@ -1,15 +1,15 @@
 package com.platform.dto;
 
 public class UserResponseDto {
-    private Long id;
+    private java.util.UUID id;
     private String username;
     private String role;
 
-    public Long getId() {
+    public java.util.UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(java.util.UUID id) {
         this.id = id;
     }
 

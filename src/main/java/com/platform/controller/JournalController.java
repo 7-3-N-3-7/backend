@@ -73,7 +73,31 @@ public class JournalController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: Required role ROLE_THERAPIST");
         }
 
-        // Just return 200 OK for the mock test
+    // Just return 200 OK for the mock test
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/timeline/{clientUuid}")
+    public ResponseEntity<java.util.List<java.util.Map<String, String>>> getClientTimeline(
+        @PathVariable UUID clientUuid,
+        Authentication auth
+    ) {
+        boolean isTherapist = false;
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+            if (realmAccess != null && ((java.util.List<?>) realmAccess.get("roles")).contains("therapist")) {
+                isTherapist = true;
+            }
+        }
+
+        try {
+            String rawMarkdown = journalGitService.readJournalEntry(clientUuid.toString());
+            String content = new com.platform.service.JournalService().getJournalContent(rawMarkdown, isTherapist);
+            return ResponseEntity.ok(java.util.List.of(
+                java.util.Map.of("id", clientUuid.toString(), "content", content)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

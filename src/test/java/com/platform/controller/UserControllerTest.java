@@ -40,7 +40,7 @@ class UserControllerTest {
         request.setRole("CLIENT");
 
         UserResponseDto response = new UserResponseDto();
-        response.setId(1L);
+        response.setId(java.util.UUID.randomUUID());
         response.setUsername("newclient");
         response.setRole("CLIENT");
 

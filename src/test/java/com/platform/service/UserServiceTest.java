@@ -36,7 +36,7 @@ class UserServiceTest {
         when(userRepository.existsByUsername("newclient")).thenReturn(false);
 
         UserEntity savedEntity = new UserEntity();
-        savedEntity.setId(1L);
+        savedEntity.setId(java.util.UUID.randomUUID());
         savedEntity.setUsername("newclient");
         savedEntity.setRole("CLIENT");
         when(userRepository.save(any(UserEntity.class))).thenReturn(savedEntity);

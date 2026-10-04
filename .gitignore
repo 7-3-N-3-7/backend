@@ -13,3 +13,4 @@ diagrams/docker-compose.local.yml
 docker-compose.test.yml
 *.txt
 journal-repo/
+*.exec

@@ -18,6 +18,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/i18n/**")
+                    .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users")
+                    .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> 

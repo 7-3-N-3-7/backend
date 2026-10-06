@@ -4,11 +4,13 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.platform.crm.repository.JournalEntryRepository;
+
 
 @Entity
 @Table(name = "appointments")
 public class Appointment {
+
+    protected Appointment() {}
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

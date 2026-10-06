@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface JournalEntryRepository extends JpaRepository<JournalEntry, Long> {
-    List<JournalEntry> findByClientIdOrderByTimestampDesc(Long clientId);
+public interface JournalEntryRepository extends JpaRepository<JournalEntry, java.util.UUID> {
+    List<JournalEntry> findByClientUuidOrderByTimestampDesc(java.util.UUID clientUuid);
 }

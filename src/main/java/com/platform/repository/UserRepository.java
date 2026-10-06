@@ -1,0 +1,10 @@
+package com.platform.repository;
+
+import com.platform.entity.UserEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserRepository extends JpaRepository<UserEntity, java.util.UUID> {
+    boolean existsByUsername(String username);
+}

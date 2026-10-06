@@ -1,9 +1,12 @@
 package com.platform.controller;
 
 import com.platform.entity.Appointment;
-import com.platform.repository.AppointmentRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -30,8 +33,17 @@ public class AppointmentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelAppointment(@PathVariable UUID id) {
-        appointmentService.cancelAppointment(id);
+    public ResponseEntity<Void> cancelAppointment(@PathVariable UUID id, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+        UUID callerUuid;
+        try {
+            callerUuid = UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user identity");
+        }
+        appointmentService.cancelAppointment(id, callerUuid);
         return ResponseEntity.ok().build();
     }
 }

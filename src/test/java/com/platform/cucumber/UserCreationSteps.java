@@ -67,26 +67,51 @@ public class UserCreationSteps {
                 if (token.contains("expired") || token.contains("invalid")) {
                     throw new JwtException("Jwt expired");
                 }
+                String[] tokenParts = token.split("\\|");
+                String tokenIdentity = tokenParts[0];
                 String subject = "550e8400-e29b-41d4-a716-446655440000";
-                if (token.startsWith("valid-token-for-")) {
-                    subject = token.substring("valid-token-for-".length());
-                } else if (token.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
-                    subject = token;
+                if (tokenIdentity.startsWith("valid-token-for-")) {
+                    subject = tokenIdentity.substring("valid-token-for-".length());
+                } else if (tokenIdentity.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
+                    subject = tokenIdentity;
                 }
 
-                // mock role logic based on token
+                String email = null;
+                String name = null;
+                String assignedRole = null;
+                for (int i = 1; i < tokenParts.length; i++) {
+                    if (tokenParts[i].startsWith("email=")) {
+                        email = tokenParts[i].substring("email=".length());
+                    } else if (tokenParts[i].startsWith("name=")) {
+                        name = tokenParts[i].substring("name=".length());
+                    } else if (tokenParts[i].startsWith("role=")) {
+                        assignedRole = tokenParts[i].substring("role=".length());
+                    }
+                }
+
                 java.util.List<String> roles = java.util.List.of("therapist");
-                if ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(token) && subject.equals("550e8400-e29b-41d4-a716-446655440000")) {
+                if ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(tokenIdentity)
+                        && subject.equals("550e8400-e29b-41d4-a716-446655440000")) {
                     roles = java.util.List.of("client");
                 }
+                if (assignedRole != null) {
+                    roles = java.util.List.of(assignedRole.replaceFirst("(?i)^ROLE_", "")
+                            .toLowerCase(java.util.Locale.ROOT));
+                }
 
-                return Jwt.withTokenValue(token)
+                Jwt.Builder jwt = Jwt.withTokenValue(token)
                         .header("alg", "none")
                         .claim("sub", subject)
                         .claim("realm_access", java.util.Map.of("roles", roles))
                         .issuedAt(java.time.Instant.now())
-                        .expiresAt(java.time.Instant.now().plusSeconds(3600))
-                        .build();
+                        .expiresAt(java.time.Instant.now().plusSeconds(3600));
+                if (email != null) {
+                    jwt.claim("email", email);
+                }
+                if (name != null) {
+                    jwt.claim("name", name);
+                }
+                return jwt.build();
             };
         }
     }

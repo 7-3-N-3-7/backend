@@ -4,6 +4,7 @@ import com.platform.dto.UserRequestDto;
 import com.platform.dto.UserResponseDto;
 import com.platform.entity.UserEntity;
 import com.platform.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,9 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -28,7 +31,7 @@ public class UserService {
 
         UserEntity user = new UserEntity();
         user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword()); // Note: Should be hashed in a real scenario
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
 
         UserEntity savedUser = userRepository.save(user);

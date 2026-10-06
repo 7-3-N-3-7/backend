@@ -4,6 +4,8 @@ import com.platform.entity.Appointment;
 import com.platform.repository.AppointmentRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -22,8 +24,9 @@ public class AppointmentService {
         return appointmentRepository.findByClientUuid(clientUuid);
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Appointment createAppointment(Appointment appointment) {
-        if (appointment.getEndTime().isBefore(appointment.getStartTime())) {
+        if (!appointment.getEndTime().isAfter(appointment.getStartTime())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range: End time must be after start time");
         }
 
@@ -38,9 +41,13 @@ public class AppointmentService {
         return appointmentRepository.save(appointment);
     }
 
-    public void cancelAppointment(UUID id) {
+    public void cancelAppointment(UUID id, UUID callerUuid) {
         Appointment appointment = appointmentRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+        if (!callerUuid.equals(appointment.getClientUuid())
+                && !callerUuid.equals(appointment.getTherapistUuid())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
         appointment.setStatus("CANCELLED");
         appointmentRepository.save(appointment);
     }

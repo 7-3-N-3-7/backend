@@ -1,7 +1,9 @@
 package com.platform.controller;
 
 import com.platform.crm.model.JournalEntry;
+import com.platform.crm.model.TherapistNote;
 import com.platform.crm.repository.JournalEntryRepository;
+import com.platform.crm.repository.TherapistNoteRepository;
 import com.platform.dto.JournalEntryDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,23 +22,20 @@ public class JournalController {
 
     private final JournalEntryRepository journalEntryRepository;
     private final com.platform.service.JournalGitService journalGitService;
+    private final TherapistNoteRepository therapistNoteRepository;
 
     @Autowired
-    public JournalController(JournalEntryRepository journalEntryRepository, com.platform.service.JournalGitService journalGitService) {
+    public JournalController(JournalEntryRepository journalEntryRepository,
+                             com.platform.service.JournalGitService journalGitService,
+                             TherapistNoteRepository therapistNoteRepository) {
         this.journalEntryRepository = journalEntryRepository;
         this.journalGitService = journalGitService;
+        this.therapistNoteRepository = therapistNoteRepository;
     }
 
     @PostMapping
     public ResponseEntity<JournalEntry> createJournalEntry(@RequestBody JournalEntryDto dto, Authentication authentication) {
-        UUID clientUuid = null;
-        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
-            try {
-                clientUuid = UUID.fromString(jwt.getSubject());
-            } catch (IllegalArgumentException e) {
-                clientUuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
-            }
-        }
+        UUID clientUuid = getCallerUuid(authentication);
 
         JournalEntry entry = new JournalEntry(
                 dto.getTitle(),
@@ -49,15 +48,9 @@ public class JournalController {
         JournalEntry saved = journalEntryRepository.save(entry);
         
         // Write to Git for audit trail
-        try {
-            String commitMsg = "Added journal entry: " + dto.getTitle();
-            String patientId = clientUuid != null ? clientUuid.toString() : "unknown";
-            String content = "Title: " + dto.getTitle() + "\nMood: " + dto.getMoodRating() + "\nContent: " + dto.getContent();
-            journalGitService.commitJournalEntry(patientId, content, commitMsg);
-        } catch (Exception e) {
-            // Log but don't fail the request if Git commit fails
-            System.err.println("Failed to commit to Git: " + e.getMessage());
-        }
+        String commitMsg = "Added journal entry: " + dto.getTitle();
+        String content = "Title: " + dto.getTitle() + "\nMood: " + dto.getMoodRating() + "\nContent: " + dto.getContent();
+        journalGitService.commitJournalEntry(clientUuid.toString(), content, commitMsg);
         
         return ResponseEntity.ok(saved);
     }
@@ -67,14 +60,24 @@ public class JournalController {
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
-        
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !((java.util.List<?>) realmAccess.get("roles")).contains("therapist")) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: Required role ROLE_THERAPIST");
+        if (!hasRole(jwt, "therapist")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Required role ROLE_THERAPIST");
         }
-
-    // Just return 200 OK for the mock test
-        return ResponseEntity.ok().build();
+        UUID clientUuid;
+        Object rawClientUuid = payload.get("clientUuid");
+        Object rawNote = payload.get("therapistNote");
+        try {
+            clientUuid = UUID.fromString(String.valueOf(rawClientUuid));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid client UUID");
+        }
+        if (!(rawNote instanceof String note) || note.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Therapist note is required");
+        }
+        TherapistNote saved = therapistNoteRepository.save(
+                new TherapistNote(clientUuid, getCallerUuid(authentication), note));
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping("/timeline/{clientUuid}")
@@ -84,8 +87,7 @@ public class JournalController {
     ) {
         boolean isTherapist = false;
         if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
-            java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-            if (realmAccess != null && ((java.util.List<?>) realmAccess.get("roles")).contains("therapist")) {
+            if (hasRole(jwt, "therapist")) {
                 isTherapist = true;
             }
         }
@@ -99,5 +101,23 @@ public class JournalController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private UUID getCallerUuid(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+        try {
+            return UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user identity");
+        }
+    }
+
+    private boolean hasRole(Jwt jwt, String role) {
+        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        Object roles = realmAccess == null ? null : realmAccess.get("roles");
+        return roles instanceof java.util.List<?> roleList
+                && roleList.stream().anyMatch(role::equals);
     }
 }

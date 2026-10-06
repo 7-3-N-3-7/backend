@@ -48,7 +48,7 @@ public class JournalGitService {
         }
     }
 
-    public void commitJournalEntry(String patientId, String entryContent, String commitMessage) {
+    public synchronized void commitJournalEntry(String patientId, String entryContent, String commitMessage) {
         try {
             File entryFile = new File(repoPath, patientId + ".md");
             Files.writeString(entryFile.toPath(), entryContent + "\n\n", 

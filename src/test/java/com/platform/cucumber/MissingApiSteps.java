@@ -3,6 +3,7 @@ package com.platform.cucumber;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import io.cucumber.java.Before;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.Assertions;
@@ -11,11 +12,14 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import com.platform.repository.I18nDictionaryRepository;
 import com.platform.entity.I18nDictionary;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.platform.crm.repository.TherapistNoteRepository;
 import java.util.Map;
 import java.util.HashMap;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MissingApiSteps {
 
@@ -28,10 +32,21 @@ public class MissingApiSteps {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private TherapistNoteRepository therapistNoteRepository;
 
-    private RequestSpecification requestSpec = given();
+    @LocalServerPort
+    private int port;
+
+    private RequestSpecification requestSpec;
     private Response lastResponse;
     private String generatedToken = "dummy-token"; // We simulate a token for mock steps
+    private String expectedTherapistNote;
+
+    @Before
+    public void initializeRequestSpecification() {
+        requestSpec = given().port(port);
+    }
 
     @Given("Keycloak IAM is running and healthy at {string}")
     public void keycloak_iam_is_running_and_healthy_at(String url) {
@@ -105,6 +120,13 @@ public class MissingApiSteps {
 
     @When("the user sends a POST request to {string} with body:")
     public void the_user_sends_a_post_request_to_with_body(String endpoint, String docString) {
+        if (endpoint.endsWith("/therapist-notes")) {
+            try {
+                expectedTherapistNote = objectMapper.readTree(docString).path("therapistNote").asText();
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Invalid therapist note request", e);
+            }
+        }
         lastResponse = requestSpec
             .contentType("application/json")
             .body(docString)
@@ -119,7 +141,9 @@ public class MissingApiSteps {
 
     @Then("the note should be saved and linked to therapist UUID {string}")
     public void the_note_should_be_saved_and_linked_to_therapist_uuid(String uuid) {
-        // Ideally verify database, for now we check response or assume it works
+        assertTrue(therapistNoteRepository.findAll().stream()
+                .anyMatch(note -> expectedTherapistNote.equals(note.getNote())
+                        && uuid.equals(note.getTherapistUuid().toString())));
     }
 
     @Then("the response header {string} should contain {string}")
@@ -173,17 +197,20 @@ public class MissingApiSteps {
     
     @Given("the JWT token contains subject UUID {string}")
     public void the_jwt_token_contains_subject_uuid(String string) {
-        // mock
+        this.generatedToken = "valid-token-for-" + string;
+        requestSpec = given().port(port).header("Authorization", "Bearer " + this.generatedToken);
     }
     
     @Given("the JWT token contains email {string} and name {string}")
     public void the_jwt_token_contains_email_and_name(String string, String string2) {
-        // mock
+        this.generatedToken += "|email=" + string + "|name=" + string2;
+        requestSpec = given().port(port).header("Authorization", "Bearer " + this.generatedToken);
     }
     
     @Given("the JWT token contains assigned role {string}")
     public void the_jwt_token_contains_assigned_role(String string) {
-        // mock
+        this.generatedToken += "|role=" + string;
+        requestSpec = given().port(port).header("Authorization", "Bearer " + this.generatedToken);
     }
     
     @When("the client sends a GET request to {string} with the valid token")
@@ -193,7 +220,8 @@ public class MissingApiSteps {
     
     @Then("the response body should be a JSON object containing:")
     public void the_response_body_should_be_a_json_object_containing(io.cucumber.datatable.DataTable dataTable) {
-        // mock
+        dataTable.asMap(String.class, String.class).forEach((key, value) ->
+                Assertions.assertEquals(value, lastResponse.jsonPath().getString(key)));
     }
     
     @Given("the user has role {string} only")
@@ -377,14 +405,24 @@ public class MissingApiSteps {
     }
     @Given("a completed assessment test for client UUID {string}")
     public void a_completed_assessment_test_for_client_uuid(String string) {
+        this.currentClientUuid = string;
+        this.generatedToken = "valid-token-for-" + string;
         requestSpec.header("Authorization", "Bearer dummy-token");
     }
     @Given("supervising therapist UUID {string}")
     public void supervising_therapist_uuid(String string) {
-        // mock
+        com.platform.entity.Appointment appointment = new com.platform.entity.Appointment(
+                java.util.UUID.fromString(currentClientUuid),
+                java.util.UUID.fromString(string),
+                java.time.LocalDateTime.now(),
+                java.time.LocalDateTime.now().plusHours(1),
+                "Assessment",
+                "CONFIRMED");
+        appointmentRepository.save(appointment);
     }
     @When("the assessment result is posted to {string} with body:")
     public void the_assessment_result_is_posted_to_with_body(String string, String docString) {
+        requestSpec = given().port(port).header("Authorization", "Bearer " + generatedToken);
         lastResponse = requestSpec.contentType("application/json").body(docString).post(string);
     }
     @Then("the assessment record in PostgreSQL must reference client UUID {string} and therapist UUID {string}")

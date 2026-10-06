@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/v1/user")
@@ -23,8 +25,25 @@ public class ProfileController {
         }
         Map<String, String> profile = new HashMap<>();
         profile.put("userUuid", jwt.getSubject());
-        profile.put("email", "jesper@example.com");
-        profile.put("name", "Jesper Kock");
+        putClaim(profile, "email", jwt.getClaimAsString("email"));
+        putClaim(profile, "name", jwt.getClaimAsString("name"));
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        Object rawRoles = realmAccess == null ? null : realmAccess.get("roles");
+        String primaryRole = rawRoles instanceof List<?> roles
+                ? roles.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .findFirst()
+                    .map(role -> role.replaceFirst("(?i)^ROLE_", "").toUpperCase(Locale.ROOT))
+                    .orElse("")
+                : "";
+        profile.put("primaryRole", primaryRole);
         return ResponseEntity.ok(profile);
+    }
+
+    private void putClaim(Map<String, String> profile, String key, String value) {
+        if (value != null) {
+            profile.put(key, value);
+        }
     }
 }

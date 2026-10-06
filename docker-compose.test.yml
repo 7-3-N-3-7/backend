@@ -19,9 +19,9 @@ services:
     container_name: business-db
     restart: always
     environment:
-    =/run/secrets/postgres_db
-    =/run/secrets/postgres_user
-    =/run/secrets/postgres_password
+      POSTGRES_DB_FILE: /run/secrets/postgres_db
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     ports:
     - "5432:5432"
     volumes:
@@ -42,8 +42,8 @@ services:
     container_name: mongodb
     restart: always
     environment:
-    =/run/secrets/mongo_initdb_root_username
-    =/run/secrets/mongo_initdb_root_password
+      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo_initdb_root_username
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_initdb_root_password
     ports:
     - "27017:27017"
     volumes:

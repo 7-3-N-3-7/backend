@@ -1,14 +1,23 @@
 package com.platform.controller;
 
+import com.platform.crm.model.JournalEntry;
+import com.platform.crm.model.PsychotraumatologyTest;
+import com.platform.crm.repository.JournalEntryRepository;
+import com.platform.crm.repository.PsychotraumatologyTestRepository;
 import com.platform.entity.*;
 import com.platform.repository.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -20,6 +29,9 @@ public class ClinicPlatformController {
     private final ProviderProfileRepository providerProfileRepository;
     private final ServiceRepository serviceRepository;
     private final HandshakeRepository handshakeRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final JournalEntryRepository journalEntryRepository;
+    private final PsychotraumatologyTestRepository psychotraumatologyTestRepository;
 
     public ClinicPlatformController(
             ClientProfileRepository clientProfileRepository,
@@ -28,11 +40,278 @@ public class ClinicPlatformController {
             ServiceRepository serviceRepository,
             HandshakeRepository handshakeRepository
     ) {
+        this(
+                clientProfileRepository,
+                organisationRepository,
+                providerProfileRepository,
+                serviceRepository,
+                handshakeRepository,
+                null,
+                null,
+                null
+        );
+    }
+
+    @Autowired
+    public ClinicPlatformController(
+            ClientProfileRepository clientProfileRepository,
+            OrganisationRepository organisationRepository,
+            ProviderProfileRepository providerProfileRepository,
+            ServiceRepository serviceRepository,
+            HandshakeRepository handshakeRepository,
+            AppointmentRepository appointmentRepository,
+            JournalEntryRepository journalEntryRepository,
+            PsychotraumatologyTestRepository psychotraumatologyTestRepository
+    ) {
         this.clientProfileRepository = clientProfileRepository;
         this.organisationRepository = organisationRepository;
         this.providerProfileRepository = providerProfileRepository;
         this.serviceRepository = serviceRepository;
         this.handshakeRepository = handshakeRepository;
+        this.appointmentRepository = appointmentRepository;
+        this.journalEntryRepository = journalEntryRepository;
+        this.psychotraumatologyTestRepository = psychotraumatologyTestRepository;
+    }
+
+    // =========================================================================
+    // 0. SESSION / IDENTITY BOOTSTRAP & OVERVIEW ENDPOINTS (DB-BACKED)
+    // =========================================================================
+
+    @GetMapping("/clinic/me")
+    public ResponseEntity<Map<String, Object>> getCurrentUserContext(Authentication auth) {
+        Jwt jwt = extractJwt(auth);
+        UUID userUuid = extractUserUuid(jwt);
+        String username = extractClaim(jwt, "preferred_username", null);
+        String fullName = extractClaim(jwt, "name", username);
+        String email = extractClaim(jwt, "email", null);
+        List<String> roles = extractRoles(jwt);
+
+        ClientProfile clientProfile = clientProfileRepository.findByUserId(userUuid).orElse(null);
+        ProviderProfile providerProfile = providerProfileRepository.findByUserUuid(userUuid).orElse(null);
+        boolean isTherapist = roles.stream().anyMatch(r -> r.equalsIgnoreCase("therapist") || r.equalsIgnoreCase("ROLE_therapist"));
+        boolean isAdmin = roles.stream().anyMatch(r -> r.equalsIgnoreCase("admin") || r.equalsIgnoreCase("ROLE_admin"));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("userUuid", userUuid);
+        result.put("username", username);
+        result.put("fullName", clientProfile != null ? Objects.requireNonNullElse(clientProfile.getFullName(), fullName) : fullName);
+        result.put("email", clientProfile != null ? Objects.requireNonNullElse(clientProfile.getEmail(), email) : email);
+        result.put("roles", roles);
+        result.put("isTherapist", isTherapist);
+        result.put("isAdmin", isAdmin);
+        result.put("clientProfile", clientProfile);
+        result.put("providerProfile", providerProfile);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/clinic/directory")
+    public ResponseEntity<Map<String, Object>> getMarketplaceDirectory() {
+        List<Organisation> organisations = organisationRepository.findAll();
+        List<ProviderProfile> providers = providerProfileRepository.findAll();
+        List<Service> services = serviceRepository.findAll();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("organisations", organisations);
+        response.put("providers", providers);
+        response.put("services", services);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/clinic/client/{clientUuid}/overview")
+    public ResponseEntity<Map<String, Object>> getClientOverview(@PathVariable UUID clientUuid) {
+        ClientProfile clientProfile = clientProfileRepository.findByUserId(clientUuid).orElse(null);
+        ProviderProfile providerProfile = providerProfileRepository.findByUserUuid(clientUuid).orElse(null);
+        List<ProviderProfile> allProviders = providerProfileRepository.findAll();
+        Map<UUID, ProviderProfile> providerByUserUuid = allProviders.stream()
+                .filter(p -> p.getUserUuid() != null)
+                .collect(Collectors.toMap(ProviderProfile::getUserUuid, p -> p, (a, b) -> a));
+
+        List<Service> allServices = serviceRepository.findAll();
+        Map<UUID, Service> serviceById = allServices.stream()
+                .filter(s -> s.getId() != null)
+                .collect(Collectors.toMap(Service::getId, s -> s, (a, b) -> a));
+
+        List<Appointment> rawAppointments = appointmentRepository != null
+                ? appointmentRepository.findByClientUuid(clientUuid)
+                : List.of();
+
+        List<Map<String, Object>> enrichedAppointments = new ArrayList<>();
+        for (Appointment apt : rawAppointments) {
+            ProviderProfile tp = providerByUserUuid.get(apt.getTherapistUuid());
+            Service srv = apt.getServiceId() != null ? serviceById.get(apt.getServiceId()) : null;
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", apt.getId());
+            item.put("clientUuid", apt.getClientUuid());
+            item.put("therapistUuid", apt.getTherapistUuid());
+            item.put("therapistName", tp != null ? tp.getDisplayName() : null);
+            item.put("organisationName", tp != null && tp.getOrganisation() != null ? tp.getOrganisation().getName() : null);
+            item.put("cvrNumber", tp != null && tp.getOrganisation() != null ? tp.getOrganisation().getCvrNumber() : null);
+            item.put("serviceId", apt.getServiceId());
+            item.put("serviceName", srv != null ? srv.getName() : apt.getTitle());
+            item.put("price", srv != null ? srv.getPrice() : null);
+            item.put("location", srv != null ? srv.getLocation() : null);
+            item.put("startTime", apt.getStartTime());
+            item.put("endTime", apt.getEndTime());
+            item.put("title", apt.getTitle());
+            item.put("status", apt.getStatus());
+            enrichedAppointments.add(item);
+        }
+
+        List<ClientTherapistHandshake> rawHandshakes = handshakeRepository.findByClientUuid(clientUuid);
+        List<Map<String, Object>> enrichedHandshakes = new ArrayList<>();
+        for (ClientTherapistHandshake hs : rawHandshakes) {
+            ProviderProfile tp = providerByUserUuid.get(hs.getTherapistUuid());
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", hs.getId());
+            item.put("clientUuid", hs.getClientUuid());
+            item.put("therapistUuid", hs.getTherapistUuid());
+            item.put("therapistName", tp != null ? tp.getDisplayName() : hs.getTherapistName());
+            item.put("organisationName", tp != null && tp.getOrganisation() != null ? tp.getOrganisation().getName() : hs.getOrganisationName());
+            item.put("cvrNumber", tp != null && tp.getOrganisation() != null ? tp.getOrganisation().getCvrNumber() : null);
+            item.put("status", hs.getStatus());
+            item.put("grantedAt", hs.getGrantedAt());
+            item.put("revokedAt", hs.getRevokedAt());
+            enrichedHandshakes.add(item);
+        }
+
+        List<JournalEntry> journals = journalEntryRepository != null
+                ? journalEntryRepository.findByClientUuidOrderByTimestampDesc(clientUuid)
+                : List.of();
+
+        List<PsychotraumatologyTest> tests = psychotraumatologyTestRepository != null
+                ? psychotraumatologyTestRepository.findByClientUuid(clientUuid)
+                : List.of();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("clientProfile", clientProfile);
+        response.put("providerProfile", providerProfile);
+        response.put("appointments", enrichedAppointments);
+        response.put("handshakes", enrichedHandshakes);
+        response.put("journals", journals);
+        response.put("pcl5Tests", tests);
+        response.put("providers", allProviders);
+        response.put("services", allServices);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/clinic/therapist/{therapistUuid}/overview")
+    public ResponseEntity<Map<String, Object>> getTherapistOverview(@PathVariable UUID therapistUuid) {
+        ProviderProfile provider = providerProfileRepository.findByUserUuid(therapistUuid).orElse(null);
+
+        List<ClientProfile> allClients = clientProfileRepository.findAll();
+        Map<UUID, ClientProfile> clientByUserId = allClients.stream()
+                .filter(c -> c.getUserId() != null)
+                .collect(Collectors.toMap(ClientProfile::getUserId, c -> c, (a, b) -> a));
+
+        List<Service> allServices = serviceRepository.findAll();
+        Map<UUID, Service> serviceById = allServices.stream()
+                .filter(s -> s.getId() != null)
+                .collect(Collectors.toMap(Service::getId, s -> s, (a, b) -> a));
+
+        List<Service> therapistServices = provider == null
+                ? allServices
+                : allServices.stream()
+                        .filter(s -> isTherapistService(s, provider))
+                        .collect(Collectors.toList());
+
+        List<Appointment> rawAppointments = appointmentRepository != null
+                ? appointmentRepository.findByTherapistUuid(therapistUuid)
+                : List.of();
+
+        Map<String, Integer> dailyCounts = new LinkedHashMap<>();
+        List<Map<String, Object>> enrichedAppointments = new ArrayList<>();
+
+        for (Appointment apt : rawAppointments) {
+            if (!"CANCELLED".equalsIgnoreCase(apt.getStatus()) && apt.getStartTime() != null) {
+                String dateKey = apt.getStartTime().toLocalDate().toString();
+                dailyCounts.put(dateKey, dailyCounts.getOrDefault(dateKey, 0) + 1);
+            }
+            ClientProfile cp = clientByUserId.get(apt.getClientUuid());
+            Service srv = apt.getServiceId() != null ? serviceById.get(apt.getServiceId()) : null;
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", apt.getId());
+            item.put("clientUuid", apt.getClientUuid());
+            item.put("clientName", cp != null ? cp.getFullName() : null);
+            item.put("clientPhone", cp != null ? cp.getPhoneNumber() : null);
+            item.put("clientEmail", cp != null ? cp.getEmail() : null);
+            item.put("therapistUuid", apt.getTherapistUuid());
+            item.put("serviceId", apt.getServiceId());
+            item.put("serviceName", srv != null ? srv.getName() : apt.getTitle());
+            item.put("location", srv != null ? srv.getLocation() : null);
+            item.put("price", srv != null ? srv.getPrice() : null);
+            item.put("startTime", apt.getStartTime());
+            item.put("endTime", apt.getEndTime());
+            item.put("title", apt.getTitle());
+            item.put("status", apt.getStatus());
+            enrichedAppointments.add(item);
+        }
+
+        List<ClientTherapistHandshake> handshakes = handshakeRepository.findByTherapistUuid(therapistUuid);
+        Set<UUID> rosterClientUuids = new LinkedHashSet<>();
+        handshakes.forEach(h -> rosterClientUuids.add(h.getClientUuid()));
+        rawAppointments.forEach(a -> rosterClientUuids.add(a.getClientUuid()));
+        allClients.forEach(c -> rosterClientUuids.add(c.getUserId()));
+        rosterClientUuids.remove(null);
+        rosterClientUuids.remove(therapistUuid);
+
+        List<Map<String, Object>> clientRoster = new ArrayList<>();
+        for (UUID cUuid : rosterClientUuids) {
+            ClientProfile cp = clientByUserId.get(cUuid);
+            Optional<ClientTherapistHandshake> hsOpt = handshakes.stream()
+                    .filter(h -> cUuid.equals(h.getClientUuid()))
+                    .findFirst();
+
+            List<JournalEntry> cJournals = journalEntryRepository != null
+                    ? journalEntryRepository.findByClientUuidOrderByTimestampDesc(cUuid)
+                    : List.of();
+            Integer latestMood = cJournals.isEmpty() ? null : cJournals.get(0).getMoodRating();
+
+            List<PsychotraumatologyTest> cTests = psychotraumatologyTestRepository != null
+                    ? psychotraumatologyTestRepository.findByClientUuid(cUuid)
+                    : List.of();
+            Integer latestPcl5Score = cTests.isEmpty() ? null : cTests.get(cTests.size() - 1).getScore();
+            String latestPcl5Severity = cTests.isEmpty() ? null : cTests.get(cTests.size() - 1).getSeverity();
+
+            Optional<Appointment> nextApt = rawAppointments.stream()
+                    .filter(a -> cUuid.equals(a.getClientUuid()) && !"CANCELLED".equalsIgnoreCase(a.getStatus()))
+                    .sorted(Comparator.comparing(Appointment::getStartTime))
+                    .findFirst();
+
+            Map<String, Object> cMap = new LinkedHashMap<>();
+            cMap.put("uuid", cUuid);
+            cMap.put("name", cp != null ? cp.getFullName() : hsOpt.map(ClientTherapistHandshake::getClientName).orElse(null));
+            cMap.put("dob", cp != null && cp.getDateOfBirth() != null ? cp.getDateOfBirth().toString() : null);
+            cMap.put("phone", cp != null ? cp.getPhoneNumber() : null);
+            cMap.put("email", cp != null ? cp.getEmail() : null);
+            cMap.put("address", cp != null ? cp.getHomeAddress() : null);
+            cMap.put("postalCode", cp != null ? cp.getPostalCode() : null);
+            cMap.put("handshakeId", hsOpt.map(ClientTherapistHandshake::getId).orElse(null));
+            cMap.put("handshakeStatus", hsOpt.map(ClientTherapistHandshake::getStatus).orElse("NONE"));
+            cMap.put("latestMood", latestMood);
+            cMap.put("latestPcl5Score", latestPcl5Score);
+            cMap.put("latestPcl5Severity", latestPcl5Severity);
+            cMap.put("nextAppointment", nextApt.map(a -> a.getStartTime().toString()).orElse(null));
+            clientRoster.add(cMap);
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("therapistUuid", therapistUuid);
+        response.put("providerProfile", provider);
+        response.put("appointments", enrichedAppointments);
+        response.put("dailyCounts", dailyCounts);
+        response.put("clients", clientRoster);
+        response.put("services", therapistServices);
+        return ResponseEntity.ok(response);
+    }
+
+    private boolean isTherapistService(Service s, ProviderProfile provider) {
+        if (s.getProvider() != null && Objects.equals(provider.getId(), s.getProvider().getId())) {
+            return true;
+        }
+        return provider.getOrganisation() != null
+                && s.getOrganisation() != null
+                && Objects.equals(provider.getOrganisation().getId(), s.getOrganisation().getId());
     }
 
     // =========================================================================
@@ -58,6 +337,11 @@ public class ClinicPlatformController {
         return ResponseEntity.status(HttpStatus.CREATED).body(clientProfileRepository.save(profile));
     }
 
+    @PutMapping("/clinic/client-profile")
+    public ResponseEntity<ClientProfile> updateClientProfile(@RequestBody ClientProfile profile) {
+        return savePublicClientProfile(profile);
+    }
+
     @GetMapping("/clinic/client-profile/{userUuid}")
     public ResponseEntity<ClientProfile> getClientProfile(@PathVariable UUID userUuid) {
         return clientProfileRepository.findByUserId(userUuid)
@@ -74,8 +358,15 @@ public class ClinicPlatformController {
         return ResponseEntity.ok(organisationRepository.findAll());
     }
 
+    public ResponseEntity<ProviderProfile> onboardTherapist(Map<String, String> payload) {
+        return onboardTherapist(payload, null);
+    }
+
     @PostMapping("/clinic/therapist-onboarding")
-    public ResponseEntity<ProviderProfile> onboardTherapist(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<ProviderProfile> onboardTherapist(
+            @RequestBody Map<String, String> payload,
+            Authentication auth
+    ) {
         String cvr = payload.getOrDefault("cvrNumber", "").trim();
         String orgName = payload.getOrDefault("organisationName", "").trim();
         if (cvr.isEmpty()) {
@@ -91,16 +382,16 @@ public class ClinicPlatformController {
                 });
 
         UUID userUuid = payload.get("userUuid") != null
-                ? UUID.fromString(payload.get("userUuid"))
-                : UUID.randomUUID();
+                ? UUID.fromString(payload.get("userUuid").trim())
+                : (auth != null && auth.getPrincipal() instanceof Jwt jwt ? extractUserUuid(jwt) : UUID.randomUUID());
 
         ProviderProfile profile = providerProfileRepository.findByUserUuid(userUuid)
                 .orElseGet(ProviderProfile::new);
         profile.setUserUuid(userUuid);
-        profile.setDisplayName(payload.getOrDefault("displayName", "Aut. Psykoterapeut"));
+        profile.setDisplayName(payload.getOrDefault("displayName", ""));
         profile.setOrganisation(organisation);
-        profile.setBiography(payload.getOrDefault("biography", ""));
-        profile.setWorkingHoursJson(payload.getOrDefault("workingHoursJson", "{\"mon_fri\":\"09:00-16:00\"}"));
+        profile.setBiography(payload.getOrDefault("biography", payload.getOrDefault("bioDa", "")));
+        profile.setWorkingHoursJson(payload.getOrDefault("workingHoursJson", ""));
 
         return ResponseEntity.ok(providerProfileRepository.save(profile));
     }
@@ -117,11 +408,15 @@ public class ClinicPlatformController {
     @PostMapping("/clinic/services")
     public ResponseEntity<Service> createService(@RequestBody Map<String, Object> payload) {
         Service service = new Service();
-        service.setName(String.valueOf(payload.getOrDefault("name", "Therapy Session")));
-        service.setDescription(String.valueOf(payload.getOrDefault("description", "")));
+        String name = String.valueOf(payload.getOrDefault("name", payload.getOrDefault("nameDa", "")));
+        String description = String.valueOf(payload.getOrDefault("description", payload.getOrDefault("descriptionDa", "")));
+        String priceStr = String.valueOf(payload.getOrDefault("price", payload.getOrDefault("priceDkk", "0.0")));
+
+        service.setName(name);
+        service.setDescription(description);
         service.setDurationMinutes(Integer.parseInt(String.valueOf(payload.getOrDefault("durationMinutes", "60"))));
-        service.setPrice(Double.parseDouble(String.valueOf(payload.getOrDefault("price", "850.0"))));
-        service.setLocation(String.valueOf(payload.getOrDefault("location", "Clinic")));
+        service.setPrice(Double.parseDouble(priceStr));
+        service.setLocation(String.valueOf(payload.getOrDefault("location", "")));
         service.setIsActive(true);
 
         if (payload.get("providerProfileId") != null) {
@@ -160,21 +455,37 @@ public class ClinicPlatformController {
 
     @PostMapping("/clinic/handshakes")
     public ResponseEntity<ClientTherapistHandshake> createOrUpdateHandshake(@RequestBody ClientTherapistHandshake req) {
+        if (req.getClientName() == null && req.getClientUuid() != null) {
+            clientProfileRepository.findByUserId(req.getClientUuid())
+                    .ifPresent(cp -> req.setClientName(cp.getFullName()));
+        }
+        if (req.getTherapistUuid() != null) {
+            providerProfileRepository.findByUserUuid(req.getTherapistUuid()).ifPresent(tp -> {
+                if (req.getTherapistName() == null) {
+                    req.setTherapistName(tp.getDisplayName());
+                }
+                if (req.getOrganisationName() == null && tp.getOrganisation() != null) {
+                    req.setOrganisationName(tp.getOrganisation().getName());
+                }
+            });
+        }
+
         Optional<ClientTherapistHandshake> existing = handshakeRepository.findByClientUuidAndTherapistUuid(
                 req.getClientUuid(), req.getTherapistUuid()
         );
         if (existing.isPresent()) {
             ClientTherapistHandshake current = existing.get();
-            current.setStatus(req.getStatus() != null ? req.getStatus() : "ACTIVE");
+            current.setClientName(Objects.requireNonNullElse(req.getClientName(), current.getClientName()));
+            current.setTherapistName(Objects.requireNonNullElse(req.getTherapistName(), current.getTherapistName()));
+            current.setOrganisationName(Objects.requireNonNullElse(req.getOrganisationName(), current.getOrganisationName()));
+            current.setStatus(Objects.requireNonNullElse(req.getStatus(), "ACTIVE"));
             if ("ACTIVE".equalsIgnoreCase(current.getStatus())) {
                 current.setGrantedAt(LocalDateTime.now());
                 current.setRevokedAt(null);
             }
             return ResponseEntity.ok(handshakeRepository.save(current));
         }
-        if (req.getStatus() == null) {
-            req.setStatus("ACTIVE");
-        }
+        req.setStatus(Objects.requireNonNullElse(req.getStatus(), "ACTIVE"));
         if ("ACTIVE".equalsIgnoreCase(req.getStatus())) {
             req.setGrantedAt(LocalDateTime.now());
         }
@@ -197,5 +508,35 @@ public class ClinicPlatformController {
             handshake.setRevokedAt(null);
         }
         return ResponseEntity.ok(handshakeRepository.save(handshake));
+    }
+
+    private Jwt extractJwt(Authentication auth) {
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            return jwt;
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Valid authenticated user is required");
+    }
+
+    private UUID extractUserUuid(Jwt jwt) {
+        if (jwt.getSubject() != null) {
+            try {
+                return UUID.fromString(jwt.getSubject());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Valid authenticated user UUID is required");
+    }
+
+    private String extractClaim(Jwt jwt, String claim, String fallback) {
+        String val = jwt.getClaimAsString(claim);
+        return (val != null && !val.isBlank()) ? val : fallback;
+    }
+
+    private List<String> extractRoles(Jwt jwt) {
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess != null && realmAccess.get("roles") instanceof List<?> list) {
+            return list.stream().map(String::valueOf).collect(Collectors.toList());
+        }
+        return List.of();
     }
 }

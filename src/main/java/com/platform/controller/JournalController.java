@@ -68,20 +68,21 @@ public class JournalController {
             clientUuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
         }
 
+        String title = Objects.requireNonNullElse(dto.getTitle(), "Journalindlæg");
         JournalEntry entry = new JournalEntry(
-                dto.getTitle(),
+                title,
                 dto.getContent(),
-                dto.getMoodRating(),
+                Objects.requireNonNullElse(dto.getMoodRating(), 7),
                 LocalDateTime.now(),
                 clientUuid
         );
         entry.setSharedWithTherapists(dto.getSharedWithTherapists());
 
         try {
-            String commitMsg = "Added journal entry: " + dto.getTitle();
+            String commitMsg = "Added journal entry: " + title;
             String patientId = clientUuid.toString();
-            String content = "## " + dto.getTitle() + " (" + LocalDateTime.now() + ")\n"
-                    + "Mood: " + dto.getMoodRating() + "/10 | Shared: " + entry.getSharedWithTherapists() + "\n"
+            String content = "## " + title + " (" + LocalDateTime.now() + ")\n"
+                    + "Mood: " + entry.getMoodRating() + "/10 | Shared: " + entry.getSharedWithTherapists() + "\n"
                     + dto.getContent();
             String hash = journalGitService.commitJournalEntryWithHash(patientId, content, commitMsg, authorName);
             entry.setGitCommitHash(hash);
@@ -99,8 +100,7 @@ public class JournalController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
 
-        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !((List<?>) realmAccess.get("roles")).contains("therapist")) {
+        if (!hasTherapistRole(authentication)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: Required role ROLE_THERAPIST");
         }
 
@@ -194,7 +194,14 @@ public class JournalController {
     }
 
     private boolean hasTherapistRole(Authentication auth) {
-        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+        if (auth == null) {
+            return false;
+        }
+        if (auth.getAuthorities() != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_therapist".equalsIgnoreCase(a.getAuthority()))) {
+            return true;
+        }
+        if (auth.getPrincipal() instanceof Jwt jwt) {
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
             if (realmAccess != null && realmAccess.get("roles") instanceof List<?> roles) {
                 return roles.contains("therapist") || roles.contains("THERAPIST");

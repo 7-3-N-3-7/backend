@@ -95,8 +95,39 @@ public class AppointmentServiceTest {
         Appointment invalidRange = new Appointment(clientUuid, therapistUuid, start.plusHours(5), start.plusHours(4), "Invalid", "CONFIRMED");
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(appId, invalidRange));
 
-        // Cancel appointment
+        // Reschedule with null title preserves existing title & ignores cancelled appointments
+        Appointment cancelledOther = new Appointment(UUID.randomUUID(), therapistUuid, start.plusHours(6), start.plusHours(7), "Cancelled", "CANCELLED");
+        cancelledOther.setId(UUID.randomUUID());
+        Appointment beforeSlot = new Appointment(UUID.randomUUID(), therapistUuid, start.minusHours(3), start.minusHours(2), "Early", "CONFIRMED");
+        beforeSlot.setId(UUID.randomUUID());
+        Mockito.when(appointmentRepository.findByTherapistUuid(therapistUuid))
+                .thenReturn(List.of(existing, otherBooked, cancelledOther, beforeSlot));
+
+        Appointment nullTitleReq = new Appointment(clientUuid, therapistUuid, start.plusHours(6), start.plusHours(7), null, "CONFIRMED");
+        Appointment rescheduledOverCancelled = appointmentController.rescheduleAppointment(appId, nullTitleReq).getBody();
+        Assertions.assertEquals("Rescheduled Session", rescheduledOverCancelled.getTitle());
+
+        // Create appointment over a cancelled slot and non-overlapping slots succeeds, overlapping confirmed fails, invalid range fails
+        Appointment cancelledSlot2 = new Appointment(UUID.randomUUID(), therapistUuid, start.plusHours(8), start.plusHours(9), "Cancelled 2", "CANCELLED");
+        cancelledSlot2.setId(UUID.randomUUID());
+        Mockito.when(appointmentRepository.findByTherapistUuid(therapistUuid))
+                .thenReturn(List.of(existing, otherBooked, cancelledOther, cancelledSlot2, beforeSlot));
+        Appointment newOverCancelled = new Appointment(clientUuid, therapistUuid, start.plusHours(8), start.plusHours(9), "New Session", "PENDING");
+        Assertions.assertEquals(200, appointmentController.createAppointment(newOverCancelled).getStatusCode().value());
+
+        Appointment overlappingCreate = new Appointment(clientUuid, therapistUuid, start.plusHours(2).plusMinutes(10), start.plusHours(2).plusMinutes(40), "Overlap", "PENDING");
+        Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.createAppointment(overlappingCreate));
+
+        Appointment invalidCreate = new Appointment(clientUuid, therapistUuid, start.plusHours(5), start.plusHours(4), "Invalid", "PENDING");
+        Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.createAppointment(invalidCreate));
+
+        // Cancel appointment & 404 cases
         appointmentController.cancelAppointment(appId);
         Assertions.assertEquals("CANCELLED", existing.getStatus());
+
+        UUID missingId = UUID.randomUUID();
+        Mockito.when(appointmentRepository.findById(missingId)).thenReturn(Optional.empty());
+        Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(missingId, updateReq));
+        Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.cancelAppointment(missingId));
     }
 }

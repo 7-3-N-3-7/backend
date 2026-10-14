@@ -770,6 +770,23 @@ public class ClinicPlatformControllerTest {
 
         SecureDataController secureDataController = new SecureDataController();
         Assertions.assertNotNull(secureDataController.getSecureData().getBody().get("data"));
+
+        // 4. JournalService strips ONLY confidential INTERNAL_MEDICAL_NOTES blocks and preserves subsequent shared therapist entries
+        JournalService journalService = new JournalService();
+        String mixedMarkdown = "## Client Journal Entry (2026-04-14T15:39:11Z)\nClient initial note\n\n"
+                + "<!-- INTERNAL_MEDICAL_NOTES -->\n### Fortroligt Klinisk Notat (2026-04-14T16:12:48Z)\nSecret note 1\n\n"
+                + "## Terapeutisk opfølgning (Delt med klient) (2026-04-14T20:42:08Z)\nAnders skal kunne se den her besked\n\n"
+                + "<!-- INTERNAL_MEDICAL_NOTES -->\n### Fortroligt Klinisk Notat (2026-04-14T20:42:22Z)\nAnder skal IKKE kunne se den her besked\n";
+
+        String clientVisibleMarkdown = journalService.getJournalContent(mixedMarkdown, false);
+        Assertions.assertTrue(clientVisibleMarkdown.contains("Client initial note"));
+        Assertions.assertTrue(clientVisibleMarkdown.contains("Anders skal kunne se den her besked"));
+        Assertions.assertFalse(clientVisibleMarkdown.contains("Secret note 1"));
+        Assertions.assertFalse(clientVisibleMarkdown.contains("Ander skal IKKE kunne se den her besked"));
+
+        String therapistVisibleMarkdown = journalService.getJournalContent(mixedMarkdown, true);
+        Assertions.assertTrue(therapistVisibleMarkdown.contains("Anders skal kunne se den her besked"));
+        Assertions.assertTrue(therapistVisibleMarkdown.contains("Ander skal IKKE kunne se den her besked"));
     }
 }
 

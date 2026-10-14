@@ -499,4 +499,79 @@ public class MissingApiSteps {
     public void the_appointment_status_in_postgre_sql_should_be_updated_to(String string) {
         // mock
     }
+
+    private Response clientBundleResponse;
+    private Response clientHistoryResponse;
+
+    @When("the therapist creates a confidential clinical note for client {string} with text {string}")
+    public void the_therapist_creates_a_confidential_clinical_note_for_client_with_text(String clientUuid, String noteText) throws Exception {
+        Map<String, Object> payload = Map.of(
+                "clientUuid", clientUuid,
+                "therapistNote", noteText,
+                "therapistName", "Bo Jensen",
+                "organisationName", "Nordic Mind Clinic ApS"
+        );
+        lastResponse = given()
+                .header("Authorization", "Bearer valid-therapist-token-for-6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(payload))
+                .when()
+                .post("/api/v1/journals/therapist-notes");
+    }
+
+    @When("the therapist creates a shared journal entry for client {string} with title {string} and content {string}")
+    public void the_therapist_creates_a_shared_journal_entry_for_client_with_title_and_content(String clientUuid, String title, String content) throws Exception {
+        Map<String, Object> payload = Map.of(
+                "clientUuid", clientUuid,
+                "title", title,
+                "content", content,
+                "moodRating", 8,
+                "sharedWithTherapists", true
+        );
+        lastResponse = given()
+                .header("Authorization", "Bearer valid-therapist-token-for-6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+                .contentType("application/json")
+                .body(objectMapper.writeValueAsString(payload))
+                .when()
+                .post("/api/v1/journals");
+    }
+
+    @When("the client {string} fetches their journal bundle and JGit commit history")
+    public void the_client_fetches_their_journal_bundle_and_jgit_commit_history(String clientUuid) {
+        String clientToken = "valid-token-for-" + clientUuid;
+        clientBundleResponse = given()
+                .header("Authorization", "Bearer " + clientToken)
+                .when()
+                .get("/api/v1/journals/client/" + clientUuid);
+        clientBundleResponse.then().statusCode(200);
+
+        clientHistoryResponse = given()
+                .header("Authorization", "Bearer " + clientToken)
+                .when()
+                .get("/api/v1/journals/history/" + clientUuid);
+        clientHistoryResponse.then().statusCode(200);
+    }
+
+    @Then("the client journal bundle and JGit history must contain {string}")
+    public void the_client_journal_bundle_and_jgit_history_must_contain(String expectedText) {
+        Assertions.assertNotNull(clientBundleResponse);
+        Assertions.assertNotNull(clientHistoryResponse);
+        clientBundleResponse.then().body(containsString(expectedText));
+        clientHistoryResponse.then().body(containsString(expectedText));
+    }
+
+    @Then("the client journal bundle and JGit history must NOT contain {string}")
+    public void the_client_journal_bundle_and_jgit_history_must_not_contain(String forbiddenText) {
+        Assertions.assertNotNull(clientBundleResponse);
+        Assertions.assertNotNull(clientHistoryResponse);
+        Assertions.assertFalse(
+                clientBundleResponse.getBody().asString().contains(forbiddenText),
+                "Client journal bundle must NOT contain: " + forbiddenText
+        );
+        Assertions.assertFalse(
+                clientHistoryResponse.getBody().asString().contains(forbiddenText),
+                "Client JGit history must NOT contain: " + forbiddenText
+        );
+    }
 }
+

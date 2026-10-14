@@ -12,13 +12,23 @@ public class ProviderProfile {
     private UUID id;
 
     @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = true)
     private UserEntity user;
+
+    @Column(name = "user_uuid")
+    private UUID userUuid;
+
+    @Column(name = "display_name")
+    private String displayName;
+
+    @ManyToOne
+    @JoinColumn(name = "organisation_id", nullable = true)
+    private Organisation organisation;
 
     @Column(columnDefinition = "TEXT")
     private String biography;
 
-    @Column(name = "working_hours_json")
+    @Column(name = "working_hours_json", columnDefinition = "TEXT")
     private String workingHoursJson;
 
     public ProviderProfile() {}
@@ -28,6 +38,15 @@ public class ProviderProfile {
 
     public UserEntity getUser() { return user; }
     public void setUser(UserEntity user) { this.user = user; }
+
+    public UUID getUserUuid() { return userUuid; }
+    public void setUserUuid(UUID userUuid) { this.userUuid = userUuid; }
+
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+    public Organisation getOrganisation() { return organisation; }
+    public void setOrganisation(Organisation organisation) { this.organisation = organisation; }
 
     public String getBiography() { return biography; }
     public void setBiography(String biography) { this.biography = biography; }

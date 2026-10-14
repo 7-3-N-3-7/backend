@@ -26,27 +26,36 @@ public class JournalEntry {
     @Column(name = "client_uuid", nullable = false)
     private java.util.UUID clientUuid;
 
+    @Column(name = "is_shared_with_therapists")
+    private Boolean sharedWithTherapists = true;
+
+    @Column(name = "git_commit_hash")
+    private String gitCommitHash;
+
     public JournalEntry() {}
 
-    public JournalEntry
-    (    
-        String           title,
-        String           content, 
-        Integer          moodRating,
-        LocalDateTime    timestamp, 
-        java.util.UUID   clientUuid)
-    {
-        this.title     = title;
-        this.content   = content;
+    public JournalEntry(    
+        String title,
+        String content, 
+        Integer moodRating,
+        LocalDateTime timestamp, 
+        java.util.UUID clientUuid
+    ) {
+        this.title = title;
+        this.content = content;
         this.moodRating = moodRating;
         this.timestamp = timestamp;
         this.clientUuid = clientUuid;
+        this.sharedWithTherapists = true;
     }
 
     @PrePersist
     protected void onCreate() {
         if (timestamp == null) {
             timestamp = LocalDateTime.now();
+        }
+        if (sharedWithTherapists == null) {
+            sharedWithTherapists = true;
         }
     }
 
@@ -67,4 +76,10 @@ public class JournalEntry {
 
     public java.util.UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(java.util.UUID clientUuid) { this.clientUuid = clientUuid; }
+
+    public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
+    public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
+
+    public String getGitCommitHash() { return gitCommitHash; }
+    public void setGitCommitHash(String gitCommitHash) { this.gitCommitHash = gitCommitHash; }
 }

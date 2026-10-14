@@ -22,6 +22,10 @@ public class AppointmentService {
         return appointmentRepository.findByClientUuid(clientUuid);
     }
 
+    public List<Appointment> getAppointmentsForTherapist(UUID therapistUuid) {
+        return appointmentRepository.findByTherapistUuid(therapistUuid);
+    }
+
     public Appointment createAppointment(Appointment appointment) {
         if (appointment.getEndTime().isBefore(appointment.getStartTime())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range: End time must be after start time");
@@ -29,6 +33,9 @@ public class AppointmentService {
 
         List<Appointment> existingAppointments = appointmentRepository.findByTherapistUuid(appointment.getTherapistUuid());
         for (Appointment existing : existingAppointments) {
+            if ("CANCELLED".equalsIgnoreCase(existing.getStatus())) {
+                continue;
+            }
             if (appointment.getStartTime().isBefore(existing.getEndTime()) && appointment.getEndTime().isAfter(existing.getStartTime())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Therapist is already booked during the requested slot");
             }
@@ -36,6 +43,33 @@ public class AppointmentService {
 
         appointment.setStatus("CONFIRMED");
         return appointmentRepository.save(appointment);
+    }
+
+    public Appointment rescheduleAppointment(UUID id, Appointment updated) {
+        Appointment existing = appointmentRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+
+        if (updated.getEndTime().isBefore(updated.getStartTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range: End time must be after start time");
+        }
+
+        List<Appointment> therapistAppointments = appointmentRepository.findByTherapistUuid(existing.getTherapistUuid());
+        for (Appointment other : therapistAppointments) {
+            if (other.getId().equals(id) || "CANCELLED".equalsIgnoreCase(other.getStatus())) {
+                continue;
+            }
+            if (updated.getStartTime().isBefore(other.getEndTime()) && updated.getEndTime().isAfter(other.getStartTime())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Therapist is already booked during the requested slot");
+            }
+        }
+
+        existing.setStartTime(updated.getStartTime());
+        existing.setEndTime(updated.getEndTime());
+        if (updated.getTitle() != null) {
+            existing.setTitle(updated.getTitle());
+        }
+        existing.setStatus("CONFIRMED");
+        return appointmentRepository.save(existing);
     }
 
     public void cancelAppointment(UUID id) {

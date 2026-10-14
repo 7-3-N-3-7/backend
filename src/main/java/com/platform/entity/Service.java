@@ -12,8 +12,12 @@ public class Service {
     private UUID id;
 
     @ManyToOne
-    @JoinColumn(name = "provider_profile_id", nullable = false)
+    @JoinColumn(name = "provider_profile_id", nullable = true)
     private ProviderProfile provider;
+
+    @ManyToOne
+    @JoinColumn(name = "organisation_id", nullable = true)
+    private Organisation organisation;
 
     private String name;
     
@@ -24,6 +28,9 @@ public class Service {
     private Double price;
     private String location;
 
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
     public Service() {}
 
     public UUID getId() { return id; }
@@ -31,6 +38,9 @@ public class Service {
 
     public ProviderProfile getProvider() { return provider; }
     public void setProvider(ProviderProfile provider) { this.provider = provider; }
+
+    public Organisation getOrganisation() { return organisation; }
+    public void setOrganisation(Organisation organisation) { this.organisation = organisation; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -46,4 +56,7 @@ public class Service {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public Boolean getIsActive() { return isActive != null ? isActive : true; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 }

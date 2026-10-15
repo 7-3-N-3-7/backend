@@ -61,13 +61,24 @@ Feature: Clinic Service Catalog, Marketplace Directory, Consent Handshakes, and 
     Then the therapist overview client roster should include "5e357ca1-4913-414f-91a6-81a7de9042ab" with handshake "ACTIVE" and PCL-5 score 38
 
   Scenario: Rescheduling an appointment updates the slot when free and returns 409 Conflict when overlapping another booking
-    Given an existing confirmed appointment for therapist "4c421f46-836c-4897-8dae-ba9587473273" from "2026-10-20T14:00:00" to "2026-10-20T15:00:00"
-    And a scheduled appointment for client "5e357ca1-4913-414f-91a6-81a7de9042ab" with therapist "4c421f46-836c-4897-8dae-ba9587473273" from "2026-10-20T09:00:00" to "2026-10-20T10:00:00"
-    When the client reschedules the appointment to "2026-10-20T11:00:00" through "2026-10-20T12:00:00"
+    Given an existing confirmed appointment for therapist "4c421f46-836c-4897-8dae-ba9587473273" from "2027-10-20T14:00:00" to "2027-10-20T15:00:00"
+    And a scheduled appointment for client "5e357ca1-4913-414f-91a6-81a7de9042ab" with therapist "4c421f46-836c-4897-8dae-ba9587473273" from "2027-10-20T09:00:00" to "2027-10-20T10:00:00"
+    When the client reschedules the appointment to "2027-10-20T11:00:00" through "2027-10-20T12:00:00"
     Then the rescheduled appointment response status should be 200
-    And the appointment start time in PostgreSQL should be "2026-10-20T11:00:00"
-    When the client reschedules the appointment to "2026-10-20T14:00:00" through "2026-10-20T15:00:00"
+    And the appointment start time in PostgreSQL should be "2027-10-20T11:00:00"
+    When the client reschedules the appointment to "2027-10-20T14:00:00" through "2027-10-20T15:00:00"
     Then the rescheduled appointment response status should be 409
+
+  Scenario: Rescheduling or cancelling an appointment in the past is rejected with 400 Bad Request and Timefold Solver recommends optimal slots
+    Given an onboarded therapist "4c421f46-836c-4897-8dae-ba9587473273" ("Bo Jensen") in organisation "Nordic Mind Clinic ApS" with CVR "39485712"
+    And a scheduled appointment for client "5e357ca1-4913-414f-91a6-81a7de9042ab" with therapist "4c421f46-836c-4897-8dae-ba9587473273" from "2025-10-14T10:00:00" to "2025-10-14T11:00:00"
+    When the client reschedules the appointment to "2027-10-21T11:00:00" through "2027-10-21T12:00:00"
+    Then the rescheduled appointment response status should be 400
+    When the client attempts to cancel the past appointment
+    Then the rescheduled appointment response status should be 400
+    Given an existing confirmed appointment for therapist "4c421f46-836c-4897-8dae-ba9587473273" from "2027-10-22T10:00:00" to "2027-10-22T11:00:00"
+    When the client requests Timefold Solver slot recommendations for therapist "4c421f46-836c-4897-8dae-ba9587473273" on "2027-10-22" with preferred time "10:00"
+    Then the Timefold Solver response should be feasible and recommend a non-overlapping slot
 
   @rbac
   Scenario: JGit markdown timeline endpoint strips INTERNAL_MEDICAL_NOTES for clients while preserving them for therapists

@@ -306,6 +306,45 @@ public class ClinicPlatformSteps {
         Assertions.assertEquals(LocalDateTime.parse(expectedStartIso), updated.getStartTime());
     }
 
+    @When("the client attempts to cancel the past appointment")
+    public void the_client_attempts_to_cancel_the_past_appointment() {
+        Assertions.assertNotNull(lastAppointmentId, "Appointment ID must be present to cancel");
+        Appointment existing = appointmentRepository.findById(lastAppointmentId).orElseThrow();
+        lastResponse = given()
+                .header("Authorization", "Bearer valid-client-token-for-" + existing.getClientUuid())
+                .when()
+                .delete("/api/v1/appointments/" + lastAppointmentId);
+    }
+
+    @When("the client requests Timefold Solver slot recommendations for therapist {string} on {string} with preferred time {string}")
+    public void the_client_requests_timefold_solver_slot_recommendations_for_therapist_on_with_preferred_time(
+            String therapistUuidStr,
+            String dateStr,
+            String preferredTimeStr
+    ) {
+        lastResponse = given()
+                .header("Authorization", "Bearer valid-client-token-for-5e357ca1-4913-414f-91a6-81a7de9042ab")
+                .queryParam("therapistUuid", therapistUuidStr)
+                .queryParam("date", dateStr)
+                .queryParam("durationMinutes", 60)
+                .queryParam("preferredTime", preferredTimeStr)
+                .when()
+                .get("/api/v1/appointments/timefold-slots");
+    }
+
+    @Then("the Timefold Solver response should be feasible and recommend a non-overlapping slot")
+    public void the_timefold_solver_response_should_be_feasible_and_recommend_a_non_overlapping_slot() {
+        lastResponse.then().statusCode(200);
+        Assertions.assertTrue(lastResponse.jsonPath().getBoolean("feasible"), "Timefold solution should be feasible");
+        String recommendedSlot = lastResponse.jsonPath().getString("recommendedSlot");
+        Assertions.assertNotNull(recommendedSlot, "Recommended slot must not be null");
+        Assertions.assertNotEquals("10:00", recommendedSlot, "Recommended slot must avoid overlapping 10:00 booking");
+        Assertions.assertTrue(
+                List.of("09:00", "11:00").contains(recommendedSlot),
+                "Timefold should recommend an adjacent back-to-back slot (09:00 or 11:00) for compact schedule, got: " + recommendedSlot
+        );
+    }
+
     @When("client {string} fetches their own PCL-5 test history")
     public void client_fetches_their_own_pcl5_test_history(String clientUuidStr) {
         lastResponse = given()

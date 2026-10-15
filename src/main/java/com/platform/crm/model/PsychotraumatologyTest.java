@@ -15,7 +15,7 @@ public class PsychotraumatologyTest {
     @Column(name = "client_uuid", nullable = false)
     private UUID clientUuid;
 
-    @Column(name = "therapist_uuid", nullable = false)
+    @Column(name = "therapist_uuid", nullable = true)
     private UUID therapistUuid;
 
     @Column(name = "test_type", nullable = false)

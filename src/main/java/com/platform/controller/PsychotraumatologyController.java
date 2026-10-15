@@ -29,11 +29,17 @@ public class PsychotraumatologyController {
     public ResponseEntity<PsychotraumatologyTest> submitTest(@RequestBody PsychotraumatologyTestDto dto) {
         PsychotraumatologyTest test = new PsychotraumatologyTest();
         test.setClientUuid(dto.getClientUuid());
-        test.setTherapistUuid(dto.getTherapistUuid());
-        test.setTestType(dto.getTestType());
-        test.setScore(dto.getScore());
-        test.setSeverity(dto.getSeverity());
-        test.setAnswersJson(dto.getAnswersJson());
+        test.setTherapistUuid(
+                dto.getTherapistUuid() != null
+                        ? dto.getTherapistUuid()
+                        : (dto.getClientUuid() != null
+                                ? dto.getClientUuid()
+                                : UUID.fromString("00000000-0000-0000-0000-000000000000"))
+        );
+        test.setTestType(dto.getTestType() != null ? dto.getTestType() : "PCL-5");
+        test.setScore(dto.getScore() != null ? dto.getScore() : 0);
+        test.setSeverity(dto.getSeverity() != null ? dto.getSeverity() : "Unknown");
+        test.setAnswersJson(dto.getAnswersJson() != null ? dto.getAnswersJson() : "[]");
 
         PsychotraumatologyTest saved = testRepository.save(test);
         return ResponseEntity.ok(saved);

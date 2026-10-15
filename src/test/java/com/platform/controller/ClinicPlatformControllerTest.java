@@ -366,7 +366,45 @@ public class ClinicPlatformControllerTest {
         Mockito.when(nonUuidClientAuth.getPrincipal()).thenReturn(nonUuidClientJwt);
         Assertions.assertNotNull(journalController.getClientJournalBundle(clientUuid, nonUuidClientAuth).getBody());
 
+        // Test per-therapist sharing & individual entry sharing update (PATCH /{entryId}/sharing)
+        UUID specificTherapistUuid = UUID.randomUUID();
+        UUID otherTherapistUuid = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        savedEntry.getBody().setId(entryId);
+        savedEntry.getBody().setSharedTherapistUuids(List.of(specificTherapistUuid));
+
+        Assertions.assertTrue(savedEntry.getBody().isVisibleToTherapist(specificTherapistUuid));
+        Assertions.assertFalse(savedEntry.getBody().isVisibleToTherapist(otherTherapistUuid));
+        Assertions.assertFalse(privateEntry.isVisibleToTherapist(specificTherapistUuid));
+
+        Mockito.when(entryRepo.findById(entryId)).thenReturn(Optional.of(savedEntry.getBody()));
+        ResponseEntity<JournalEntry> updatedSharing = journalController.updateJournalEntrySharing(
+                entryId,
+                Map.of("sharedWithTherapists", true, "sharedTherapistUuids", List.of(specificTherapistUuid.toString(), "invalid-uuid")),
+                clientAuth
+        );
+        Assertions.assertEquals(HttpStatus.OK, updatedSharing.getStatusCode());
+        Assertions.assertEquals(List.of(specificTherapistUuid), updatedSharing.getBody().getSharedTherapistUuids());
+
+        // Make private via PATCH
+        ResponseEntity<JournalEntry> madePrivate = journalController.updateJournalEntrySharing(
+                entryId,
+                Map.of("sharedWithTherapists", false, "sharedTherapistUuids", "none"),
+                clientAuth
+        );
+        Assertions.assertFalse(madePrivate.getBody().getSharedWithTherapists());
+        Assertions.assertTrue(madePrivate.getBody().getSharedTherapistUuids().isEmpty());
+
+        // Restore shared for bundle test
+        savedEntry.getBody().setSharedWithTherapists(true);
+        savedEntry.getBody().setSharedTherapistUuids(List.of());
+        Assertions.assertThrows(
+                ResponseStatusException.class,
+                () -> journalController.updateJournalEntrySharing(UUID.randomUUID(), Map.of("sharedWithTherapists", false), clientAuth)
+        );
+
         // Test JournalController 2-arg constructor, null auth on createJournalEntry, 401/403 on createTherapistNote, blank payload, and timeline
+        dto.setSharedTherapistUuids(List.of(specificTherapistUuid));
         JournalController twoArgJc = new JournalController(entryRepo, gitService);
         Assertions.assertEquals(HttpStatus.OK, twoArgJc.createJournalEntry(dto, null).getStatusCode());
         Assertions.assertEquals(HttpStatus.OK, twoArgJc.createJournalEntry(dto, nonUuidClientAuth).getStatusCode());
@@ -726,6 +764,17 @@ public class ClinicPlatformControllerTest {
         ResponseEntity<com.platform.crm.model.PsychotraumatologyTest> savedTest = pclController.submitTest(dto);
         Assertions.assertEquals(HttpStatus.OK, savedTest.getStatusCode());
         Assertions.assertEquals(35, savedTest.getBody().getScore());
+
+        // Self-assessment submission without therapistUuid falls back to clientUuid / defaults
+        com.platform.dto.PsychotraumatologyTestDto selfAssessmentDto = new com.platform.dto.PsychotraumatologyTestDto();
+        selfAssessmentDto.setClientUuid(clientUuid);
+        ResponseEntity<com.platform.crm.model.PsychotraumatologyTest> selfSaved = pclController.submitTest(selfAssessmentDto);
+        Assertions.assertEquals(clientUuid, selfSaved.getBody().getTherapistUuid());
+        Assertions.assertEquals("PCL-5", selfSaved.getBody().getTestType());
+
+        com.platform.dto.PsychotraumatologyTestDto emptyDto = new com.platform.dto.PsychotraumatologyTestDto();
+        ResponseEntity<com.platform.crm.model.PsychotraumatologyTest> emptySaved = pclController.submitTest(emptyDto);
+        Assertions.assertNotNull(emptySaved.getBody().getTherapistUuid());
 
         // Null auth & non-Jwt principal throw 401
         Assertions.assertThrows(ResponseStatusException.class, () -> pclController.getTestsByClient(clientUuid, null));

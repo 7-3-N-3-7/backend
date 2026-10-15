@@ -71,7 +71,7 @@ public class AppointmentServiceTest {
         UUID appId = UUID.randomUUID();
         UUID clientUuid = UUID.randomUUID();
         UUID therapistUuid = UUID.randomUUID();
-        LocalDateTime start = LocalDateTime.of(2026, 10, 20, 10, 0);
+        LocalDateTime start = LocalDateTime.now().plusDays(5).withHour(10).withMinute(0).withSecond(0).withNano(0);
         Appointment existing = new Appointment(clientUuid, therapistUuid, start, start.plusHours(1), "Session 1", "CONFIRMED");
         existing.setId(appId);
 
@@ -94,6 +94,18 @@ public class AppointmentServiceTest {
         // Invalid time range on reschedule
         Appointment invalidRange = new Appointment(clientUuid, therapistUuid, start.plusHours(5), start.plusHours(4), "Invalid", "CONFIRMED");
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(appId, invalidRange));
+
+        // Reject rescheduling TO a time in the past
+        Appointment toPastReq = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().minusDays(2), LocalDateTime.now().minusDays(2).plusHours(1), "To Past", "CONFIRMED");
+        Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(appId, toPastReq));
+
+        // Reject rescheduling or cancelling an appointment that is already in the past
+        UUID pastAppId = UUID.randomUUID();
+        Appointment pastAppointment = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().minusDays(3), LocalDateTime.now().minusDays(3).plusHours(1), "Past Session", "CONFIRMED");
+        pastAppointment.setId(pastAppId);
+        Mockito.when(appointmentRepository.findById(pastAppId)).thenReturn(Optional.of(pastAppointment));
+        Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(pastAppId, updateReq));
+        Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.cancelAppointment(pastAppId));
 
         // Reschedule with null title preserves existing title & ignores cancelled appointments
         Appointment cancelledOther = new Appointment(UUID.randomUUID(), therapistUuid, start.plusHours(6), start.plusHours(7), "Cancelled", "CANCELLED");
@@ -120,6 +132,15 @@ public class AppointmentServiceTest {
 
         Appointment invalidCreate = new Appointment(clientUuid, therapistUuid, start.plusHours(5), start.plusHours(4), "Invalid", "PENDING");
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.createAppointment(invalidCreate));
+
+        // Timefold Solver optimal slots endpoint verification
+        String futureDateStr = start.toLocalDate().toString();
+        var timefoldResp = appointmentController.getTimefoldOptimalSlots(therapistUuid, futureDateStr, 60, "10:00", null);
+        Assertions.assertEquals(200, timefoldResp.getStatusCode().value());
+        Assertions.assertNotNull(timefoldResp.getBody());
+        Assertions.assertEquals("Timefold Solver 1.16.0", timefoldResp.getBody().get("solver"));
+        Assertions.assertNotNull(timefoldResp.getBody().get("recommendedSlot"));
+        Assertions.assertTrue((Boolean) timefoldResp.getBody().get("feasible"));
 
         // Cancel appointment & 404 cases
         appointmentController.cancelAppointment(appId);

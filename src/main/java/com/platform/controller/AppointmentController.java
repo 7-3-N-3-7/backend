@@ -39,6 +39,27 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getAppointmentsForTherapist(therapistUuid));
     }
 
+    @GetMapping("/timefold-slots")
+    public ResponseEntity<java.util.Map<String, Object>> getTimefoldOptimalSlots(
+            @RequestParam UUID therapistUuid,
+            @RequestParam String date,
+            @RequestParam(required = false, defaultValue = "60") int durationMinutes,
+            @RequestParam(required = false) String preferredTime,
+            @RequestParam(required = false) UUID excludeAppointmentId
+    ) {
+        java.time.LocalDate parsedDate = java.time.LocalDate.parse(date);
+        java.time.LocalTime parsedPreferred = (preferredTime != null && !preferredTime.isBlank())
+                ? java.time.LocalTime.parse(preferredTime.length() == 5 ? preferredTime : preferredTime.substring(0, 5))
+                : java.time.LocalTime.of(10, 0);
+        return ResponseEntity.ok(appointmentService.getTimefoldSlotSuggestions(
+                therapistUuid,
+                parsedDate,
+                durationMinutes,
+                parsedPreferred,
+                excludeAppointmentId
+        ));
+    }
+
     @PostMapping
     public ResponseEntity<Appointment> createAppointment(@RequestBody Appointment appointment) {
         boolean requestedScheduled = "SCHEDULED".equalsIgnoreCase(appointment.getStatus()) || appointment.getServiceId() != null;

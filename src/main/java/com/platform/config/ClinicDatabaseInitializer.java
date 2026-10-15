@@ -30,16 +30,41 @@ public class ClinicDatabaseInitializer implements CommandLineRunner {
     }
 
     private void seedI18nDictionaries() {
+        Map<String, String[]> defaultMeta = Map.of(
+                "da", new String[]{"Dansk", "🇩🇰"},
+                "en", new String[]{"English", "🇬🇧"},
+                "fr", new String[]{"Français", "🇫🇷"},
+                "es", new String[]{"Español", "🇪🇸"},
+                "de", new String[]{"Deutsch", "🇩🇪"}
+        );
         String[] locales = {"en", "da", "fr", "es", "de"};
         for (String loc : locales) {
             try {
                 I18nDictionary dict = i18nDictionaryRepository.findByLocale(loc)
                         .orElseGet(() -> new I18nDictionary(loc, new HashMap<>()));
+                String[] meta = defaultMeta.getOrDefault(loc, new String[]{loc.toUpperCase(), "🌐"});
+                if (dict.getDisplayName() == null || dict.getDisplayName().isBlank()) {
+                    dict.setDisplayName(meta[0]);
+                }
+                if (dict.getFlag() == null || dict.getFlag().isBlank()) {
+                    dict.setFlag(meta[1]);
+                }
+                if (dict.getPublished() == null) {
+                    dict.setPublished(true);
+                }
                 Map<String, Object> root = dict.getTranslations();
                 if (root == null) {
                     root = new HashMap<>();
                 }
-                root.put("portal", buildPortalTranslations(loc));
+                @SuppressWarnings("unchecked")
+                Map<String, Object> existingPortal = root.get("portal") instanceof Map
+                        ? new LinkedHashMap<>((Map<String, Object>) root.get("portal"))
+                        : new LinkedHashMap<>();
+                Map<String, Object> defaults = buildPortalTranslations(loc);
+                for (Map.Entry<String, Object> entry : defaults.entrySet()) {
+                    existingPortal.putIfAbsent(entry.getKey(), entry.getValue());
+                }
+                root.put("portal", existingPortal);
                 dict.setTranslations(root);
                 i18nDictionaryRepository.save(dict);
             } catch (Exception e) {

@@ -551,13 +551,14 @@ public class MissingApiSteps {
         UUID clientUuid = UUID.fromString(clientUuidStr);
         UUID therapistUuid = UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
 
+        LocalDateTime futureStart = LocalDateTime.now().plusDays(3).withHour(10).withMinute(0).withSecond(0).withNano(0);
         jdbcTemplate.update(
                 "INSERT INTO appointments (id, client_uuid, therapist_uuid, start_time, end_time, title, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 aptUuid,
                 clientUuid,
                 therapistUuid,
-                LocalDateTime.parse("2026-09-09T10:00:00"),
-                LocalDateTime.parse("2026-09-09T11:00:00"),
+                futureStart,
+                futureStart.plusHours(1),
                 "To Cancel",
                 "CONFIRMED"
         );

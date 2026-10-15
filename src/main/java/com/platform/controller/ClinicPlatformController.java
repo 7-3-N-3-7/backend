@@ -407,28 +407,131 @@ public class ClinicPlatformController {
 
     @PostMapping("/clinic/services")
     public ResponseEntity<Service> createService(@RequestBody Map<String, Object> payload) {
-        Service service = new Service();
-        String name = String.valueOf(payload.getOrDefault("name", payload.getOrDefault("nameDa", "")));
-        String description = String.valueOf(payload.getOrDefault("description", payload.getOrDefault("descriptionDa", "")));
+        String name = String.valueOf(payload.getOrDefault("name", payload.getOrDefault("nameDa", ""))).trim();
+        String description = String.valueOf(payload.getOrDefault("description", payload.getOrDefault("descriptionDa", ""))).trim();
         String priceStr = String.valueOf(payload.getOrDefault("price", payload.getOrDefault("priceDkk", "0.0")));
+        int durationMinutes = Integer.parseInt(String.valueOf(payload.getOrDefault("durationMinutes", "60")));
+        double price = Double.parseDouble(priceStr);
+        String location = String.valueOf(payload.getOrDefault("location", "")).trim();
+
+        ProviderProfile provider = null;
+        if (payload.get("providerProfileId") != null && !String.valueOf(payload.get("providerProfileId")).isBlank()) {
+            UUID providerId = UUID.fromString(payload.get("providerProfileId").toString());
+            provider = providerProfileRepository.findById(providerId).orElse(null);
+        }
+
+        Organisation organisation = null;
+        if (payload.get("organisationId") != null && !String.valueOf(payload.get("organisationId")).isBlank()) {
+            UUID orgId = UUID.fromString(payload.get("organisationId").toString());
+            organisation = organisationRepository.findById(orgId).orElse(null);
+        }
+
+        final UUID targetProviderId = provider != null ? provider.getId() : null;
+        final UUID targetOrgId = organisation != null ? organisation.getId() : null;
+
+        // Deduplicate: if a service with the same name for the same provider/organisation already exists, update it instead of creating a duplicate row
+        List<Service> matching = serviceRepository.findAll().stream()
+                .filter(s -> s.getName() != null && s.getName().trim().equalsIgnoreCase(name))
+                .filter(s -> Objects.equals(s.getProvider() != null ? s.getProvider().getId() : null, targetProviderId))
+                .filter(s -> Objects.equals(s.getOrganisation() != null ? s.getOrganisation().getId() : null, targetOrgId))
+                .collect(Collectors.toList());
+
+        Service service;
+        if (!matching.isEmpty()) {
+            service = matching.get(0);
+            if (matching.size() > 1) {
+                for (int i = 1; i < matching.size(); i++) {
+                    serviceRepository.delete(matching.get(i));
+                }
+            }
+        } else {
+            service = new Service();
+        }
 
         service.setName(name);
         service.setDescription(description);
-        service.setDurationMinutes(Integer.parseInt(String.valueOf(payload.getOrDefault("durationMinutes", "60"))));
-        service.setPrice(Double.parseDouble(priceStr));
-        service.setLocation(String.valueOf(payload.getOrDefault("location", "")));
+        service.setDurationMinutes(durationMinutes);
+        service.setPrice(price);
+        service.setLocation(location);
         service.setIsActive(true);
-
-        if (payload.get("providerProfileId") != null) {
-            UUID providerId = UUID.fromString(payload.get("providerProfileId").toString());
-            providerProfileRepository.findById(providerId).ifPresent(service::setProvider);
-        }
-        if (payload.get("organisationId") != null) {
-            UUID orgId = UUID.fromString(payload.get("organisationId").toString());
-            organisationRepository.findById(orgId).ifPresent(service::setOrganisation);
-        }
+        service.setProvider(provider);
+        service.setOrganisation(organisation);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(serviceRepository.save(service));
+    }
+
+    @PutMapping("/clinic/services/{id}")
+    public ResponseEntity<Service> updateService(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> payload
+    ) {
+        Service service = serviceRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found"));
+
+        if (payload.containsKey("name") || payload.containsKey("nameDa")) {
+            service.setName(String.valueOf(payload.getOrDefault("name", payload.get("nameDa"))).trim());
+        }
+        if (payload.containsKey("description") || payload.containsKey("descriptionDa")) {
+            service.setDescription(String.valueOf(payload.getOrDefault("description", payload.get("descriptionDa"))).trim());
+        }
+        if (payload.containsKey("durationMinutes")) {
+            service.setDurationMinutes(Integer.parseInt(String.valueOf(payload.get("durationMinutes"))));
+        }
+        if (payload.containsKey("price") || payload.containsKey("priceDkk")) {
+            service.setPrice(Double.parseDouble(String.valueOf(payload.getOrDefault("price", payload.get("priceDkk")))));
+        }
+        if (payload.containsKey("location")) {
+            service.setLocation(String.valueOf(payload.get("location")).trim());
+        }
+        if (payload.containsKey("isActive") && payload.get("isActive") != null) {
+            service.setIsActive(Boolean.parseBoolean(String.valueOf(payload.get("isActive"))));
+        }
+        if (payload.containsKey("providerProfileId")) {
+            Object pIdObj = payload.get("providerProfileId");
+            if (pIdObj != null && !String.valueOf(pIdObj).isBlank()) {
+                UUID providerId = UUID.fromString(String.valueOf(pIdObj));
+                providerProfileRepository.findById(providerId).ifPresent(service::setProvider);
+            } else {
+                service.setProvider(null);
+            }
+        }
+        if (payload.containsKey("organisationId")) {
+            Object oIdObj = payload.get("organisationId");
+            if (oIdObj != null && !String.valueOf(oIdObj).isBlank()) {
+                UUID orgId = UUID.fromString(String.valueOf(oIdObj));
+                organisationRepository.findById(orgId).ifPresent(service::setOrganisation);
+            } else {
+                service.setOrganisation(null);
+            }
+        }
+
+        return ResponseEntity.ok(serviceRepository.save(service));
+    }
+
+    @DeleteMapping("/clinic/services/{id}")
+    public ResponseEntity<Map<String, Object>> deleteService(@PathVariable UUID id) {
+        Service service = serviceRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found"));
+
+        // Delete any duplicate rows sharing the same name + provider + organisation so deleting cleans up all duplicates at once
+        String targetName = service.getName() != null ? service.getName().trim() : "";
+        UUID targetProviderId = service.getProvider() != null ? service.getProvider().getId() : null;
+        UUID targetOrgId = service.getOrganisation() != null ? service.getOrganisation().getId() : null;
+
+        List<Service> toDelete = serviceRepository.findAll().stream()
+                .filter(s -> Objects.equals(s.getId(), id) || (
+                        s.getName() != null
+                                && s.getName().trim().equalsIgnoreCase(targetName)
+                                && Objects.equals(s.getProvider() != null ? s.getProvider().getId() : null, targetProviderId)
+                                && Objects.equals(s.getOrganisation() != null ? s.getOrganisation().getId() : null, targetOrgId)
+                ))
+                .collect(Collectors.toList());
+
+        serviceRepository.deleteAll(toDelete);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("deletedId", id);
+        res.put("deletedCount", toDelete.size());
+        return ResponseEntity.ok(res);
     }
 
     @PatchMapping("/clinic/services/{id}/toggle")

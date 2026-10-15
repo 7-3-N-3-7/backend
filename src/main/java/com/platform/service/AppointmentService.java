@@ -1,7 +1,10 @@
 package com.platform.service;
 
 import com.platform.entity.Appointment;
+import com.platform.entity.ProviderProfile;
 import com.platform.repository.AppointmentRepository;
+import com.platform.repository.ProviderProfileRepository;
+import com.platform.solver.TimefoldBookingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -9,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,20 +25,34 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PlatformCacheService cacheService;
     private final PlatformEventService eventService;
+    private final TimefoldBookingService timefoldBookingService;
+    private final ProviderProfileRepository providerProfileRepository;
 
     public AppointmentService(AppointmentRepository appointmentRepository) {
-        this(appointmentRepository, new PlatformCacheService(), new PlatformEventService());
+        this(appointmentRepository, new PlatformCacheService(), new PlatformEventService(), new TimefoldBookingService(), null);
+    }
+
+    public AppointmentService(
+            AppointmentRepository appointmentRepository,
+            PlatformCacheService cacheService,
+            PlatformEventService eventService
+    ) {
+        this(appointmentRepository, cacheService, eventService, new TimefoldBookingService(), null);
     }
 
     @Autowired
     public AppointmentService(
             AppointmentRepository appointmentRepository,
             PlatformCacheService cacheService,
-            PlatformEventService eventService
+            PlatformEventService eventService,
+            TimefoldBookingService timefoldBookingService,
+            ProviderProfileRepository providerProfileRepository
     ) {
         this.appointmentRepository = appointmentRepository;
         this.cacheService = Objects.requireNonNullElseGet(cacheService, PlatformCacheService::new);
         this.eventService = Objects.requireNonNullElseGet(eventService, PlatformEventService::new);
+        this.timefoldBookingService = Objects.requireNonNullElseGet(timefoldBookingService, TimefoldBookingService::new);
+        this.providerProfileRepository = providerProfileRepository;
     }
 
     public List<Appointment> getAppointmentsForClient(UUID clientUuid) {
@@ -65,6 +83,28 @@ public class AppointmentService {
 
     public List<Appointment> getAppointmentsForTherapist(UUID therapistUuid) {
         return appointmentRepository.findByTherapistUuid(therapistUuid);
+    }
+
+    public Map<String, Object> getTimefoldSlotSuggestions(
+            UUID therapistUuid,
+            LocalDate date,
+            int durationMinutes,
+            LocalTime preferredTime,
+            UUID excludeAppointmentId
+    ) {
+        List<Appointment> existingAppointments = appointmentRepository.findByTherapistUuid(therapistUuid);
+        ProviderProfile profile = providerProfileRepository != null
+                ? providerProfileRepository.findByUserUuid(therapistUuid).orElse(null)
+                : null;
+        return timefoldBookingService.suggestOptimalSlots(
+                therapistUuid,
+                date,
+                durationMinutes,
+                preferredTime,
+                existingAppointments,
+                profile,
+                excludeAppointmentId
+        );
     }
 
     public Appointment createAppointment(Appointment appointment) {
@@ -110,6 +150,14 @@ public class AppointmentService {
         Appointment existing = appointmentRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
 
+        LocalDateTime now = LocalDateTime.now();
+        if (existing.getStartTime() != null && existing.getStartTime().isBefore(now)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot reschedule an appointment that is in the past");
+        }
+        if (updated.getStartTime() != null && updated.getStartTime().isBefore(now)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot reschedule an appointment to a time in the past");
+        }
+
         if (updated.getEndTime().isBefore(updated.getStartTime())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range: End time must be after start time");
         }
@@ -141,6 +189,11 @@ public class AppointmentService {
     public void cancelAppointment(UUID id) {
         Appointment appointment = appointmentRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+
+        if (appointment.getStartTime() != null && appointment.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot cancel an appointment that is in the past");
+        }
+
         appointment.setStatus("CANCELLED");
         appointmentRepository.save(appointment);
         cacheService.evict("appointment:" + id);

@@ -29,6 +29,9 @@ public class JournalEntry {
     @Column(name = "is_shared_with_therapists")
     private Boolean sharedWithTherapists = true;
 
+    @Column(name = "shared_therapist_uuids", columnDefinition = "TEXT")
+    private String sharedTherapistUuidsCsv;
+
     @Column(name = "git_commit_hash")
     private String gitCommitHash;
 
@@ -79,6 +82,46 @@ public class JournalEntry {
 
     public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
     public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
+
+    public java.util.List<java.util.UUID> getSharedTherapistUuids() {
+        if (sharedTherapistUuidsCsv == null || sharedTherapistUuidsCsv.isBlank()) {
+            return java.util.List.of();
+        }
+        java.util.List<java.util.UUID> list = new java.util.ArrayList<>();
+        for (String part : sharedTherapistUuidsCsv.split(",")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                try {
+                    list.add(java.util.UUID.fromString(trimmed));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+        return list;
+    }
+
+    public void setSharedTherapistUuids(java.util.List<java.util.UUID> uuids) {
+        if (uuids == null || uuids.isEmpty()) {
+            this.sharedTherapistUuidsCsv = null;
+        } else {
+            this.sharedTherapistUuidsCsv = uuids.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .map(java.util.UUID::toString)
+                    .collect(java.util.stream.Collectors.joining(","));
+        }
+    }
+
+    public boolean isVisibleToTherapist(java.util.UUID therapistUuid) {
+        if (!Boolean.TRUE.equals(getSharedWithTherapists())) {
+            return false;
+        }
+        java.util.List<java.util.UUID> allowed = getSharedTherapistUuids();
+        if (allowed.isEmpty()) {
+            return true;
+        }
+        return therapistUuid != null && allowed.contains(therapistUuid);
+    }
 
     public String getGitCommitHash() { return gitCommitHash; }
     public void setGitCommitHash(String gitCommitHash) { this.gitCommitHash = gitCommitHash; }

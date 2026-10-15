@@ -32,9 +32,19 @@ public class JournalController {
     private final JournalGitService journalGitService;
     private final TherapistClinicalNoteRepository clinicalNoteRepository;
     private final JournalService journalService;
+    private final com.platform.service.PlatformCacheService cacheService;
 
     public JournalController(JournalEntryRepository journalEntryRepository, JournalGitService journalGitService) {
-        this(journalEntryRepository, journalGitService, null, new JournalService());
+        this(journalEntryRepository, journalGitService, null, new JournalService(), new com.platform.service.PlatformCacheService());
+    }
+
+    public JournalController(
+            JournalEntryRepository journalEntryRepository,
+            JournalGitService journalGitService,
+            TherapistClinicalNoteRepository clinicalNoteRepository,
+            JournalService journalService
+    ) {
+        this(journalEntryRepository, journalGitService, clinicalNoteRepository, journalService, new com.platform.service.PlatformCacheService());
     }
 
     @Autowired
@@ -42,12 +52,14 @@ public class JournalController {
             JournalEntryRepository journalEntryRepository,
             JournalGitService journalGitService,
             TherapistClinicalNoteRepository clinicalNoteRepository,
-            JournalService journalService
+            JournalService journalService,
+            com.platform.service.PlatformCacheService cacheService
     ) {
         this.journalEntryRepository = journalEntryRepository;
         this.journalGitService = journalGitService;
         this.clinicalNoteRepository = clinicalNoteRepository;
         this.journalService = Objects.requireNonNullElseGet(journalService, JournalService::new);
+        this.cacheService = Objects.requireNonNullElseGet(cacheService, com.platform.service.PlatformCacheService::new);
     }
 
     @PostMapping
@@ -77,12 +89,20 @@ public class JournalController {
                 clientUuid
         );
         entry.setSharedWithTherapists(dto.getSharedWithTherapists());
+        if (dto.getSharedTherapistUuids() != null) {
+            entry.setSharedTherapistUuids(dto.getSharedTherapistUuids());
+        }
 
         try {
             String commitMsg = "Added journal entry: " + title;
             String patientId = clientUuid.toString();
+            String sharedInfo = Boolean.TRUE.equals(entry.getSharedWithTherapists())
+                    ? (entry.getSharedTherapistUuids().isEmpty()
+                            ? "All Active Handshake Therapists"
+                            : entry.getSharedTherapistUuids().toString())
+                    : "Private";
             String content = "## " + title + " (" + LocalDateTime.now() + ")\n"
-                    + "Mood: " + entry.getMoodRating() + "/10 | Shared: " + entry.getSharedWithTherapists() + "\n"
+                    + "Mood: " + entry.getMoodRating() + "/10 | Shared: " + sharedInfo + "\n"
                     + dto.getContent();
             String hash = journalGitService.commitJournalEntryWithHash(patientId, content, commitMsg, authorName);
             entry.setGitCommitHash(hash);
@@ -91,6 +111,44 @@ public class JournalController {
         }
 
         JournalEntry saved = journalEntryRepository.save(entry);
+        cacheService.put("journal:client:" + clientUuid, saved);
+        return ResponseEntity.ok(saved);
+    }
+
+    @PatchMapping("/{entryId}/sharing")
+    public ResponseEntity<JournalEntry> updateJournalEntrySharing(
+            @PathVariable UUID entryId,
+            @RequestBody Map<String, Object> payload,
+            Authentication authentication
+    ) {
+        JournalEntry entry = journalEntryRepository.findById(entryId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
+
+        if (payload.containsKey("sharedWithTherapists") && payload.get("sharedWithTherapists") != null) {
+            entry.setSharedWithTherapists(Boolean.parseBoolean(String.valueOf(payload.get("sharedWithTherapists"))));
+        }
+        if (payload.containsKey("sharedTherapistUuids")) {
+            Object rawList = payload.get("sharedTherapistUuids");
+            if (rawList instanceof List<?> list) {
+                List<UUID> parsed = new java.util.ArrayList<>();
+                for (Object item : list) {
+                    if (item != null && !String.valueOf(item).isBlank()) {
+                        try {
+                            parsed.add(UUID.fromString(String.valueOf(item).trim()));
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
+                }
+                entry.setSharedTherapistUuids(parsed);
+            } else {
+                entry.setSharedTherapistUuids(List.of());
+            }
+        }
+
+        JournalEntry saved = journalEntryRepository.save(entry);
+        if (saved.getClientUuid() != null) {
+            cacheService.put("journal:client:" + saved.getClientUuid(), saved);
+        }
         return ResponseEntity.ok(saved);
     }
 
@@ -149,8 +207,13 @@ public class JournalController {
             Authentication auth
     ) {
         boolean isTherapist = hasTherapistRole(auth);
+        UUID callerUuid = extractCallerUuid(auth);
         List<JournalEntry> entries = journalEntryRepository.findByClientUuidOrderByTimestampDesc(clientUuid);
-        if (isTherapist) {
+        if (isTherapist && !clientUuid.equals(callerUuid)) {
+            entries = entries.stream()
+                    .filter(e -> e.isVisibleToTherapist(callerUuid))
+                    .collect(Collectors.toList());
+        } else if (isTherapist) {
             entries = entries.stream()
                     .filter(JournalEntry::getSharedWithTherapists)
                     .collect(Collectors.toList());
@@ -198,16 +261,29 @@ public class JournalController {
             return false;
         }
         if (auth.getAuthorities() != null && auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_therapist".equalsIgnoreCase(a.getAuthority()))) {
+                .anyMatch(a -> "ROLE_therapist".equalsIgnoreCase(a.getAuthority())
+                        || "ROLE_ROLE_THERAPIST".equalsIgnoreCase(a.getAuthority()))) {
             return true;
         }
         if (auth.getPrincipal() instanceof Jwt jwt) {
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
             if (realmAccess != null && realmAccess.get("roles") instanceof List<?> roles) {
-                return roles.contains("therapist") || roles.contains("THERAPIST");
+                return roles.stream().anyMatch(r ->
+                        "therapist".equalsIgnoreCase(String.valueOf(r))
+                                || "ROLE_THERAPIST".equalsIgnoreCase(String.valueOf(r)));
             }
         }
         return false;
+    }
+
+    private UUID extractCallerUuid(Authentication auth) {
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt && jwt.getSubject() != null) {
+            try {
+                return UUID.fromString(jwt.getSubject());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return null;
     }
 
     private UUID parseUuidOrDefault(String sub) {

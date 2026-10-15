@@ -1,5 +1,6 @@
 package com.platform.dto;
 
+import java.util.List;
 import java.util.UUID;
 
 public class JournalEntryDto {
@@ -7,6 +8,7 @@ public class JournalEntryDto {
     private String content;
     private Integer moodRating;
     private Boolean sharedWithTherapists = true;
+    private List<UUID> sharedTherapistUuids;
     private UUID clientUuid;
 
     public JournalEntryDto() {}
@@ -22,6 +24,9 @@ public class JournalEntryDto {
 
     public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
     public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
+
+    public List<UUID> getSharedTherapistUuids() { return sharedTherapistUuids; }
+    public void setSharedTherapistUuids(List<UUID> sharedTherapistUuids) { this.sharedTherapistUuids = sharedTherapistUuids; }
 
     public UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(UUID clientUuid) { this.clientUuid = clientUuid; }

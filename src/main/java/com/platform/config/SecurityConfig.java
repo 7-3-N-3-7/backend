@@ -115,7 +115,8 @@ public class SecurityConfig {
             @SuppressWarnings("unchecked")
             List<String> roles = (List<String>) realmAccess.get("roles");
             return roles.stream()
-                    .map(roleName -> new SimpleGrantedAuthority("ROLE_" + roleName))
+                    .map(roleName -> roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName)
+                    .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         });
         return converter;

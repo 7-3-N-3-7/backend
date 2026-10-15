@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,10 +22,30 @@ public class ProfileController {
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
-        Map<String, String> profile = new HashMap<>();
+        Map<String, String> profile = new LinkedHashMap<>();
         profile.put("userUuid", jwt.getSubject());
-        profile.put("email", "jesper@example.com");
-        profile.put("name", "Jesper Kock");
+
+        String email = jwt.getClaimAsString("email");
+        profile.put("email", (email != null && !email.isBlank()) ? email : "jesper@example.com");
+
+        String name = jwt.getClaimAsString("name");
+        profile.put("name", (name != null && !name.isBlank()) ? name : "Jesper Kock");
+
+        String primaryRole = extractPrimaryRole(jwt);
+        profile.put("primaryRole", primaryRole);
         return ResponseEntity.ok(profile);
     }
+
+    private String extractPrimaryRole(Jwt jwt) {
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess != null && realmAccess.get("roles") instanceof List<?> roles && !roles.isEmpty()) {
+            String rawRole = String.valueOf(roles.get(0));
+            if (rawRole.toUpperCase().startsWith("ROLE_")) {
+                rawRole = rawRole.substring(5);
+            }
+            return rawRole.toUpperCase();
+        }
+        return "CLIENT";
+    }
 }
+

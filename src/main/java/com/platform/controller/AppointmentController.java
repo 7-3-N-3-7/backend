@@ -19,9 +19,19 @@ public class AppointmentController {
         this.appointmentService = appointmentService;
     }
 
+    public ResponseEntity<List<Appointment>> getAppointmentsForClient(UUID clientUuid) {
+        return getAppointmentsForClient(clientUuid, null, null);
+    }
+
     @GetMapping("/client/{clientUuid}")
-    public ResponseEntity<List<Appointment>> getAppointmentsForClient(@PathVariable UUID clientUuid) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsForClient(clientUuid));
+    public ResponseEntity<List<Appointment>> getAppointmentsForClient(
+            @PathVariable UUID clientUuid,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to
+    ) {
+        java.time.LocalDate fromDate = (from != null && !from.isBlank()) ? java.time.LocalDate.parse(from) : null;
+        java.time.LocalDate toDate = (to != null && !to.isBlank()) ? java.time.LocalDate.parse(to) : null;
+        return ResponseEntity.ok(appointmentService.getAppointmentsForClient(clientUuid, fromDate, toDate));
     }
 
     @GetMapping("/therapist/{therapistUuid}")
@@ -31,7 +41,12 @@ public class AppointmentController {
 
     @PostMapping
     public ResponseEntity<Appointment> createAppointment(@RequestBody Appointment appointment) {
-        return ResponseEntity.ok(appointmentService.createAppointment(appointment));
+        boolean requestedScheduled = "SCHEDULED".equalsIgnoreCase(appointment.getStatus()) || appointment.getServiceId() != null;
+        Appointment created = appointmentService.createAppointment(appointment);
+        if (requestedScheduled) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(created);
+        }
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")

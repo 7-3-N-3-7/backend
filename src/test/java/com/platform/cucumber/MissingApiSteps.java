@@ -53,9 +53,18 @@ import static org.hamcrest.Matchers.containsString;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+=======
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import com.platform.repository.I18nDictionaryRepository;
@@ -67,14 +76,27 @@ import java.util.HashMap;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 public class MissingApiSteps {
 
     @Autowired
     private I18nDictionaryRepository i18nRepository;
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @Autowired
     private AppointmentRepository appointmentRepository;
@@ -101,6 +123,14 @@ public class MissingApiSteps {
     @Autowired
     private com.platform.repository.AppointmentRepository appointmentRepository;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+    
+    @Autowired
+    private com.platform.repository.AppointmentRepository appointmentRepository;
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -108,6 +138,10 @@ public class MissingApiSteps {
     @Autowired
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
@@ -127,6 +161,12 @@ public class MissingApiSteps {
 =======
     private TherapistNoteRepository therapistNoteRepository;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+    private TherapistNoteRepository therapistNoteRepository;
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @LocalServerPort
     private int port;
@@ -161,6 +201,10 @@ public class MissingApiSteps {
         requestSpec = given().port(port);
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @Given("Keycloak IAM is running and healthy at {string}")
@@ -171,6 +215,11 @@ public class MissingApiSteps {
         requestSpec = given();
         pendingJwtClaims.clear();
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @Given("Keycloak IAM is running and healthy at {string}")
     public void keycloak_iam_is_running_and_healthy_at(String url) {
@@ -253,6 +302,10 @@ public class MissingApiSteps {
     public void the_error_details_should_state(String errorDetail) {
         String wwwAuth = lastResponse.getHeader("WWW-Authenticate");
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         String body = lastResponse.getBody().asString();
         boolean matchedHeader = wwwAuth != null && wwwAuth.contains(errorDetail);
         boolean matchedBody = body != null && body.contains(errorDetail);
@@ -341,6 +394,11 @@ public class MissingApiSteps {
         pendingJwtClaims.put("roles", List.of(normalized));
         UserCreationSteps.CUSTOM_TOKENS.put(this.generatedToken, new HashMap<>(pendingJwtClaims));
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         if (wwwAuth != null && wwwAuth.contains(errorDetail)) {
             return;
         }
@@ -442,6 +500,10 @@ public class MissingApiSteps {
                 .anyMatch(note -> expectedTherapistNote.equals(note.getNote())
                         && uuid.equals(note.getTherapistUuid().toString())));
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
@@ -472,6 +534,11 @@ public class MissingApiSteps {
         Assertions.assertEquals(UUID.class, resolvedIdType != null ? resolvedIdType : appointmentType.getIdType().getJavaType(), "Appointment ID type must be UUID");
 =======
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     @Then("the response header {string} should contain {string}")
@@ -921,6 +988,10 @@ public class MissingApiSteps {
             "To Cancel",
             "CONFIRMED"
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
         );
     }
@@ -1403,6 +1474,11 @@ public class MissingApiSteps {
         lastResponse.then().statusCode(200);
         lastResponse.then().body(key, Matchers.equalTo(expectedValue));
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         );
     }
 
@@ -1414,6 +1490,13 @@ public class MissingApiSteps {
     @Then("the appointment status in PostgreSQL should be updated to {string}")
     public void the_appointment_status_in_postgre_sql_should_be_updated_to(String string) {
         // mock
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 }

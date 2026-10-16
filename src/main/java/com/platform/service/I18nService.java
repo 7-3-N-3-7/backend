@@ -5,16 +5,30 @@ import com.platform.repository.I18nDictionaryRepository;
 import org.springframework.stereotype.Service;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import java.time.Instant;
 import java.util.*;
 =======
 import java.util.Optional;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+import java.util.Optional;
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
 @Service
 public class I18nService {
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private static final Map<String, String[]> DEFAULT_LOCALE_META = Map.of(
             "da", new String[]{"Dansk", "🇩🇰"},
             "en", new String[]{"English", "🇬🇧"},
@@ -30,6 +44,11 @@ public class I18nService {
 
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private final I18nDictionaryRepository repository;
 
     public I18nService(I18nDictionaryRepository repository) {
@@ -41,6 +60,10 @@ public class I18nService {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     public List<I18nDictionary> getAllDictionaries() {
         return repository.findAll();
     }
@@ -273,6 +296,11 @@ public class I18nService {
 }
 
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     public I18nDictionary updateTranslation(String locale, String key, String value) {
         I18nDictionary dict = repository.findByLocale(locale)
                 .orElse(new I18nDictionary(locale, new java.util.HashMap<>()));
@@ -280,4 +308,11 @@ public class I18nService {
         return repository.save(dict);
     }
 }
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715

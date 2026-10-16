@@ -156,7 +156,11 @@
       <version>1.16.0</version>
     </dependency>
 =======
+<<<<<<< HEAD
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
   </dependencies>
   <build>
@@ -208,6 +212,9 @@
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>0.8.11</version>
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         <configuration>
           <destFile>${java.io.tmpdir}/jacoco/jacoco.exec</destFile>
           <dataFile>${java.io.tmpdir}/jacoco/jacoco.exec</dataFile>
@@ -229,16 +236,16 @@
             </rule>
           </rules>
         </configuration>
+<<<<<<< HEAD
+=======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         <executions>
           <execution>
             <goals>
               <goal>prepare-agent</goal>
             </goals>
-            <configuration>
-              <destFile>C:\temp\jacoco\jacoco.exec</destFile>
-            </configuration>
           </execution>
           <execution>
             <id>report</id>
@@ -246,15 +253,14 @@
             <goals>
               <goal>report</goal>
             </goals>
-            <configuration>
-              <dataFile>C:\temp\jacoco\jacoco.exec</dataFile>
-            </configuration>
           </execution>
           <execution>
             <id>jacoco-check</id>
             <goals>
               <goal>check</goal>
             </goals>
+<<<<<<< HEAD
+=======
 <<<<<<< HEAD
 =======
             <configuration>
@@ -278,6 +284,7 @@
               </rules>
             </configuration>
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
           </execution>
         </executions>
       </plugin>

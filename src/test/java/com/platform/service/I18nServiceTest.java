@@ -78,6 +78,10 @@ public class I18nServiceTest {
         verify(repository).save(any(I18nDictionary.class));
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @Test
     @SuppressWarnings("unchecked")
@@ -182,4 +186,9 @@ public class I18nServiceTest {
     }
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 }

@@ -1,6 +1,10 @@
 package com.platform.service;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.core.service.BaseService;
 import com.platform.entity.Appointment;
 import com.platform.entity.ProviderProfile;
@@ -14,6 +18,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.platform.entity.Appointment;
 import com.platform.repository.AppointmentRepository;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+import com.platform.entity.Appointment;
+import com.platform.repository.AppointmentRepository;
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -21,6 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -151,6 +166,11 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
                 excludeAppointmentId
         );
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import java.util.List;
 import java.util.UUID;
 
@@ -165,7 +185,14 @@ public class AppointmentService {
 
     public List<Appointment> getAppointmentsForClient(UUID clientUuid) {
         return appointmentRepository.findByClientUuid(clientUuid);
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -177,11 +204,20 @@ public class AppointmentService {
         List<Appointment> existingAppointments = appointmentRepository.findByTherapistUuid(appointment.getTherapistUuid());
         for (Appointment existing : existingAppointments) {
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
             if ("CANCELLED".equalsIgnoreCase(existing.getStatus())) {
                 continue;
             }
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
             if (appointment.getStartTime().isBefore(existing.getEndTime()) && appointment.getEndTime().isAfter(existing.getStartTime())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Therapist is already booked during the requested slot");
             }
@@ -189,6 +225,10 @@ public class AppointmentService {
 
         appointment.setStatus("CONFIRMED");
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         Appointment saved = appointmentRepository.save(appointment);
 
         if (saved != null) {
@@ -312,6 +352,12 @@ public class AppointmentService {
 =======
         return appointmentRepository.save(appointment);
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+        return appointmentRepository.save(appointment);
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     public void cancelAppointment(UUID id, UUID callerUuid) {
@@ -319,6 +365,10 @@ public class AppointmentService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
         if (appointment.getStartTime() != null && appointment.getStartTime().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot cancel an appointment that is in the past");
@@ -327,11 +377,20 @@ public class AppointmentService {
 =======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         if (!callerUuid.equals(appointment.getClientUuid())
                 && !callerUuid.equals(appointment.getTherapistUuid())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
         appointment.setStatus("CANCELLED");
 
@@ -407,8 +466,20 @@ public class AppointmentService {
 }
 
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         appointment.setStatus("CANCELLED");
         appointmentRepository.save(appointment);
     }
 }
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715

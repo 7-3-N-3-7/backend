@@ -3,7 +3,10 @@ package com.platform.entity;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+<<<<<<< HEAD
 import java.time.Instant;
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import java.util.Map;
 
 @Document(collection = "i18n_dictionaries")
@@ -11,6 +14,7 @@ public class I18nDictionary {
 
     @Id
     private String id;
+<<<<<<< HEAD
 
     private String locale;
 
@@ -22,6 +26,11 @@ public class I18nDictionary {
 
     private Instant updatedAt;
 
+=======
+    
+    private String locale;
+    
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     private Map<String, Object> translations;
 
     public I18nDictionary() {}
@@ -29,6 +38,7 @@ public class I18nDictionary {
     public I18nDictionary(String locale, Map<String, Object> translations) {
         this.locale = locale;
         this.translations = translations;
+<<<<<<< HEAD
         this.published = true;
         this.updatedAt = Instant.now();
     }
@@ -40,6 +50,8 @@ public class I18nDictionary {
         this.published = published != null ? published : false;
         this.translations = translations;
         this.updatedAt = Instant.now();
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     public String getId() {
@@ -58,6 +70,7 @@ public class I18nDictionary {
         this.locale = locale;
     }
 
+<<<<<<< HEAD
     public String getDisplayName() {
         return displayName;
     }
@@ -90,6 +103,8 @@ public class I18nDictionary {
         this.updatedAt = updatedAt;
     }
 
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     public Map<String, Object> getTranslations() {
         return translations;
     }
@@ -98,4 +113,7 @@ public class I18nDictionary {
         this.translations = translations;
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d

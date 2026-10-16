@@ -11,6 +11,10 @@ volumes:
   auth_db_data:
   business_db_data:
   mongo_data:
+<<<<<<< HEAD
+=======
+  minio_data:
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
   redis_data:
 services:
   business-db:

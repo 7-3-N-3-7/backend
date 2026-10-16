@@ -1,5 +1,6 @@
 package com.platform.service;
 
+<<<<<<< HEAD
 import com.platform.core.service.BaseService;
 import com.platform.entity.Appointment;
 import com.platform.entity.ProviderProfile;
@@ -9,12 +10,17 @@ import com.platform.solver.TimefoldBookingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+=======
+import com.platform.entity.Appointment;
+import com.platform.repository.AppointmentRepository;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+<<<<<<< HEAD
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -144,6 +150,22 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
                 profile,
                 excludeAppointmentId
         );
+=======
+import java.util.List;
+import java.util.UUID;
+
+@Service
+public class AppointmentService {
+
+    private final AppointmentRepository appointmentRepository;
+
+    public AppointmentService(AppointmentRepository appointmentRepository) {
+        this.appointmentRepository = appointmentRepository;
+    }
+
+    public List<Appointment> getAppointmentsForClient(UUID clientUuid) {
+        return appointmentRepository.findByClientUuid(clientUuid);
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -154,15 +176,19 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
 
         List<Appointment> existingAppointments = appointmentRepository.findByTherapistUuid(appointment.getTherapistUuid());
         for (Appointment existing : existingAppointments) {
+<<<<<<< HEAD
             if ("CANCELLED".equalsIgnoreCase(existing.getStatus())) {
                 continue;
             }
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
             if (appointment.getStartTime().isBefore(existing.getEndTime()) && appointment.getEndTime().isAfter(existing.getStartTime())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Therapist is already booked during the requested slot");
             }
         }
 
         appointment.setStatus("CONFIRMED");
+<<<<<<< HEAD
         Appointment saved = appointmentRepository.save(appointment);
 
         if (saved != null) {
@@ -283,11 +309,15 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
         }
         cacheService.put("appointment:" + id, saved);
         return saved;
+=======
+        return appointmentRepository.save(appointment);
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     public void cancelAppointment(UUID id, UUID callerUuid) {
         Appointment appointment = appointmentRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+<<<<<<< HEAD
 <<<<<<< HEAD
 
         if (appointment.getStartTime() != null && appointment.getStartTime().isBefore(LocalDateTime.now())) {
@@ -295,10 +325,13 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
         }
 
 =======
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         if (!callerUuid.equals(appointment.getClientUuid())
                 && !callerUuid.equals(appointment.getTherapistUuid())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
         appointment.setStatus("CANCELLED");
 
@@ -373,3 +406,9 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
     }
 }
 
+=======
+        appointment.setStatus("CANCELLED");
+        appointmentRepository.save(appointment);
+    }
+}
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d

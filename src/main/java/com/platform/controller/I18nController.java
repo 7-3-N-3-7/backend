@@ -1,5 +1,6 @@
 package com.platform.controller;
 
+<<<<<<< HEAD
 import com.platform.entity.I18nDictionary;
 import com.platform.service.I18nService;
 import org.springframework.http.CacheControl;
@@ -10,6 +11,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+=======
+import com.platform.service.I18nService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 
 @RestController
 @RequestMapping("/api/v1/i18n")
@@ -22,6 +30,7 @@ public class I18nController {
         this.i18nService = i18nService;
     }
 
+<<<<<<< HEAD
     @GetMapping("/locales")
     public ResponseEntity<List<Map<String, Object>>> getLocales(
             @RequestParam(value = "ref", defaultValue = "da") String ref
@@ -117,6 +126,14 @@ public class I18nController {
                 .orElseGet(() -> i18nService.getDictionary("en")
                         .map(fallback -> ResponseEntity.ok()
                                 .cacheControl(cacheHeader)
+=======
+    @GetMapping("/{locale}")
+    public ResponseEntity<Map<String, Object>> getDictionary(@PathVariable String locale) {
+        return i18nService.getDictionary(locale)
+                .map(dict -> ResponseEntity.ok(dict.getTranslations()))
+                .orElseGet(() -> i18nService.getDictionary("en")
+                        .map(fallback -> ResponseEntity.ok()
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
                                 .header("X-Locale-Fallback", "en")
                                 .body(fallback.getTranslations()))
                         .orElse(ResponseEntity.notFound().build()));
@@ -129,6 +146,7 @@ public class I18nController {
         i18nService.updateTranslation(locale, key, request.getValue());
         return ResponseEntity.ok().build();
     }
+<<<<<<< HEAD
 
     @DeleteMapping("/{locale}/{key}")
     public ResponseEntity<Void> deleteTranslationKey(
@@ -140,3 +158,6 @@ public class I18nController {
     }
 }
 
+=======
+}
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d

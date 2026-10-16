@@ -1,11 +1,15 @@
 package com.platform.entity;
 
+<<<<<<< HEAD
 import com.platform.core.entity.BaseEntity;
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "provider_profiles")
+<<<<<<< HEAD
 public class ProviderProfile extends BaseEntity<UUID> {
 
     @OneToOne
@@ -36,12 +40,33 @@ public class ProviderProfile extends BaseEntity<UUID> {
     public String getVideoMeetingUrl() { return videoMeetingUrl; }
     public void setVideoMeetingUrl(String videoMeetingUrl) { this.videoMeetingUrl = videoMeetingUrl; }
 
+=======
+public class ProviderProfile {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @OneToOne
+    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
+    private UserEntity user;
+
+    @Column(columnDefinition = "TEXT")
+    private String biography;
+
+    @Column(name = "working_hours_json")
+    private String workingHoursJson;
+
+    public ProviderProfile() {}
+
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
     public UserEntity getUser() { return user; }
     public void setUser(UserEntity user) { this.user = user; }
 
+<<<<<<< HEAD
     public UUID getUserUuid() { return userUuid; }
     public void setUserUuid(UUID userUuid) { this.userUuid = userUuid; }
 
@@ -51,6 +76,8 @@ public class ProviderProfile extends BaseEntity<UUID> {
     public Organisation getOrganisation() { return organisation; }
     public void setOrganisation(Organisation organisation) { this.organisation = organisation; }
 
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     public String getBiography() { return biography; }
     public void setBiography(String biography) { this.biography = biography; }
 

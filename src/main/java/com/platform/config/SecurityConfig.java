@@ -39,12 +39,18 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/i18n/**")
                     .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users")
                     .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> 
@@ -134,4 +140,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d

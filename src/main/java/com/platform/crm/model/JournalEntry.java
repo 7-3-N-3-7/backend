@@ -8,6 +8,13 @@ import java.time.LocalDateTime;
 @Table(name = "journal_entries")
 public class JournalEntry extends BaseEntity<java.util.UUID> {
 
+<<<<<<< HEAD
+=======
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private java.util.UUID id;
+
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -22,6 +29,7 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     @Column(name = "client_uuid", nullable = false)
     private java.util.UUID clientUuid;
+<<<<<<< HEAD
 
     @Column(name = "is_shared_with_therapists")
     private Boolean sharedWithTherapists = true;
@@ -50,6 +58,24 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
         this.timestamp = timestamp;
         this.clientUuid = clientUuid;
         this.sharedWithTherapists = true;
+=======
+
+    public JournalEntry() {}
+
+    public JournalEntry
+    (    
+        String           title,
+        String           content, 
+        Integer          moodRating,
+        LocalDateTime    timestamp, 
+        java.util.UUID   clientUuid)
+    {
+        this.title     = title;
+        this.content   = content;
+        this.moodRating = moodRating;
+        this.timestamp = timestamp;
+        this.clientUuid = clientUuid;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @PrePersist
@@ -79,6 +105,7 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     public java.util.UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(java.util.UUID clientUuid) { this.clientUuid = clientUuid; }
+<<<<<<< HEAD
 
     public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
     public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
@@ -128,4 +155,6 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     public java.util.UUID getAppointmentId() { return appointmentId; }
     public void setAppointmentId(java.util.UUID appointmentId) { this.appointmentId = appointmentId; }
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 }

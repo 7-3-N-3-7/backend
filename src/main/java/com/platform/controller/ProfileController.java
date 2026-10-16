@@ -10,10 +10,14 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import java.util.LinkedHashMap;
 =======
 import java.util.HashMap;
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+import java.util.HashMap;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
@@ -27,6 +31,7 @@ public class ProfileController {
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
+<<<<<<< HEAD
         Map<String, String> profile = new LinkedHashMap<>();
         profile.put("userUuid", jwt.getSubject());
 <<<<<<< HEAD
@@ -39,6 +44,10 @@ public class ProfileController {
 
         String primaryRole = extractPrimaryRole(jwt);
 =======
+=======
+        Map<String, String> profile = new HashMap<>();
+        profile.put("userUuid", jwt.getSubject());
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         putClaim(profile, "email", jwt.getClaimAsString("email"));
         putClaim(profile, "name", jwt.getClaimAsString("name"));
         Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
@@ -51,11 +60,15 @@ public class ProfileController {
                     .map(role -> role.replaceFirst("(?i)^ROLE_", "").toUpperCase(Locale.ROOT))
                     .orElse("")
                 : "";
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         profile.put("primaryRole", primaryRole);
         return ResponseEntity.ok(profile);
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     private String extractPrimaryRole(Jwt jwt) {
         Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
@@ -68,11 +81,18 @@ public class ProfileController {
         }
         return "CLIENT";
 =======
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     private void putClaim(Map<String, String> profile, String key, String value) {
         if (value != null) {
             profile.put(key, value);
         }
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 }
 
+=======
+    }
+}
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d

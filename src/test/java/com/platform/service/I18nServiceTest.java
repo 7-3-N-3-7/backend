@@ -77,6 +77,7 @@ public class I18nServiceTest {
         Assertions.assertEquals("hola", newDict.getTranslations().get("greeting"));
         verify(repository).save(any(I18nDictionary.class));
     }
+<<<<<<< HEAD
 
     @Test
     @SuppressWarnings("unchecked")
@@ -179,4 +180,6 @@ public class I18nServiceTest {
         Assertions.assertEquals(200, ctrl.replaceRawTranslations("da", new HashMap<>(Map.of("a", "b"))).getStatusCode().value());
         Assertions.assertEquals(200, ctrl.deleteTranslationKey("da", "a").getStatusCode().value());
     }
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 }

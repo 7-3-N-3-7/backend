@@ -1,5 +1,6 @@
 package com.platform.controller;
 
+<<<<<<< HEAD
 import com.platform.core.controller.BaseController;
 import com.platform.crm.model.JournalEntry;
 <<<<<<< HEAD
@@ -17,19 +18,35 @@ import com.platform.repository.HandshakeRepository;
 import com.platform.service.JournalGitService;
 import com.platform.service.JournalService;
 import com.platform.service.PlatformCacheService;
+=======
+import com.platform.crm.model.JournalEntry;
+import com.platform.crm.model.TherapistNote;
+import com.platform.crm.repository.JournalEntryRepository;
+import com.platform.crm.repository.TherapistNoteRepository;
+import com.platform.dto.JournalEntryDto;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+<<<<<<< HEAD
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+=======
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/journals")
+<<<<<<< HEAD
 @CrossOrigin(origins = "*")
 public class JournalController extends BaseController<JournalEntry, JournalEntryDto, UUID> {
 
@@ -49,6 +66,10 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
         this(journalEntryRepository, journalGitService, clinicalNoteRepository, journalService, new PlatformCacheService(), null, null);
     }
 =======
+=======
+public class JournalController {
+
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     private final JournalEntryRepository journalEntryRepository;
     private final com.platform.service.JournalGitService journalGitService;
     private final TherapistNoteRepository therapistNoteRepository;
@@ -65,6 +86,7 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
     @PostMapping
     public ResponseEntity<JournalEntry> createJournalEntry(@RequestBody JournalEntryDto dto, Authentication authentication) {
         UUID clientUuid = getCallerUuid(authentication);
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @Autowired
@@ -108,6 +130,17 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
     ) {
         return ResponseEntity.ok(journalService.updateJournalEntrySharing(entryId, payload));
 =======
+=======
+
+        JournalEntry entry = new JournalEntry(
+                dto.getTitle(),
+                dto.getContent(),
+                dto.getMoodRating(),
+                LocalDateTime.now(),
+                clientUuid
+        );
+
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         JournalEntry saved = journalEntryRepository.save(entry);
         
         // Write to Git for audit trail
@@ -116,6 +149,7 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
         journalGitService.commitJournalEntry(clientUuid.toString(), content, commitMsg);
         
         return ResponseEntity.ok(saved);
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
@@ -128,6 +162,15 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
 <<<<<<< HEAD
         return ResponseEntity.ok().build();
 =======
+=======
+    }
+
+    @PostMapping("/therapist-notes")
+    public ResponseEntity<?> createTherapistNote(@RequestBody java.util.Map<String, Object> payload, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         if (!hasRole(jwt, "therapist")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Access Denied: Required role ROLE_THERAPIST");
@@ -146,6 +189,7 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
         TherapistNote saved = therapistNoteRepository.save(
                 new TherapistNote(clientUuid, getCallerUuid(authentication), note));
         return ResponseEntity.ok(saved);
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
@@ -159,12 +203,22 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
         return ResponseEntity.ok(journalService.getClientJournalBundle(clientUuid, therapistUuid, auth));
     }
 =======
+=======
+    }
+
+    @GetMapping("/timeline/{clientUuid}")
+    public ResponseEntity<java.util.List<java.util.Map<String, String>>> getClientTimeline(
+        @PathVariable UUID clientUuid,
+        Authentication auth
+    ) {
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         boolean isTherapist = false;
         if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
             if (hasRole(jwt, "therapist")) {
                 isTherapist = true;
             }
         }
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @GetMapping("/history/{clientUuid}")
@@ -197,6 +251,15 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
     ) {
         try {
             return ResponseEntity.ok(journalService.getClientTimeline(clientUuid, auth));
+=======
+
+        try {
+            String rawMarkdown = journalGitService.readJournalEntry(clientUuid.toString());
+            String content = new com.platform.service.JournalService().getJournalContent(rawMarkdown, isTherapist);
+            return ResponseEntity.ok(java.util.List.of(
+                java.util.Map.of("id", clientUuid.toString(), "content", content)
+            ));
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

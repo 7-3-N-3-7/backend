@@ -1,18 +1,33 @@
 package com.platform.crm.model;
 
+<<<<<<< HEAD
 import com.platform.core.entity.BaseEntity;
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import jakarta.persistence.*;
 import java.util.UUID;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "psychotraumatology_tests")
+<<<<<<< HEAD
 public class PsychotraumatologyTest extends BaseEntity<UUID> {
+=======
+public class PsychotraumatologyTest {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 
     @Column(name = "client_uuid", nullable = false)
     private UUID clientUuid;
 
+<<<<<<< HEAD
     @Column(name = "therapist_uuid", nullable = true)
+=======
+    @Column(name = "therapist_uuid", nullable = false)
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     private UUID therapistUuid;
 
     @Column(name = "test_type", nullable = false)

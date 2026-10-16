@@ -4,6 +4,7 @@ import com.platform.dto.UserRequestDto;
 import com.platform.dto.UserResponseDto;
 import com.platform.entity.UserEntity;
 import com.platform.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,12 +16,16 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserService userService;
@@ -33,6 +38,7 @@ class UserServiceTest {
         request.setPassword("securepassword");
         request.setRole("CLIENT");
 
+        when(passwordEncoder.encode("securepassword")).thenReturn("encoded-password");
         when(userRepository.existsByUsername("newclient")).thenReturn(false);
 
         UserEntity savedEntity = new UserEntity();
@@ -48,7 +54,10 @@ class UserServiceTest {
         assertNotNull(response);
         assertEquals("newclient", response.getUsername());
         assertEquals("CLIENT", response.getRole());
-        verify(userRepository).save(any(UserEntity.class));
+        verify(passwordEncoder).encode("securepassword");
+        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertEquals("encoded-password", userCaptor.getValue().getPassword());
     }
 
     @Test

@@ -61,11 +61,15 @@ public class JournalGitService {
         }
     }
 
+<<<<<<< HEAD
     public void commitJournalEntry(String patientId, String entryContent, String commitMessage) {
         commitJournalEntryWithHash(patientId, entryContent, commitMessage, "Platform Audit");
     }
 
     public String commitJournalEntryWithHash(String patientId, String entryContent, String commitMessage, String authorName) {
+=======
+    public synchronized void commitJournalEntry(String patientId, String entryContent, String commitMessage) {
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
         try {
             File entryFile = new File(repoPath, patientId + ".md");
             Files.writeString(entryFile.toPath(), entryContent + "\n\n",

@@ -2,9 +2,15 @@ package com.platform.controller;
 
 import com.platform.core.controller.BaseController;
 import com.platform.crm.model.JournalEntry;
+<<<<<<< HEAD
 import com.platform.crm.model.TherapistClinicalNote;
 import com.platform.crm.repository.JournalEntryRepository;
 import com.platform.crm.repository.TherapistClinicalNoteRepository;
+=======
+import com.platform.crm.model.TherapistNote;
+import com.platform.crm.repository.JournalEntryRepository;
+import com.platform.crm.repository.TherapistNoteRepository;
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 import com.platform.dto.JournalEntryDto;
 import com.platform.repository.AppointmentRepository;
 import com.platform.repository.HandshakeRepository;
@@ -27,6 +33,7 @@ import java.util.UUID;
 @CrossOrigin(origins = "*")
 public class JournalController extends BaseController<JournalEntry, JournalEntryDto, UUID> {
 
+<<<<<<< HEAD
     private final JournalService journalService;
 
     public JournalController(JournalEntryRepository journalEntryRepository, JournalGitService journalGitService) {
@@ -41,6 +48,24 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
     ) {
         this(journalEntryRepository, journalGitService, clinicalNoteRepository, journalService, new PlatformCacheService(), null, null);
     }
+=======
+    private final JournalEntryRepository journalEntryRepository;
+    private final com.platform.service.JournalGitService journalGitService;
+    private final TherapistNoteRepository therapistNoteRepository;
+
+    @Autowired
+    public JournalController(JournalEntryRepository journalEntryRepository,
+                             com.platform.service.JournalGitService journalGitService,
+                             TherapistNoteRepository therapistNoteRepository) {
+        this.journalEntryRepository = journalEntryRepository;
+        this.journalGitService = journalGitService;
+        this.therapistNoteRepository = therapistNoteRepository;
+    }
+
+    @PostMapping
+    public ResponseEntity<JournalEntry> createJournalEntry(@RequestBody JournalEntryDto dto, Authentication authentication) {
+        UUID clientUuid = getCallerUuid(authentication);
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @Autowired
     public JournalController(
@@ -64,6 +89,7 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
         );
     }
 
+<<<<<<< HEAD
     @Override
     @PostMapping
     public ResponseEntity<JournalEntry> create(@RequestBody JournalEntryDto dto) {
@@ -81,6 +107,16 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
             Authentication authentication
     ) {
         return ResponseEntity.ok(journalService.updateJournalEntrySharing(entryId, payload));
+=======
+        JournalEntry saved = journalEntryRepository.save(entry);
+        
+        // Write to Git for audit trail
+        String commitMsg = "Added journal entry: " + dto.getTitle();
+        String content = "Title: " + dto.getTitle() + "\nMood: " + dto.getMoodRating() + "\nContent: " + dto.getContent();
+        journalGitService.commitJournalEntry(clientUuid.toString(), content, commitMsg);
+        
+        return ResponseEntity.ok(saved);
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
     @PostMapping("/therapist-notes")
@@ -89,7 +125,28 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
         if (savedNote != null) {
             return ResponseEntity.ok(savedNote);
         }
+<<<<<<< HEAD
         return ResponseEntity.ok().build();
+=======
+        if (!hasRole(jwt, "therapist")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access Denied: Required role ROLE_THERAPIST");
+        }
+        UUID clientUuid;
+        Object rawClientUuid = payload.get("clientUuid");
+        Object rawNote = payload.get("therapistNote");
+        try {
+            clientUuid = UUID.fromString(String.valueOf(rawClientUuid));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid client UUID");
+        }
+        if (!(rawNote instanceof String note) || note.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Therapist note is required");
+        }
+        TherapistNote saved = therapistNoteRepository.save(
+                new TherapistNote(clientUuid, getCallerUuid(authentication), note));
+        return ResponseEntity.ok(saved);
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
     @GetMapping("/client/{clientUuid}")
@@ -98,8 +155,17 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
             @RequestParam(required = false) UUID therapistUuid,
             Authentication auth
     ) {
+<<<<<<< HEAD
         return ResponseEntity.ok(journalService.getClientJournalBundle(clientUuid, therapistUuid, auth));
     }
+=======
+        boolean isTherapist = false;
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            if (hasRole(jwt, "therapist")) {
+                isTherapist = true;
+            }
+        }
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @GetMapping("/history/{clientUuid}")
     public ResponseEntity<List<Map<String, String>>> getJournalCommitHistory(
@@ -134,5 +200,23 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private UUID getCallerUuid(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+        try {
+            return UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user identity");
+        }
+    }
+
+    private boolean hasRole(Jwt jwt, String role) {
+        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        Object roles = realmAccess == null ? null : realmAccess.get("roles");
+        return roles instanceof java.util.List<?> roleList
+                && roleList.stream().anyMatch(role::equals);
     }
 }

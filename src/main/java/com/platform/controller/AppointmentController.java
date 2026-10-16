@@ -2,9 +2,16 @@ package com.platform.controller;
 
 import com.platform.core.controller.BaseController;
 import com.platform.entity.Appointment;
+<<<<<<< HEAD
 import com.platform.service.AppointmentService;
+=======
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -90,12 +97,26 @@ public class AppointmentController extends BaseController<Appointment, Appointme
 
     @Override
     @DeleteMapping("/{id}")
+<<<<<<< HEAD
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         return cancelAppointment(id);
     }
 
     public ResponseEntity<Void> cancelAppointment(UUID id) {
         appointmentService.cancelAppointment(id);
+=======
+    public ResponseEntity<Void> cancelAppointment(@PathVariable UUID id, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+        UUID callerUuid;
+        try {
+            callerUuid = UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user identity");
+        }
+        appointmentService.cancelAppointment(id, callerUuid);
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
         return ResponseEntity.ok().build();
     }
 

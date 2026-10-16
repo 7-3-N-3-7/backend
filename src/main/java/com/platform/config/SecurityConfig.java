@@ -38,6 +38,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
+<<<<<<< HEAD
+=======
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/i18n/**")
+                    .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users")
+                    .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> 

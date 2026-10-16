@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -144,8 +146,9 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
         );
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Appointment createAppointment(Appointment appointment) {
-        if (appointment.getEndTime().isBefore(appointment.getStartTime())) {
+        if (!appointment.getEndTime().isAfter(appointment.getStartTime())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid time range: End time must be after start time");
         }
 
@@ -282,14 +285,21 @@ public class AppointmentService extends BaseService<Appointment, Appointment, UU
         return saved;
     }
 
-    public void cancelAppointment(UUID id) {
+    public void cancelAppointment(UUID id, UUID callerUuid) {
         Appointment appointment = appointmentRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+<<<<<<< HEAD
 
         if (appointment.getStartTime() != null && appointment.getStartTime().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot cancel an appointment that is in the past");
         }
 
+=======
+        if (!callerUuid.equals(appointment.getClientUuid())
+                && !callerUuid.equals(appointment.getTherapistUuid())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
         appointment.setStatus("CANCELLED");
 
         if (journalGitService != null && appointment.getClientUuid() != null) {

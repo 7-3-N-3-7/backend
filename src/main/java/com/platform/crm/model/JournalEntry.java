@@ -14,7 +14,10 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
     @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
 
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -29,6 +32,7 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     @Column(name = "client_uuid", nullable = false)
     private java.util.UUID clientUuid;
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     @Column(name = "is_shared_with_therapists")
@@ -59,6 +63,8 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
         this.clientUuid = clientUuid;
         this.sharedWithTherapists = true;
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
     public JournalEntry() {}
 
@@ -75,7 +81,10 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
         this.moodRating = moodRating;
         this.timestamp = timestamp;
         this.clientUuid = clientUuid;
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     }
 
     @PrePersist
@@ -105,6 +114,7 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     public java.util.UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(java.util.UUID clientUuid) { this.clientUuid = clientUuid; }
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
@@ -157,4 +167,6 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
     public void setAppointmentId(java.util.UUID appointmentId) { this.appointmentId = appointmentId; }
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 }

@@ -5,15 +5,20 @@ import com.platform.repository.I18nDictionaryRepository;
 import org.springframework.stereotype.Service;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import java.time.Instant;
 import java.util.*;
 =======
 import java.util.Optional;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+import java.util.Optional;
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
 @Service
 public class I18nService {
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     private static final Map<String, String[]> DEFAULT_LOCALE_META = Map.of(
             "da", new String[]{"Dansk", "🇩🇰"},
@@ -30,6 +35,8 @@ public class I18nService {
 
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     private final I18nDictionaryRepository repository;
 
     public I18nService(I18nDictionaryRepository repository) {
@@ -40,6 +47,7 @@ public class I18nService {
         return repository.findByLocale(locale);
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     public List<I18nDictionary> getAllDictionaries() {
         return repository.findAll();
@@ -273,6 +281,8 @@ public class I18nService {
 }
 
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     public I18nDictionary updateTranslation(String locale, String key, String value) {
         I18nDictionary dict = repository.findByLocale(locale)
                 .orElse(new I18nDictionary(locale, new java.util.HashMap<>()));
@@ -280,4 +290,7 @@ public class I18nService {
         return repository.save(dict);
     }
 }
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92

@@ -26,6 +26,7 @@ import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.redisson.spring.starter.RedissonAutoConfigurationV2;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 =======
@@ -33,10 +34,16 @@ import org.springframework.security.oauth2.jwt.BadJwtException;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+<<<<<<< HEAD
 <<<<<<< HEAD
 @EnableAutoConfiguration(exclude = {
     MongoAutoConfiguration.class,
@@ -53,6 +60,11 @@ public class UserCreationSteps {
 public class UserCreationSteps {
 
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+@EnableAutoConfiguration(exclude = {MongoAutoConfiguration.class, MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
+public class UserCreationSteps {
+
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     @TestConfiguration
     static class MockSecurityConfig {
         @Bean
@@ -86,6 +98,7 @@ public class UserCreationSteps {
         public JwtDecoder jwtDecoder() {
             return token -> {
                 if (token.contains("expired") || token.contains("invalid")) {
+<<<<<<< HEAD
 <<<<<<< HEAD
                     throw new BadJwtException("Jwt expired");
                 }
@@ -130,6 +143,10 @@ public class UserCreationSteps {
                     throw new JwtException("Jwt expired");
                 }
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+                    throw new JwtException("Jwt expired");
+                }
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
                 String[] tokenParts = token.split("\\|");
                 String tokenIdentity = tokenParts[0];
                 String subject = "550e8400-e29b-41d4-a716-446655440000";
@@ -156,9 +173,12 @@ public class UserCreationSteps {
                 if ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(tokenIdentity)
                         && subject.equals("550e8400-e29b-41d4-a716-446655440000")) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
                     roles = java.util.List.of("client");
                 }
                 if (assignedRole != null) {

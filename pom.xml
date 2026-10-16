@@ -148,12 +148,15 @@
       <version>1.19.8</version>
       <scope>test</scope>
     </dependency>
+<<<<<<< HEAD
     <!-- Timefold Solver (Constraint-based Therapist Booking & Schedule Optimization) -->
     <dependency>
       <groupId>ai.timefold.solver</groupId>
       <artifactId>timefold-solver-core</artifactId>
       <version>1.16.0</version>
     </dependency>
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
   </dependencies>
   <build>

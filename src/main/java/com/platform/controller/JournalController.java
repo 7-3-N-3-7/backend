@@ -1,6 +1,7 @@
 package com.platform.controller;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import com.platform.core.controller.BaseController;
 import com.platform.crm.model.JournalEntry;
 <<<<<<< HEAD
@@ -19,16 +20,22 @@ import com.platform.service.JournalGitService;
 import com.platform.service.JournalService;
 import com.platform.service.PlatformCacheService;
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 import com.platform.crm.model.JournalEntry;
 import com.platform.crm.model.TherapistNote;
 import com.platform.crm.repository.JournalEntryRepository;
 import com.platform.crm.repository.TherapistNoteRepository;
 import com.platform.dto.JournalEntryDto;
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+<<<<<<< HEAD
 <<<<<<< HEAD
 import org.springframework.web.bind.annotation.*;
 
@@ -36,16 +43,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/journals")
+<<<<<<< HEAD
 <<<<<<< HEAD
 @CrossOrigin(origins = "*")
 public class JournalController extends BaseController<JournalEntry, JournalEntryDto, UUID> {
@@ -70,6 +83,10 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
 public class JournalController {
 
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+public class JournalController {
+
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     private final JournalEntryRepository journalEntryRepository;
     private final com.platform.service.JournalGitService journalGitService;
     private final TherapistNoteRepository therapistNoteRepository;
@@ -86,6 +103,7 @@ public class JournalController {
     @PostMapping
     public ResponseEntity<JournalEntry> createJournalEntry(@RequestBody JournalEntryDto dto, Authentication authentication) {
         UUID clientUuid = getCallerUuid(authentication);
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
@@ -131,6 +149,8 @@ public class JournalController {
         return ResponseEntity.ok(journalService.updateJournalEntrySharing(entryId, payload));
 =======
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
         JournalEntry entry = new JournalEntry(
                 dto.getTitle(),
@@ -140,7 +160,10 @@ public class JournalController {
                 clientUuid
         );
 
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
         JournalEntry saved = journalEntryRepository.save(entry);
         
         // Write to Git for audit trail
@@ -149,6 +172,7 @@ public class JournalController {
         journalGitService.commitJournalEntry(clientUuid.toString(), content, commitMsg);
         
         return ResponseEntity.ok(saved);
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
@@ -163,6 +187,8 @@ public class JournalController {
         return ResponseEntity.ok().build();
 =======
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     }
 
     @PostMapping("/therapist-notes")
@@ -170,7 +196,10 @@ public class JournalController {
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
         if (!hasRole(jwt, "therapist")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Access Denied: Required role ROLE_THERAPIST");
@@ -190,6 +219,7 @@ public class JournalController {
                 new TherapistNote(clientUuid, getCallerUuid(authentication), note));
         return ResponseEntity.ok(saved);
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
@@ -204,6 +234,8 @@ public class JournalController {
     }
 =======
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     }
 
     @GetMapping("/timeline/{clientUuid}")
@@ -211,13 +243,17 @@ public class JournalController {
         @PathVariable UUID clientUuid,
         Authentication auth
     ) {
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
         boolean isTherapist = false;
         if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
             if (hasRole(jwt, "therapist")) {
                 isTherapist = true;
             }
         }
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
@@ -252,6 +288,8 @@ public class JournalController {
         try {
             return ResponseEntity.ok(journalService.getClientTimeline(clientUuid, auth));
 =======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
         try {
             String rawMarkdown = journalGitService.readJournalEntry(clientUuid.toString());
@@ -259,7 +297,10 @@ public class JournalController {
             return ResponseEntity.ok(java.util.List.of(
                 java.util.Map.of("id", clientUuid.toString(), "content", content)
             ));
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

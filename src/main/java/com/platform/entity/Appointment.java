@@ -19,6 +19,8 @@ public class Appointment extends BaseEntity<UUID> {
 =======
     protected Appointment() {}
 
+    protected Appointment() {}
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

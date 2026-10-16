@@ -24,11 +24,14 @@ public class AppointmentServiceTest {
     private AppointmentService appointmentService;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     private AppointmentController appointmentController;
 =======
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
     @BeforeEach
     public void setUp() {
@@ -36,11 +39,14 @@ public class AppointmentServiceTest {
         appointmentService = new AppointmentService(appointmentRepository);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         appointmentController = new AppointmentController(appointmentService);
 =======
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     }
 
     @Test
@@ -164,6 +170,37 @@ public class AppointmentServiceTest {
         Mockito.when(appointmentRepository.findById(missingId)).thenReturn(Optional.empty());
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(missingId, updateReq));
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.cancelAppointment(missingId));
+    }
+
+    @Test
+    public void testCreateAppointmentRejectsZeroLengthRange() {
+        LocalDateTime start = LocalDateTime.now();
+        Appointment appointment = new Appointment(UUID.randomUUID(), UUID.randomUUID(), start, start, "Initial Assessment", "PENDING");
+
+        ResponseStatusException exception = Assertions.assertThrows(
+                ResponseStatusException.class,
+                () -> appointmentService.createAppointment(appointment));
+
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        Mockito.verify(appointmentRepository, Mockito.never()).save(any(Appointment.class));
+    }
+
+    @Test
+    public void testCancelAppointmentRejectsUnrelatedCaller() {
+        UUID clientUuid = UUID.randomUUID();
+        UUID therapistUuid = UUID.randomUUID();
+        Appointment appointment = new Appointment(clientUuid, therapistUuid,
+                LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Session", "CONFIRMED");
+        UUID id = UUID.randomUUID();
+        appointment.setId(id);
+        Mockito.when(appointmentRepository.findById(id)).thenReturn(java.util.Optional.of(appointment));
+
+        ResponseStatusException exception = Assertions.assertThrows(
+                ResponseStatusException.class,
+                () -> appointmentService.cancelAppointment(id, UUID.randomUUID()));
+
+        Assertions.assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        Mockito.verify(appointmentRepository, Mockito.never()).save(any(Appointment.class));
     }
 
     @Test

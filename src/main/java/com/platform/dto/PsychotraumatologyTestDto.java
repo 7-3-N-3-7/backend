@@ -1,6 +1,7 @@
 package com.platform.dto;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import com.platform.core.dto.BaseDTO;
 import java.util.UUID;
 
@@ -11,6 +12,11 @@ import java.util.UUID;
 
 public class PsychotraumatologyTestDto {
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+import java.util.UUID;
+
+public class PsychotraumatologyTestDto {
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     private UUID clientUuid;
     private UUID therapistUuid;
     private String testType;
@@ -21,6 +27,7 @@ public class PsychotraumatologyTestDto {
     public PsychotraumatologyTestDto() {}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     @Override
     public UUID getId() { return id; }
 
@@ -29,6 +36,8 @@ public class PsychotraumatologyTestDto {
 
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     public UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(UUID clientUuid) { this.clientUuid = clientUuid; }
 

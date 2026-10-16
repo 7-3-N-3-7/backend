@@ -1,17 +1,26 @@
 package com.platform.dto;
 
+import com.platform.core.dto.BaseDTO;
 import java.util.List;
 import java.util.UUID;
 
-public class JournalEntryDto {
+public class JournalEntryDto implements BaseDTO<UUID> {
+    private UUID id;
     private String title;
     private String content;
     private Integer moodRating;
     private Boolean sharedWithTherapists = true;
     private List<UUID> sharedTherapistUuids;
     private UUID clientUuid;
+    private UUID appointmentId;
 
     public JournalEntryDto() {}
+
+    @Override
+    public UUID getId() { return id; }
+
+    @Override
+    public void setId(UUID id) { this.id = id; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -30,4 +39,7 @@ public class JournalEntryDto {
 
     public UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(UUID clientUuid) { this.clientUuid = clientUuid; }
+
+    public UUID getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(UUID appointmentId) { this.appointmentId = appointmentId; }
 }

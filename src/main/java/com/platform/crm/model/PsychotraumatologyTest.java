@@ -1,16 +1,13 @@
 package com.platform.crm.model;
 
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.util.UUID;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "psychotraumatology_tests")
-public class PsychotraumatologyTest {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class PsychotraumatologyTest extends BaseEntity<UUID> {
 
     @Column(name = "client_uuid", nullable = false)
     private UUID clientUuid;

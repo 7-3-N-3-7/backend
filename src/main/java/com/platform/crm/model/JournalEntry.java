@@ -1,15 +1,12 @@
 package com.platform.crm.model;
     
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "journal_entries")
-public class JournalEntry {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private java.util.UUID id;
+public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     @Column(nullable = false, length = 255)
     private String title;
@@ -34,6 +31,9 @@ public class JournalEntry {
 
     @Column(name = "git_commit_hash")
     private String gitCommitHash;
+
+    @Column(name = "appointment_id")
+    private java.util.UUID appointmentId;
 
     public JournalEntry() {}
 
@@ -125,4 +125,7 @@ public class JournalEntry {
 
     public String getGitCommitHash() { return gitCommitHash; }
     public void setGitCommitHash(String gitCommitHash) { this.gitCommitHash = gitCommitHash; }
+
+    public java.util.UUID getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(java.util.UUID appointmentId) { this.appointmentId = appointmentId; }
 }

@@ -1,15 +1,12 @@
 package com.platform.entity;
 
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "services")
-public class Service {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class Service extends BaseEntity<UUID> {
 
     @ManyToOne
     @JoinColumn(name = "provider_profile_id", nullable = true)

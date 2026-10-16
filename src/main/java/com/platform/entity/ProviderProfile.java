@@ -1,15 +1,12 @@
 package com.platform.entity;
 
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "provider_profiles")
-public class ProviderProfile {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class ProviderProfile extends BaseEntity<UUID> {
 
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = true)
@@ -31,7 +28,13 @@ public class ProviderProfile {
     @Column(name = "working_hours_json", columnDefinition = "TEXT")
     private String workingHoursJson;
 
+    @Column(name = "video_meeting_url", length = 500)
+    private String videoMeetingUrl;
+
     public ProviderProfile() {}
+
+    public String getVideoMeetingUrl() { return videoMeetingUrl; }
+    public void setVideoMeetingUrl(String videoMeetingUrl) { this.videoMeetingUrl = videoMeetingUrl; }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }

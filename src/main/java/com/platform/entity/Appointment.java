@@ -1,18 +1,15 @@
 package com.platform.entity;
 
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "appointments")
-public class Appointment {
+public class Appointment extends BaseEntity<UUID> {
 
     public Appointment() {}
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
 
     @Column(nullable = false)
     private UUID clientUuid;
@@ -43,6 +40,12 @@ public class Appointment {
 
     @Column
     private String status;
+
+    @Column(name = "git_commit_hash")
+    private String gitCommitHash;
+
+    @Column(name = "journal_entry_id")
+    private UUID journalEntryId;
 
     public Appointment(
         UUID clientUuid,
@@ -92,4 +95,10 @@ public class Appointment {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getGitCommitHash() { return gitCommitHash; }
+    public void setGitCommitHash(String gitCommitHash) { this.gitCommitHash = gitCommitHash; }
+
+    public UUID getJournalEntryId() { return journalEntryId; }
+    public void setJournalEntryId(UUID journalEntryId) { this.journalEntryId = journalEntryId; }
 }

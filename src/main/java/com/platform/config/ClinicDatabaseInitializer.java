@@ -62,7 +62,7 @@ public class ClinicDatabaseInitializer implements CommandLineRunner {
                         : new LinkedHashMap<>();
                 Map<String, Object> defaults = buildPortalTranslations(loc);
                 for (Map.Entry<String, Object> entry : defaults.entrySet()) {
-                    existingPortal.putIfAbsent(entry.getKey(), entry.getValue());
+                    existingPortal.put(entry.getKey(), entry.getValue());
                 }
                 root.put("portal", existingPortal);
                 dict.setTranslations(root);
@@ -113,12 +113,14 @@ public class ClinicDatabaseInitializer implements CommandLineRunner {
                 p.put("newAppointmentBtn", "Ny Aftale");
                 p.put("addServiceBtn", "Tilføj Service");
                 p.put("tabCalendar", "Månedskalender & Dagsprogram");
-                p.put("tabClients", "Klientkartotek ({count})");
-                p.put("tabServices", "Servicekatalog ({count})");
+                p.put("tabClients", "Klientkartotek");
+                p.put("tabServices", "Servicekatalog");
                 p.put("appointmentsCountBadge", "{count} aftaler");
                 p.put("singleAppointmentBadge", "1 aftale");
-                p.put("activeWorkspacesTitle", "Aktive Workspaces ({count} åbne vinduer)");
+                p.put("activeWorkspacesTitle", "Aktive Workspaces");
                 p.put("closeAllWindowsBtn", "Luk alle vinduer");
+                p.put("available", "Tilgængelig");
+                p.put("unavailable", "Utilgængelig");
             }
             case "fr" -> {
                 p.put("brandTitle", "Clinique EduJournal");
@@ -156,12 +158,14 @@ public class ClinicDatabaseInitializer implements CommandLineRunner {
                 p.put("newAppointmentBtn", "Nouveau Rendez-vous");
                 p.put("addServiceBtn", "Ajouter un Service");
                 p.put("tabCalendar", "Calendrier Mensuel & Programme");
-                p.put("tabClients", "Répertoire Clients ({count})");
-                p.put("tabServices", "Catalogue des Services ({count})");
+                p.put("tabClients", "Répertoire Clients");
+                p.put("tabServices", "Catalogue des Services");
                 p.put("appointmentsCountBadge", "{count} rdv");
                 p.put("singleAppointmentBadge", "1 rdv");
-                p.put("activeWorkspacesTitle", "Espaces Actifs ({count} fenêtres ouvertes)");
+                p.put("activeWorkspacesTitle", "Espaces Actifs");
                 p.put("closeAllWindowsBtn", "Fermer toutes les fenêtres");
+                p.put("available", "Disponible");
+                p.put("unavailable", "Indisponible");
             }
             case "es" -> {
                 p.put("brandTitle", "Clínica EduJournal");
@@ -199,12 +203,14 @@ public class ClinicDatabaseInitializer implements CommandLineRunner {
                 p.put("newAppointmentBtn", "Nueva Cita");
                 p.put("addServiceBtn", "Añadir Servicio");
                 p.put("tabCalendar", "Calendario Mensual y Agenda");
-                p.put("tabClients", "Directorio de Clientes ({count})");
-                p.put("tabServices", "Catálogo de Servicios ({count})");
+                p.put("tabClients", "Directorio de Clientes");
+                p.put("tabServices", "Catálogo de Servicios");
                 p.put("appointmentsCountBadge", "{count} citas");
                 p.put("singleAppointmentBadge", "1 cita");
-                p.put("activeWorkspacesTitle", "Espacios Activos ({count} ventanas abiertas)");
+                p.put("activeWorkspacesTitle", "Espacios Activos");
                 p.put("closeAllWindowsBtn", "Cerrar todas las ventanas");
+                p.put("available", "Disponible");
+                p.put("unavailable", "No disponible");
             }
             case "de" -> {
                 p.put("brandTitle", "EduJournal Klinik");
@@ -242,12 +248,14 @@ public class ClinicDatabaseInitializer implements CommandLineRunner {
                 p.put("newAppointmentBtn", "Neuer Termin");
                 p.put("addServiceBtn", "Leistung hinzufügen");
                 p.put("tabCalendar", "Monatskalender & Tagesplan");
-                p.put("tabClients", "Klientenverzeichnis ({count})");
-                p.put("tabServices", "Leistungskatalog ({count})");
+                p.put("tabClients", "Klientenverzeichnis");
+                p.put("tabServices", "Leistungskatalog");
                 p.put("appointmentsCountBadge", "{count} Termine");
                 p.put("singleAppointmentBadge", "1 Termin");
-                p.put("activeWorkspacesTitle", "Aktive Arbeitsbereiche ({count} Fenster offen)");
+                p.put("activeWorkspacesTitle", "Aktive Arbeitsbereiche");
                 p.put("closeAllWindowsBtn", "Alle Fenster schließen");
+                p.put("available", "Verfügbar");
+                p.put("unavailable", "Nicht verfügbar");
             }
             default -> {
                 p.put("brandTitle", "EduJournal Clinic");
@@ -285,12 +293,14 @@ public class ClinicDatabaseInitializer implements CommandLineRunner {
                 p.put("newAppointmentBtn", "New Appointment");
                 p.put("addServiceBtn", "Add Service");
                 p.put("tabCalendar", "Monthly Calendar & Daily Schedule");
-                p.put("tabClients", "Client Roster ({count})");
-                p.put("tabServices", "Service Catalog ({count})");
+                p.put("tabClients", "Client Directory");
+                p.put("tabServices", "Service Catalog");
                 p.put("appointmentsCountBadge", "{count} appointments");
                 p.put("singleAppointmentBadge", "1 appointment");
-                p.put("activeWorkspacesTitle", "Active Workspaces ({count} open windows)");
+                p.put("activeWorkspacesTitle", "Active Workspaces");
                 p.put("closeAllWindowsBtn", "Close all windows");
+                p.put("available", "Available");
+                p.put("unavailable", "Unavailable");
             }
         }
         return p;

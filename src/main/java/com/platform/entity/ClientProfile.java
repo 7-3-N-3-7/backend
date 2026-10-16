@@ -1,15 +1,12 @@
 package com.platform.entity;
 
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "client_profiles")
-public class ClientProfile {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class ClientProfile extends BaseEntity<UUID> {
 
     @Column(name = "user_id", unique = true, nullable = false)
     private UUID userId;

@@ -1,14 +1,18 @@
 package com.platform.dto;
 
-public class UserResponseDto {
+import com.platform.core.dto.BaseDTO;
+
+public class UserResponseDto implements BaseDTO<java.util.UUID> {
     private java.util.UUID id;
     private String username;
     private String role;
 
+    @Override
     public java.util.UUID getId() {
         return id;
     }
 
+    @Override
     public void setId(java.util.UUID id) {
         this.id = id;
     }

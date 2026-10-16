@@ -1,21 +1,24 @@
 package com.platform.controller;
 
+import com.platform.core.controller.BaseController;
 import com.platform.entity.Appointment;
 import com.platform.service.AppointmentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/appointments")
 @CrossOrigin(origins = "*")
-public class AppointmentController {
+public class AppointmentController extends BaseController<Appointment, Appointment, UUID> {
 
     private final AppointmentService appointmentService;
 
     public AppointmentController(AppointmentService appointmentService) {
+        super(appointmentService);
         this.appointmentService = appointmentService;
     }
 
@@ -60,8 +63,13 @@ public class AppointmentController {
         ));
     }
 
+    @Override
     @PostMapping
-    public ResponseEntity<Appointment> createAppointment(@RequestBody Appointment appointment) {
+    public ResponseEntity<Appointment> create(@RequestBody Appointment appointment) {
+        return createAppointment(appointment);
+    }
+
+    public ResponseEntity<Appointment> createAppointment(Appointment appointment) {
         boolean requestedScheduled = "SCHEDULED".equalsIgnoreCase(appointment.getStatus()) || appointment.getServiceId() != null;
         Appointment created = appointmentService.createAppointment(appointment);
         if (requestedScheduled) {
@@ -70,14 +78,29 @@ public class AppointmentController {
         return ResponseEntity.ok(created);
     }
 
+    @Override
     @PutMapping("/{id}")
-    public ResponseEntity<Appointment> rescheduleAppointment(@PathVariable UUID id, @RequestBody Appointment updated) {
+    public ResponseEntity<Appointment> update(@PathVariable UUID id, @RequestBody Appointment updated) {
+        return rescheduleAppointment(id, updated);
+    }
+
+    public ResponseEntity<Appointment> rescheduleAppointment(UUID id, Appointment updated) {
         return ResponseEntity.ok(appointmentService.rescheduleAppointment(id, updated));
     }
 
+    @Override
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelAppointment(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        return cancelAppointment(id);
+    }
+
+    public ResponseEntity<Void> cancelAppointment(UUID id) {
         appointmentService.cancelAppointment(id);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/git-history")
+    public ResponseEntity<List<Map<String, String>>> getAppointmentGitHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(appointmentService.getAppointmentGitHistory(id));
     }
 }

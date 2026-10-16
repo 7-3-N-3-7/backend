@@ -1,5 +1,6 @@
 package com.platform.service;
 
+import com.platform.core.service.BaseService;
 import com.platform.dto.UserRequestDto;
 import com.platform.dto.UserResponseDto;
 import com.platform.entity.UserEntity;
@@ -7,12 +8,15 @@ import com.platform.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
-public class UserService {
+public class UserService extends BaseService<UserEntity, UserRequestDto, UUID> {
 
     private final UserRepository userRepository;
 
     public UserService(UserRepository userRepository) {
+        super(userRepository);
         this.userRepository = userRepository;
     }
 
@@ -26,10 +30,7 @@ public class UserService {
             throw new IllegalArgumentException("username already exists");
         }
 
-        UserEntity user = new UserEntity();
-        user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword()); // Note: Should be hashed in a real scenario
-        user.setRole(request.getRole());
+        UserEntity user = toEntity(request);
 
         UserEntity savedUser = userRepository.save(user);
 

@@ -1,14 +1,11 @@
 package com.platform.entity;
 
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "app_users")
-public class UserEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private java.util.UUID id;
+public class UserEntity extends BaseEntity<java.util.UUID> {
 
     @Column(unique = true, nullable = false)
     private String username;

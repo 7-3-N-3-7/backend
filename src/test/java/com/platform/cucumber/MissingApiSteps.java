@@ -327,7 +327,9 @@ public class MissingApiSteps {
         Assertions.assertTrue(entityManager.isOpen(), "JPA EntityManager must be open");
         var appointmentType = entityManager.getMetamodel().entity(Appointment.class);
         Assertions.assertNotNull(appointmentType, "Appointment entity must be registered in Hibernate metamodel");
-        Assertions.assertEquals(UUID.class, appointmentType.getIdType().getJavaType(), "Appointment ID type must be UUID");
+        Class<?> resolvedIdType = org.springframework.core.GenericTypeResolver.resolveTypeArgument(
+                Appointment.class, com.platform.core.entity.BaseEntity.class);
+        Assertions.assertEquals(UUID.class, resolvedIdType != null ? resolvedIdType : appointmentType.getIdType().getJavaType(), "Appointment ID type must be UUID");
     }
 
     @Given("Redisson Redis cache is connected")

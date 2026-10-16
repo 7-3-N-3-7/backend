@@ -1,41 +1,36 @@
 package com.platform.controller;
 
+import com.platform.core.controller.BaseController;
 import com.platform.crm.model.JournalEntry;
 import com.platform.crm.model.TherapistClinicalNote;
 import com.platform.crm.repository.JournalEntryRepository;
 import com.platform.crm.repository.TherapistClinicalNoteRepository;
 import com.platform.dto.JournalEntryDto;
+import com.platform.repository.AppointmentRepository;
+import com.platform.repository.HandshakeRepository;
 import com.platform.service.JournalGitService;
 import com.platform.service.JournalService;
+import com.platform.service.PlatformCacheService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/journals")
 @CrossOrigin(origins = "*")
-public class JournalController {
+public class JournalController extends BaseController<JournalEntry, JournalEntryDto, UUID> {
 
-    private final JournalEntryRepository journalEntryRepository;
-    private final JournalGitService journalGitService;
-    private final TherapistClinicalNoteRepository clinicalNoteRepository;
     private final JournalService journalService;
-    private final com.platform.service.PlatformCacheService cacheService;
 
     public JournalController(JournalEntryRepository journalEntryRepository, JournalGitService journalGitService) {
-        this(journalEntryRepository, journalGitService, null, new JournalService(), new com.platform.service.PlatformCacheService());
+        this(journalEntryRepository, journalGitService, null, new JournalService(), new PlatformCacheService(), null, null);
     }
 
     public JournalController(
@@ -44,7 +39,7 @@ public class JournalController {
             TherapistClinicalNoteRepository clinicalNoteRepository,
             JournalService journalService
     ) {
-        this(journalEntryRepository, journalGitService, clinicalNoteRepository, journalService, new com.platform.service.PlatformCacheService());
+        this(journalEntryRepository, journalGitService, clinicalNoteRepository, journalService, new PlatformCacheService(), null, null);
     }
 
     @Autowired
@@ -53,66 +48,30 @@ public class JournalController {
             JournalGitService journalGitService,
             TherapistClinicalNoteRepository clinicalNoteRepository,
             JournalService journalService,
-            com.platform.service.PlatformCacheService cacheService
+            PlatformCacheService cacheService,
+            @Autowired(required = false) AppointmentRepository appointmentRepository,
+            @Autowired(required = false) HandshakeRepository handshakeRepository
     ) {
-        this.journalEntryRepository = journalEntryRepository;
-        this.journalGitService = journalGitService;
-        this.clinicalNoteRepository = clinicalNoteRepository;
-        this.journalService = Objects.requireNonNullElseGet(journalService, JournalService::new);
-        this.cacheService = Objects.requireNonNullElseGet(cacheService, com.platform.service.PlatformCacheService::new);
+        super(Objects.requireNonNullElseGet(journalService, JournalService::new));
+        this.journalService = (JournalService) this.service;
+        this.journalService.withCollaborators(
+                journalEntryRepository,
+                journalGitService,
+                clinicalNoteRepository,
+                Objects.requireNonNullElseGet(cacheService, PlatformCacheService::new),
+                appointmentRepository,
+                handshakeRepository
+        );
     }
 
+    @Override
     @PostMapping
+    public ResponseEntity<JournalEntry> create(@RequestBody JournalEntryDto dto) {
+        return createJournalEntry(dto, org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication());
+    }
+
     public ResponseEntity<JournalEntry> createJournalEntry(@RequestBody JournalEntryDto dto, Authentication authentication) {
-        UUID clientUuid = dto.getClientUuid();
-        String authorName = "Client";
-        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
-            if (clientUuid == null) {
-                try {
-                    clientUuid = UUID.fromString(jwt.getSubject());
-                } catch (IllegalArgumentException e) {
-                    clientUuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
-                }
-            }
-            authorName = Objects.requireNonNullElse(jwt.getClaimAsString("preferred_username"), "Client");
-        }
-        if (clientUuid == null) {
-            clientUuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
-        }
-
-        String title = Objects.requireNonNullElse(dto.getTitle(), "Journalindlæg");
-        JournalEntry entry = new JournalEntry(
-                title,
-                dto.getContent(),
-                Objects.requireNonNullElse(dto.getMoodRating(), 7),
-                LocalDateTime.now(),
-                clientUuid
-        );
-        entry.setSharedWithTherapists(dto.getSharedWithTherapists());
-        if (dto.getSharedTherapistUuids() != null) {
-            entry.setSharedTherapistUuids(dto.getSharedTherapistUuids());
-        }
-
-        try {
-            String commitMsg = "Added journal entry: " + title;
-            String patientId = clientUuid.toString();
-            String sharedInfo = Boolean.TRUE.equals(entry.getSharedWithTherapists())
-                    ? (entry.getSharedTherapistUuids().isEmpty()
-                            ? "All Active Handshake Therapists"
-                            : entry.getSharedTherapistUuids().toString())
-                    : "Private";
-            String content = "## " + title + " (" + LocalDateTime.now() + ")\n"
-                    + "Mood: " + entry.getMoodRating() + "/10 | Shared: " + sharedInfo + "\n"
-                    + dto.getContent();
-            String hash = journalGitService.commitJournalEntryWithHash(patientId, content, commitMsg, authorName);
-            entry.setGitCommitHash(hash);
-        } catch (Exception e) {
-            System.err.println("Failed to commit to Git: " + e.getMessage());
-        }
-
-        JournalEntry saved = journalEntryRepository.save(entry);
-        cacheService.put("journal:client:" + clientUuid, saved);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(journalService.createJournalEntry(dto, authentication));
     }
 
     @PatchMapping("/{entryId}/sharing")
@@ -121,176 +80,59 @@ public class JournalController {
             @RequestBody Map<String, Object> payload,
             Authentication authentication
     ) {
-        JournalEntry entry = journalEntryRepository.findById(entryId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
-
-        if (payload.containsKey("sharedWithTherapists") && payload.get("sharedWithTherapists") != null) {
-            entry.setSharedWithTherapists(Boolean.parseBoolean(String.valueOf(payload.get("sharedWithTherapists"))));
-        }
-        if (payload.containsKey("sharedTherapistUuids")) {
-            Object rawList = payload.get("sharedTherapistUuids");
-            if (rawList instanceof List<?> list) {
-                List<UUID> parsed = new java.util.ArrayList<>();
-                for (Object item : list) {
-                    if (item != null && !String.valueOf(item).isBlank()) {
-                        try {
-                            parsed.add(UUID.fromString(String.valueOf(item).trim()));
-                        } catch (IllegalArgumentException ignored) {
-                        }
-                    }
-                }
-                entry.setSharedTherapistUuids(parsed);
-            } else {
-                entry.setSharedTherapistUuids(List.of());
-            }
-        }
-
-        JournalEntry saved = journalEntryRepository.save(entry);
-        if (saved.getClientUuid() != null) {
-            cacheService.put("journal:client:" + saved.getClientUuid(), saved);
-        }
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(journalService.updateJournalEntrySharing(entryId, payload));
     }
 
     @PostMapping("/therapist-notes")
     public ResponseEntity<?> createTherapistNote(@RequestBody Map<String, Object> payload, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        TherapistClinicalNote savedNote = journalService.createTherapistNote(payload, authentication);
+        if (savedNote != null) {
+            return ResponseEntity.ok(savedNote);
         }
-
-        if (!hasTherapistRole(authentication)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: Required role ROLE_THERAPIST");
-        }
-
-        String clientUuidStr = Objects.toString(payload.get("clientUuid"), "");
-        String noteText = Objects.toString(payload.getOrDefault("therapistNote", payload.get("content")), "");
-        String therapistName = Objects.toString(payload.get("therapistName"), "Clinical Therapist");
-        String organisationName = Objects.toString(payload.get("organisationName"), "Associated Clinic");
-
-        if (!clientUuidStr.isBlank() && !noteText.isBlank()) {
-            try {
-                UUID clientUuid = UUID.fromString(clientUuidStr);
-                UUID therapistUuid = parseUuidOrDefault(jwt.getSubject());
-
-                String formattedInternalBlock = "<!-- INTERNAL_MEDICAL_NOTES -->\n"
-                        + "**[CONFIDENTIAL CLINICAL NOTE | " + therapistName + " (" + organisationName + ") | " + LocalDateTime.now() + "]**\n"
-                        + noteText;
-                String commitHash = journalGitService.commitJournalEntryWithHash(
-                        clientUuid.toString(),
-                        formattedInternalBlock,
-                        "Clinical note by " + therapistName + " (" + organisationName + ")",
-                        therapistName
-                );
-
-                if (clinicalNoteRepository != null) {
-                    TherapistClinicalNote clinicalNote = new TherapistClinicalNote(
-                            clientUuid,
-                            therapistUuid,
-                            therapistName,
-                            organisationName,
-                            null,
-                            noteText,
-                            commitHash
-                    );
-                    return ResponseEntity.ok(clinicalNoteRepository.save(clinicalNote));
-                }
-            } catch (Exception ignored) {
-            }
-        }
-
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/client/{clientUuid}")
     public ResponseEntity<Map<String, Object>> getClientJournalBundle(
             @PathVariable UUID clientUuid,
+            @RequestParam(required = false) UUID therapistUuid,
             Authentication auth
     ) {
-        boolean isTherapist = hasTherapistRole(auth);
-        UUID callerUuid = extractCallerUuid(auth);
-        List<JournalEntry> entries = journalEntryRepository.findByClientUuidOrderByTimestampDesc(clientUuid);
-        if (isTherapist && !clientUuid.equals(callerUuid)) {
-            entries = entries.stream()
-                    .filter(e -> e.isVisibleToTherapist(callerUuid))
-                    .collect(Collectors.toList());
-        } else if (isTherapist) {
-            entries = entries.stream()
-                    .filter(JournalEntry::getSharedWithTherapists)
-                    .collect(Collectors.toList());
-        }
-        List<TherapistClinicalNote> clinicalNotes = (isTherapist && clinicalNoteRepository != null)
-                ? clinicalNoteRepository.findByClientUuidOrderByCreatedAtDesc(clientUuid)
-                : List.of();
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("clientUuid", clientUuid);
-        result.put("entries", entries);
-        result.put("clinicalNotes", clinicalNotes);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(journalService.getClientJournalBundle(clientUuid, therapistUuid, auth));
     }
 
     @GetMapping("/history/{clientUuid}")
     public ResponseEntity<List<Map<String, String>>> getJournalCommitHistory(
             @PathVariable UUID clientUuid,
+            @RequestParam(required = false) UUID therapistUuid,
             Authentication auth
     ) {
-        boolean isTherapist = hasTherapistRole(auth);
-        return ResponseEntity.ok(journalGitService.getCommitHistory(clientUuid.toString(), isTherapist, journalService));
+        return ResponseEntity.ok(journalService.getJournalCommitHistory(clientUuid, therapistUuid, auth));
+    }
+
+    public ResponseEntity<Map<String, Object>> getClientJournalBundle(
+            UUID clientUuid,
+            Authentication auth
+    ) {
+        return getClientJournalBundle(clientUuid, null, auth);
+    }
+
+    public ResponseEntity<List<Map<String, String>>> getJournalCommitHistory(
+            UUID clientUuid,
+            Authentication auth
+    ) {
+        return getJournalCommitHistory(clientUuid, null, auth);
     }
 
     @GetMapping("/timeline/{clientUuid}")
     public ResponseEntity<List<Map<String, String>>> getClientTimeline(
-        @PathVariable UUID clientUuid,
-        Authentication auth
+            @PathVariable UUID clientUuid,
+            Authentication auth
     ) {
-        boolean isTherapist = hasTherapistRole(auth);
-
         try {
-            String rawMarkdown = journalGitService.readJournalEntry(clientUuid.toString());
-            String content = journalService.getJournalContent(rawMarkdown, isTherapist);
-            return ResponseEntity.ok(List.of(
-                Map.of("id", clientUuid.toString(), "content", content)
-            ));
+            return ResponseEntity.ok(journalService.getClientTimeline(clientUuid, auth));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    private boolean hasTherapistRole(Authentication auth) {
-        if (auth == null) {
-            return false;
-        }
-        if (auth.getAuthorities() != null && auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_therapist".equalsIgnoreCase(a.getAuthority())
-                        || "ROLE_ROLE_THERAPIST".equalsIgnoreCase(a.getAuthority()))) {
-            return true;
-        }
-        if (auth.getPrincipal() instanceof Jwt jwt) {
-            Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-            if (realmAccess != null && realmAccess.get("roles") instanceof List<?> roles) {
-                return roles.stream().anyMatch(r ->
-                        "therapist".equalsIgnoreCase(String.valueOf(r))
-                                || "ROLE_THERAPIST".equalsIgnoreCase(String.valueOf(r)));
-            }
-        }
-        return false;
-    }
-
-    private UUID extractCallerUuid(Authentication auth) {
-        if (auth != null && auth.getPrincipal() instanceof Jwt jwt && jwt.getSubject() != null) {
-            try {
-                return UUID.fromString(jwt.getSubject());
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        return null;
-    }
-
-    private UUID parseUuidOrDefault(String sub) {
-        try {
-            return UUID.fromString(sub);
-        } catch (Exception ex) {
-            return UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
         }
     }
 }

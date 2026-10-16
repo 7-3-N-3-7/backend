@@ -1,16 +1,13 @@
 package com.platform.crm.model;
 
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "therapist_clinical_notes")
-public class TherapistClinicalNote {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+public class TherapistClinicalNote extends BaseEntity<UUID> {
 
     @Column(name = "client_uuid", nullable = false)
     private UUID clientUuid;
@@ -27,6 +24,9 @@ public class TherapistClinicalNote {
     @Column(name = "journal_entry_id")
     private UUID journalEntryId;
 
+    @Column(name = "appointment_id")
+    private UUID appointmentId;
+
     @Column(name = "confidential_markdown", columnDefinition = "TEXT", nullable = false)
     private String confidentialMarkdown;
 
@@ -39,11 +39,16 @@ public class TherapistClinicalNote {
     public TherapistClinicalNote() {}
 
     public TherapistClinicalNote(UUID clientUuid, UUID authorTherapistUuid, String authorTherapistName, String organisationName, UUID journalEntryId, String confidentialMarkdown, String gitCommitHash) {
+        this(clientUuid, authorTherapistUuid, authorTherapistName, organisationName, journalEntryId, null, confidentialMarkdown, gitCommitHash);
+    }
+
+    public TherapistClinicalNote(UUID clientUuid, UUID authorTherapistUuid, String authorTherapistName, String organisationName, UUID journalEntryId, UUID appointmentId, String confidentialMarkdown, String gitCommitHash) {
         this.clientUuid = clientUuid;
         this.authorTherapistUuid = authorTherapistUuid;
         this.authorTherapistName = authorTherapistName;
         this.organisationName = organisationName;
         this.journalEntryId = journalEntryId;
+        this.appointmentId = appointmentId;
         this.confidentialMarkdown = confidentialMarkdown;
         this.gitCommitHash = gitCommitHash;
         this.createdAt = LocalDateTime.now();
@@ -73,6 +78,9 @@ public class TherapistClinicalNote {
 
     public UUID getJournalEntryId() { return journalEntryId; }
     public void setJournalEntryId(UUID journalEntryId) { this.journalEntryId = journalEntryId; }
+
+    public UUID getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(UUID appointmentId) { this.appointmentId = appointmentId; }
 
     public String getConfidentialMarkdown() { return confidentialMarkdown; }
     public void setConfidentialMarkdown(String confidentialMarkdown) { this.confidentialMarkdown = confidentialMarkdown; }

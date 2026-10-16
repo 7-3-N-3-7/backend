@@ -1,8 +1,10 @@
 package com.platform.dto;
 
+import com.platform.core.dto.BaseDTO;
 import java.util.UUID;
 
-public class PsychotraumatologyTestDto {
+public class PsychotraumatologyTestDto implements BaseDTO<UUID> {
+    private UUID id;
     private UUID clientUuid;
     private UUID therapistUuid;
     private String testType;
@@ -11,6 +13,12 @@ public class PsychotraumatologyTestDto {
     private String answersJson;
 
     public PsychotraumatologyTestDto() {}
+
+    @Override
+    public UUID getId() { return id; }
+
+    @Override
+    public void setId(UUID id) { this.id = id; }
 
     public UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(UUID clientUuid) { this.clientUuid = clientUuid; }

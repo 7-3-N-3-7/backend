@@ -103,6 +103,17 @@ public class ClinicPlatformSteps {
         profile.setBiography("Autoriseret klinisk psykolog");
         profile.setWorkingHoursJson("{\"mon\":\"09:00-16:00\"}");
         providerProfileRepository.save(profile);
+
+        ClientProfile cp = clientProfileRepository.findByUserId(therapistUuid)
+                .orElseGet(ClientProfile::new);
+        cp.setUserId(therapistUuid);
+        cp.setFullName(displayName);
+        cp.setDateOfBirth("1980-01-01");
+        cp.setEmail("therapist-" + therapistUuidStr.substring(0, 8) + "@clinic.dk");
+        cp.setPhoneNumber("+45 20 12 34 56");
+        cp.setHomeAddress("Psykologklinikvej 4");
+        cp.setPostalCode("1050");
+        clientProfileRepository.save(cp);
     }
 
     @Given("a registered client profile for {string} named {string} with email {string}")
@@ -131,6 +142,7 @@ public class ClinicPlatformSteps {
         ProviderProfile provider = providerProfileRepository.findByUserUuid(therapistUuid).orElse(null);
 
         Map<String, Object> payload = new HashMap<>(rows);
+        payload.put("therapistUuid", therapistUuidStr);
         if (provider != null) {
             payload.put("providerProfileId", provider.getId().toString());
             if (provider.getOrganisation() != null) {

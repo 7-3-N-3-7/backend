@@ -36,6 +36,7 @@ public class JournalGitService {
     private String repoPath;
 
     private Git git;
+    private final Map<String, List<Map<String, String>>> historyCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     @PostConstruct
     public void init() {
@@ -79,6 +80,7 @@ public class JournalGitService {
                     .call();
 
             log.info("Committed journal entry for patient {}", patientId);
+            historyCache.keySet().removeIf(key -> key.startsWith(patientId + ":"));
             return commit.getName().substring(0, 8);
         } catch (IOException | GitAPIException e) {
             log.error("Failed to commit journal entry for patient " + patientId, e);
@@ -97,6 +99,12 @@ public class JournalGitService {
     }
 
     public List<Map<String, String>> getCommitHistory(String patientId, boolean isTherapist, JournalService journalService) {
+        String cacheKey = patientId + ":" + isTherapist;
+        List<Map<String, String>> cached = historyCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         List<Map<String, String>> history = new ArrayList<>();
         String fileName = patientId + ".md";
         File entryFile = new File(repoPath, fileName);
@@ -107,6 +115,26 @@ public class JournalGitService {
             Iterable<RevCommit> commits = git.log().addPath(fileName).call();
             Repository repository = git.getRepository();
             for (RevCommit commit : commits) {
+                // Strict client privacy: appointments are private and personal to the client.
+                // Raw appointment commits (from "Klinik Booking" or appointment lifecycle messages)
+                // must not be exposed to therapists.
+                if (isTherapist) {
+                    String author = commit.getAuthorIdent() != null ? commit.getAuthorIdent().getName() : "";
+                    String msg = commit.getFullMessage();
+                    String msgLower = (msg != null ? msg.toLowerCase() : "");
+                    if ("Klinik Booking".equalsIgnoreCase(author)
+                            || msgLower.startsWith("aftale oprettet")
+                            || msgLower.startsWith("aftale ombooket")
+                            || msgLower.startsWith("aftale aflyst")
+                            || msgLower.startsWith("aftale:")
+                            || msgLower.startsWith("appointment:")
+                            || msgLower.startsWith("appointment created")
+                            || msgLower.startsWith("appointment updated")
+                            || msgLower.startsWith("appointment cancelled")) {
+                        continue;
+                    }
+                }
+
                 String rawSnapshot = readBlobAtCommit(repository, commit, fileName);
                 String visibleSnapshot = journalService.getJournalContent(rawSnapshot, isTherapist);
                 Map<String, String> item = new LinkedHashMap<>();
@@ -118,10 +146,46 @@ public class JournalGitService {
                 item.put("snapshot", visibleSnapshot);
                 history.add(item);
             }
+            historyCache.put(cacheKey, List.copyOf(history));
         } catch (Exception e) {
             log.warn("Could not read Git commit history for patient {}", patientId, e);
         }
         return history;
+    }
+
+    public List<Map<String, String>> getCommitHistory(
+            String patientId,
+            boolean isTherapist,
+            JournalService journalService,
+            java.time.LocalDate historyStartDate,
+            java.time.LocalDate historyEndDate,
+            String therapistId
+    ) {
+        List<Map<String, String>> fullHistory = getCommitHistory(patientId, isTherapist, journalService);
+        if (historyStartDate == null && historyEndDate == null) {
+            return fullHistory;
+        }
+
+        List<Map<String, String>> filtered = new ArrayList<>();
+        for (Map<String, String> item : fullHistory) {
+            String ts = item.get("timestamp");
+            if (ts != null) {
+                try {
+                    java.time.LocalDate commitDate = java.time.Instant.parse(ts)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate();
+                    if (historyStartDate != null && commitDate.isBefore(historyStartDate)) {
+                        continue;
+                    }
+                    if (historyEndDate != null && commitDate.isAfter(historyEndDate)) {
+                        continue;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            filtered.add(item);
+        }
+        return filtered;
     }
 
     private String readBlobAtCommit(Repository repository, RevCommit commit, String fileName) throws IOException {

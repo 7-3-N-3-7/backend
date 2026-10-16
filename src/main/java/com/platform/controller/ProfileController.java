@@ -12,6 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import java.util.LinkedHashMap;
 =======
 import java.util.HashMap;
@@ -19,9 +22,12 @@ import java.util.HashMap;
 =======
 import java.util.HashMap;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 import java.util.HashMap;
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
@@ -37,6 +43,9 @@ public class ProfileController {
         }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         Map<String, String> profile = new LinkedHashMap<>();
         profile.put("userUuid", jwt.getSubject());
 <<<<<<< HEAD
@@ -53,10 +62,13 @@ public class ProfileController {
         Map<String, String> profile = new HashMap<>();
         profile.put("userUuid", jwt.getSubject());
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
         Map<String, String> profile = new HashMap<>();
         profile.put("userUuid", jwt.getSubject());
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         putClaim(profile, "email", jwt.getClaimAsString("email"));
         putClaim(profile, "name", jwt.getClaimAsString("name"));
         Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
@@ -71,11 +83,17 @@ public class ProfileController {
                 : "";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         profile.put("primaryRole", primaryRole);
         return ResponseEntity.ok(profile);
     }
@@ -83,6 +101,9 @@ public class ProfileController {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private String extractPrimaryRole(Jwt jwt) {
         Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
         if (realmAccess != null && realmAccess.get("roles") instanceof List<?> roles && !roles.isEmpty()) {
@@ -96,14 +117,20 @@ public class ProfileController {
 =======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private void putClaim(Map<String, String> profile, String key, String value) {
         if (value != null) {
             profile.put(key, value);
         }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 }
@@ -112,7 +139,10 @@ public class ProfileController {
     }
 }
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
     }
 }
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715

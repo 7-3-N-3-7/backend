@@ -2,6 +2,9 @@ package com.platform.controller;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.core.controller.BaseController;
 import com.platform.crm.model.JournalEntry;
 <<<<<<< HEAD
@@ -20,46 +23,66 @@ import com.platform.service.JournalGitService;
 import com.platform.service.JournalService;
 import com.platform.service.PlatformCacheService;
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.crm.model.JournalEntry;
 import com.platform.crm.model.TherapistNote;
 import com.platform.crm.repository.JournalEntryRepository;
 import com.platform.crm.repository.TherapistNoteRepository;
 import com.platform.dto.JournalEntryDto;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/journals")
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 @CrossOrigin(origins = "*")
 public class JournalController extends BaseController<JournalEntry, JournalEntryDto, UUID> {
 
@@ -83,10 +106,13 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
 public class JournalController {
 
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 public class JournalController {
 
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private final JournalEntryRepository journalEntryRepository;
     private final com.platform.service.JournalGitService journalGitService;
     private final TherapistNoteRepository therapistNoteRepository;
@@ -105,6 +131,9 @@ public class JournalController {
         UUID clientUuid = getCallerUuid(authentication);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @Autowired
@@ -149,8 +178,11 @@ public class JournalController {
         return ResponseEntity.ok(journalService.updateJournalEntrySharing(entryId, payload));
 =======
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
         JournalEntry entry = new JournalEntry(
                 dto.getTitle(),
@@ -161,9 +193,13 @@ public class JournalController {
         );
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         JournalEntry saved = journalEntryRepository.save(entry);
         
         // Write to Git for audit trail
@@ -174,6 +210,9 @@ public class JournalController {
         return ResponseEntity.ok(saved);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
@@ -187,8 +226,11 @@ public class JournalController {
         return ResponseEntity.ok().build();
 =======
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     @PostMapping("/therapist-notes")
@@ -197,9 +239,13 @@ public class JournalController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         if (!hasRole(jwt, "therapist")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Access Denied: Required role ROLE_THERAPIST");
@@ -220,6 +266,9 @@ public class JournalController {
         return ResponseEntity.ok(saved);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
     }
 
@@ -234,8 +283,11 @@ public class JournalController {
     }
 =======
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     @GetMapping("/timeline/{clientUuid}")
@@ -244,9 +296,13 @@ public class JournalController {
         Authentication auth
     ) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         boolean isTherapist = false;
         if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
             if (hasRole(jwt, "therapist")) {
@@ -255,6 +311,9 @@ public class JournalController {
         }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @GetMapping("/history/{clientUuid}")
@@ -288,8 +347,11 @@ public class JournalController {
         try {
             return ResponseEntity.ok(journalService.getClientTimeline(clientUuid, auth));
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
         try {
             String rawMarkdown = journalGitService.readJournalEntry(clientUuid.toString());
@@ -298,9 +360,13 @@ public class JournalController {
                 java.util.Map.of("id", clientUuid.toString(), "content", content)
             ));
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

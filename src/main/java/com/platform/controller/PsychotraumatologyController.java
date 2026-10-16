@@ -2,6 +2,9 @@ package com.platform.controller;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.core.controller.BaseController;
 import com.platform.crm.model.PsychotraumatologyTest;
 import com.platform.crm.repository.PsychotraumatologyTestRepository;
@@ -12,33 +15,46 @@ import com.platform.service.PsychotraumatologyService;
 import com.platform.repository.AppointmentRepository;
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.crm.model.PsychotraumatologyTest;
 import com.platform.crm.repository.PsychotraumatologyTestRepository;
 import com.platform.dto.PsychotraumatologyTestDto;
 import com.platform.repository.AppointmentRepository;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.web.bind.annotation.*;
 =======
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +63,9 @@ import java.util.UUID;
 @RequestMapping("/api/v1/psychotraumatology/tests")
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 public class PsychotraumatologyController extends BaseController<PsychotraumatologyTest, PsychotraumatologyTestDto, UUID> {
 
 <<<<<<< HEAD
@@ -66,10 +85,13 @@ public class PsychotraumatologyController extends BaseController<Psychotraumatol
 public class PsychotraumatologyController {
 
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 public class PsychotraumatologyController {
 
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private final PsychotraumatologyTestRepository testRepository;
     private final AppointmentRepository appointmentRepository;
 
@@ -113,6 +135,9 @@ public class PsychotraumatologyController {
         test.setAnswersJson(dto.getAnswersJson());
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 
     @Override
@@ -128,11 +153,14 @@ public class PsychotraumatologyController {
         PsychotraumatologyTest saved = testRepository.save(test);
         return ResponseEntity.ok(saved);
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 
         PsychotraumatologyTest saved = testRepository.save(test);
         return ResponseEntity.ok(saved);
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     private UUID getCallerUuid(Jwt jwt) {
@@ -150,12 +178,18 @@ public class PsychotraumatologyController {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         return ResponseEntity.ok(psychotraumatologyService.getTestsByClient(clientUuid, authentication));
 =======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
@@ -174,10 +208,16 @@ public class PsychotraumatologyController {
         return ResponseEntity.ok(tests);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 }

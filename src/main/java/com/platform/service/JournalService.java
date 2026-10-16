@@ -2,6 +2,9 @@ package com.platform.service;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.core.service.BaseService;
 import com.platform.crm.model.JournalEntry;
 import com.platform.crm.model.TherapistClinicalNote;
@@ -433,8 +436,11 @@ public class JournalService extends BaseService<JournalEntry, JournalEntryDto, U
             return UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
         }
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.stereotype.Service;
 import java.util.regex.Pattern;
 
@@ -451,8 +457,12 @@ public class JournalService {
         }
         return INTERNAL_NOTES_PATTERN.matcher(rawMarkdown).replaceAll("").trim();
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 }

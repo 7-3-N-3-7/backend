@@ -25,13 +25,19 @@ public class AppointmentServiceTest {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private AppointmentController appointmentController;
 =======
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @BeforeEach
     public void setUp() {
@@ -40,13 +46,19 @@ public class AppointmentServiceTest {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
         appointmentController = new AppointmentController(appointmentService);
 =======
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     @Test
@@ -232,6 +244,7 @@ public class AppointmentServiceTest {
 
         Assertions.assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         Mockito.verify(appointmentRepository, Mockito.never()).save(any(Appointment.class));
+<<<<<<< HEAD
     }
 
     @Test
@@ -263,5 +276,7 @@ public class AppointmentServiceTest {
 
         Assertions.assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         Mockito.verify(appointmentRepository, Mockito.never()).save(any(Appointment.class));
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 }

@@ -2,6 +2,9 @@ package com.platform.dto;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.core.dto.BaseDTO;
 import java.util.List;
 import java.util.UUID;
@@ -25,8 +28,11 @@ public class JournalEntryDto implements BaseDTO<UUID> {
     public void setId(UUID id) { this.id = id; }
 
 =======
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import java.util.UUID;
 
 public class JournalEntryDto {
@@ -37,9 +43,13 @@ public class JournalEntryDto {
     public JournalEntryDto() {}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     
@@ -50,6 +60,9 @@ public class JournalEntryDto {
     public void setMoodRating(Integer moodRating) { this.moodRating = moodRating; }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
     public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
@@ -64,6 +77,9 @@ public class JournalEntryDto {
     public void setAppointmentId(UUID appointmentId) { this.appointmentId = appointmentId; }
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
 =======
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 }

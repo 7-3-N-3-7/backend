@@ -1,5 +1,32 @@
 package com.platform.dto;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+import com.platform.core.dto.BaseDTO;
+import java.util.List;
+import java.util.UUID;
+
+public class JournalEntryDto implements BaseDTO<UUID> {
+    private UUID id;
+    private String title;
+    private String content;
+    private Integer moodRating;
+    private Boolean sharedWithTherapists = true;
+    private List<UUID> sharedTherapistUuids;
+    private UUID clientUuid;
+    private UUID appointmentId;
+
+    public JournalEntryDto() {}
+
+    @Override
+    public UUID getId() { return id; }
+
+    @Override
+    public void setId(UUID id) { this.id = id; }
+
+=======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 import java.util.UUID;
 
 public class JournalEntryDto {
@@ -9,6 +36,10 @@ public class JournalEntryDto {
 
     public JournalEntryDto() {}
 
+<<<<<<< HEAD
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     
@@ -17,4 +48,22 @@ public class JournalEntryDto {
     
     public Integer getMoodRating() { return moodRating; }
     public void setMoodRating(Integer moodRating) { this.moodRating = moodRating; }
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+    public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
+    public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
+
+    public List<UUID> getSharedTherapistUuids() { return sharedTherapistUuids; }
+    public void setSharedTherapistUuids(List<UUID> sharedTherapistUuids) { this.sharedTherapistUuids = sharedTherapistUuids; }
+
+    public UUID getClientUuid() { return clientUuid; }
+    public void setClientUuid(UUID clientUuid) { this.clientUuid = clientUuid; }
+
+    public UUID getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(UUID appointmentId) { this.appointmentId = appointmentId; }
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 }

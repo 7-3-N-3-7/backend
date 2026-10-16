@@ -1,16 +1,23 @@
 package com.platform.crm.model;
     
+import com.platform.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "journal_entries")
-public class JournalEntry {
+public class JournalEntry extends BaseEntity<java.util.UUID> {
 
+<<<<<<< HEAD
+=======
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private java.util.UUID id;
 
+<<<<<<< HEAD
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -25,6 +32,39 @@ public class JournalEntry {
 
     @Column(name = "client_uuid", nullable = false)
     private java.util.UUID clientUuid;
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+    @Column(name = "is_shared_with_therapists")
+    private Boolean sharedWithTherapists = true;
+
+    @Column(name = "shared_therapist_uuids", columnDefinition = "TEXT")
+    private String sharedTherapistUuidsCsv;
+
+    @Column(name = "git_commit_hash")
+    private String gitCommitHash;
+
+    @Column(name = "appointment_id")
+    private java.util.UUID appointmentId;
+
+    public JournalEntry() {}
+
+    public JournalEntry(    
+        String title,
+        String content, 
+        Integer moodRating,
+        LocalDateTime timestamp, 
+        java.util.UUID clientUuid
+    ) {
+        this.title = title;
+        this.content = content;
+        this.moodRating = moodRating;
+        this.timestamp = timestamp;
+        this.clientUuid = clientUuid;
+        this.sharedWithTherapists = true;
+=======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 
     public JournalEntry() {}
 
@@ -41,12 +81,19 @@ public class JournalEntry {
         this.moodRating = moodRating;
         this.timestamp = timestamp;
         this.clientUuid = clientUuid;
+<<<<<<< HEAD
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     }
 
     @PrePersist
     protected void onCreate() {
         if (timestamp == null) {
             timestamp = LocalDateTime.now();
+        }
+        if (sharedWithTherapists == null) {
+            sharedWithTherapists = true;
         }
     }
 
@@ -67,4 +114,59 @@ public class JournalEntry {
 
     public java.util.UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(java.util.UUID clientUuid) { this.clientUuid = clientUuid; }
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+    public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
+    public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
+
+    public java.util.List<java.util.UUID> getSharedTherapistUuids() {
+        if (sharedTherapistUuidsCsv == null || sharedTherapistUuidsCsv.isBlank()) {
+            return java.util.List.of();
+        }
+        java.util.List<java.util.UUID> list = new java.util.ArrayList<>();
+        for (String part : sharedTherapistUuidsCsv.split(",")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                try {
+                    list.add(java.util.UUID.fromString(trimmed));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+        return list;
+    }
+
+    public void setSharedTherapistUuids(java.util.List<java.util.UUID> uuids) {
+        if (uuids == null || uuids.isEmpty()) {
+            this.sharedTherapistUuidsCsv = null;
+        } else {
+            this.sharedTherapistUuidsCsv = uuids.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .map(java.util.UUID::toString)
+                    .collect(java.util.stream.Collectors.joining(","));
+        }
+    }
+
+    public boolean isVisibleToTherapist(java.util.UUID therapistUuid) {
+        if (!Boolean.TRUE.equals(getSharedWithTherapists())) {
+            return false;
+        }
+        java.util.List<java.util.UUID> allowed = getSharedTherapistUuids();
+        if (allowed.isEmpty()) {
+            return true;
+        }
+        return therapistUuid != null && allowed.contains(therapistUuid);
+    }
+
+    public String getGitCommitHash() { return gitCommitHash; }
+    public void setGitCommitHash(String gitCommitHash) { this.gitCommitHash = gitCommitHash; }
+
+    public java.util.UUID getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(java.util.UUID appointmentId) { this.appointmentId = appointmentId; }
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 }

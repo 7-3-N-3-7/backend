@@ -1,10 +1,32 @@
 package com.platform.entity;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+import com.platform.core.entity.BaseEntity;
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "services")
+<<<<<<< HEAD
+<<<<<<< HEAD
+public class Service extends BaseEntity<UUID> {
+
+    @ManyToOne
+    @JoinColumn(name = "provider_profile_id", nullable = true)
+    private ProviderProfile provider;
+
+    @ManyToOne
+    @JoinColumn(name = "organisation_id", nullable = true)
+    private Organisation organisation;
+
+=======
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 public class Service {
 
     @Id
@@ -15,6 +37,10 @@ public class Service {
     @JoinColumn(name = "provider_profile_id", nullable = false)
     private ProviderProfile provider;
 
+<<<<<<< HEAD
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     private String name;
     
     @Column(columnDefinition = "TEXT")
@@ -24,6 +50,15 @@ public class Service {
     private Double price;
     private String location;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     public Service() {}
 
     public UUID getId() { return id; }
@@ -32,6 +67,15 @@ public class Service {
     public ProviderProfile getProvider() { return provider; }
     public void setProvider(ProviderProfile provider) { this.provider = provider; }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+    public Organisation getOrganisation() { return organisation; }
+    public void setOrganisation(Organisation organisation) { this.organisation = organisation; }
+
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -46,4 +90,13 @@ public class Service {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+    public Boolean getIsActive() { return isActive != null ? isActive : true; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 }

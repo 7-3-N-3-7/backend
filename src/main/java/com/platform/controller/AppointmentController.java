@@ -2,34 +2,9 @@ package com.platform.controller;
 
 import com.platform.core.controller.BaseController;
 import com.platform.entity.Appointment;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.service.AppointmentService;
-=======
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
-=======
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -40,11 +15,6 @@ import java.util.UUID;
 @CrossOrigin(origins = "*")
 public class AppointmentController extends BaseController<Appointment, Appointment, UUID> {
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private final AppointmentService appointmentService;
 
     public AppointmentController(AppointmentService appointmentService) {
@@ -65,31 +35,6 @@ public class AppointmentController extends BaseController<Appointment, Appointme
         java.time.LocalDate fromDate = (from != null && !from.isBlank()) ? java.time.LocalDate.parse(from) : null;
         java.time.LocalDate toDate = (to != null && !to.isBlank()) ? java.time.LocalDate.parse(to) : null;
         return ResponseEntity.ok(appointmentService.getAppointmentsForClient(clientUuid, fromDate, toDate));
-=======
-    private final com.platform.service.AppointmentService appointmentService;
-
-<<<<<<< HEAD
-=======
-    private final com.platform.service.AppointmentService appointmentService;
-
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-    public AppointmentController(com.platform.service.AppointmentService appointmentService) {
-        this.appointmentService = appointmentService;
-    }
-
-    @GetMapping("/client/{clientUuid}")
-    public ResponseEntity<List<Appointment>> getAppointmentsForClient(@PathVariable UUID clientUuid) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsForClient(clientUuid));
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 
     @GetMapping("/therapist/{therapistUuid}")
@@ -120,7 +65,6 @@ public class AppointmentController extends BaseController<Appointment, Appointme
 
     @Override
     @PostMapping
-<<<<<<< HEAD
     public ResponseEntity<Appointment> create(@RequestBody Appointment appointment) {
         return createAppointment(appointment);
     }
@@ -146,59 +90,17 @@ public class AppointmentController extends BaseController<Appointment, Appointme
 
     @Override
     @DeleteMapping("/{id}")
-<<<<<<< HEAD
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         return cancelAppointment(id);
     }
 
     public ResponseEntity<Void> cancelAppointment(UUID id) {
         appointmentService.cancelAppointment(id);
-=======
-=======
-    public ResponseEntity<Appointment> createAppointment(@RequestBody Appointment appointment) {
-        return ResponseEntity.ok(appointmentService.createAppointment(appointment));
-    }
-
-    @DeleteMapping("/{id}")
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-    public ResponseEntity<Void> cancelAppointment(@PathVariable UUID id, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-        UUID callerUuid;
-        try {
-            callerUuid = UUID.fromString(jwt.getSubject());
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user identity");
-        }
-        appointmentService.cancelAppointment(id, callerUuid);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}/git-history")
     public ResponseEntity<List<Map<String, String>>> getAppointmentGitHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(appointmentService.getAppointmentGitHistory(id));
-=======
-        return ResponseEntity.ok().build();
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-        return ResponseEntity.ok().build();
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
 }

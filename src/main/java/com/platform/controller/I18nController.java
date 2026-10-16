@@ -1,10 +1,5 @@
 package com.platform.controller;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import com.platform.entity.I18nDictionary;
 import com.platform.service.I18nService;
 import org.springframework.http.CacheControl;
@@ -15,25 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-import com.platform.service.I18nService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
 @RestController
 @RequestMapping("/api/v1/i18n")
@@ -46,11 +22,6 @@ public class I18nController {
         this.i18nService = i18nService;
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     @GetMapping("/locales")
     public ResponseEntity<List<Map<String, Object>>> getLocales(
             @RequestParam(value = "ref", defaultValue = "da") String ref
@@ -146,26 +117,6 @@ public class I18nController {
                 .orElseGet(() -> i18nService.getDictionary("en")
                         .map(fallback -> ResponseEntity.ok()
                                 .cacheControl(cacheHeader)
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-    @GetMapping("/{locale}")
-    public ResponseEntity<Map<String, Object>> getDictionary(@PathVariable String locale) {
-        return i18nService.getDictionary(locale)
-                .map(dict -> ResponseEntity.ok(dict.getTranslations()))
-                .orElseGet(() -> i18nService.getDictionary("en")
-                        .map(fallback -> ResponseEntity.ok()
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
                                 .header("X-Locale-Fallback", "en")
                                 .body(fallback.getTranslations()))
                         .orElse(ResponseEntity.notFound().build()));
@@ -178,11 +129,6 @@ public class I18nController {
         i18nService.updateTranslation(locale, key, request.getValue());
         return ResponseEntity.ok().build();
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @DeleteMapping("/{locale}/{key}")
     public ResponseEntity<Void> deleteTranslationKey(
@@ -194,12 +140,3 @@ public class I18nController {
     }
 }
 
-=======
-}
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-}
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715

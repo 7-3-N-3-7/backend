@@ -1,67 +1,18 @@
 package com.platform.crm.model;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 import com.platform.core.entity.BaseEntity;
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
-import com.platform.core.entity.BaseEntity;
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 import jakarta.persistence.*;
 import java.util.UUID;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "psychotraumatology_tests")
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 public class PsychotraumatologyTest extends BaseEntity<UUID> {
-=======
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
-public class PsychotraumatologyTest extends BaseEntity<UUID> {
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-public class PsychotraumatologyTest {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 
     @Column(name = "client_uuid", nullable = false)
     private UUID clientUuid;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     @Column(name = "therapist_uuid", nullable = true)
-=======
-    @Column(name = "therapist_uuid", nullable = false)
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-    @Column(name = "therapist_uuid", nullable = false)
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     private UUID therapistUuid;
 
     @Column(name = "test_type", nullable = false)

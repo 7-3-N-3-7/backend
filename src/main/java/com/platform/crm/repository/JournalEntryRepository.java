@@ -7,6 +7,24 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
+<<<<<<< HEAD
 public interface JournalEntryRepository extends BaseRepository<JournalEntry, java.util.UUID> {
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+public interface JournalEntryRepository extends BaseRepository<JournalEntry, java.util.UUID> {
+=======
+public interface JournalEntryRepository extends JpaRepository<JournalEntry, java.util.UUID> {
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+public interface JournalEntryRepository extends JpaRepository<JournalEntry, java.util.UUID> {
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     List<JournalEntry> findByClientUuidOrderByTimestampDesc(java.util.UUID clientUuid);
 }

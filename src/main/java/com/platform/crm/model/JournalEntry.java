@@ -8,6 +8,23 @@ import java.time.LocalDateTime;
 @Table(name = "journal_entries")
 public class JournalEntry extends BaseEntity<java.util.UUID> {
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private java.util.UUID id;
+
+<<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -22,6 +39,14 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     @Column(name = "client_uuid", nullable = false)
     private java.util.UUID clientUuid;
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Column(name = "is_shared_with_therapists")
     private Boolean sharedWithTherapists = true;
@@ -50,6 +75,39 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
         this.timestamp = timestamp;
         this.clientUuid = clientUuid;
         this.sharedWithTherapists = true;
+<<<<<<< HEAD
+=======
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+
+    public JournalEntry() {}
+
+    public JournalEntry
+    (    
+        String           title,
+        String           content, 
+        Integer          moodRating,
+        LocalDateTime    timestamp, 
+        java.util.UUID   clientUuid)
+    {
+        this.title     = title;
+        this.content   = content;
+        this.moodRating = moodRating;
+        this.timestamp = timestamp;
+        this.clientUuid = clientUuid;
+<<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @PrePersist
@@ -79,6 +137,14 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     public java.util.UUID getClientUuid() { return clientUuid; }
     public void setClientUuid(java.util.UUID clientUuid) { this.clientUuid = clientUuid; }
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     public Boolean getSharedWithTherapists() { return sharedWithTherapists != null ? sharedWithTherapists : true; }
     public void setSharedWithTherapists(Boolean sharedWithTherapists) { this.sharedWithTherapists = sharedWithTherapists; }
@@ -128,4 +194,14 @@ public class JournalEntry extends BaseEntity<java.util.UUID> {
 
     public java.util.UUID getAppointmentId() { return appointmentId; }
     public void setAppointmentId(java.util.UUID appointmentId) { this.appointmentId = appointmentId; }
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 }

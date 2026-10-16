@@ -10,6 +10,21 @@ import java.util.UUID;
 public class Appointment extends BaseEntity<UUID> {
 
     public Appointment() {}
+<<<<<<< HEAD
+=======
+=======
+    protected Appointment() {}
+<<<<<<< HEAD
+
+    protected Appointment() {}
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Column(nullable = false)
     private UUID clientUuid;

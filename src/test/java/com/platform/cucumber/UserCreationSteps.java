@@ -25,12 +25,43 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration;
+<<<<<<< HEAD
 import org.redisson.spring.starter.RedissonAutoConfigurationV2;
 import org.springframework.security.oauth2.jwt.BadJwtException;
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+import org.redisson.spring.starter.RedissonAutoConfigurationV2;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+=======
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 @EnableAutoConfiguration(exclude = {
     MongoAutoConfiguration.class,
     MongoDataAutoConfiguration.class,
@@ -41,6 +72,22 @@ public class UserCreationSteps {
 
     public static final java.util.Map<String, java.util.Map<String, Object>> CUSTOM_TOKENS = new java.util.concurrent.ConcurrentHashMap<>();
 
+<<<<<<< HEAD
+=======
+=======
+@EnableAutoConfiguration(exclude = {MongoAutoConfiguration.class, MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
+public class UserCreationSteps {
+
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+@EnableAutoConfiguration(exclude = {MongoAutoConfiguration.class, MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
+public class UserCreationSteps {
+
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     @TestConfiguration
     static class MockSecurityConfig {
         @Bean
@@ -74,6 +121,14 @@ public class UserCreationSteps {
         public JwtDecoder jwtDecoder() {
             return token -> {
                 if (token.contains("expired") || token.contains("invalid")) {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
                     throw new BadJwtException("Jwt expired");
                 }
                 java.util.Map<String, Object> customClaims = CUSTOM_TOKENS.get(token);
@@ -111,6 +166,59 @@ public class UserCreationSteps {
                 java.util.List<String> roles = java.util.List.of("therapist");
                 if (token.startsWith("valid-client-token-for-")
                         || ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(token) && subject.equals("550e8400-e29b-41d4-a716-446655440000"))) {
+<<<<<<< HEAD
+=======
+=======
+=======
+                    throw new JwtException("Jwt expired");
+                }
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+<<<<<<< HEAD
+=======
+                    throw new JwtException("Jwt expired");
+                }
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+                String[] tokenParts = token.split("\\|");
+                String tokenIdentity = tokenParts[0];
+                String subject = "550e8400-e29b-41d4-a716-446655440000";
+                if (tokenIdentity.startsWith("valid-token-for-")) {
+                    subject = tokenIdentity.substring("valid-token-for-".length());
+                } else if (tokenIdentity.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
+                    subject = tokenIdentity;
+                }
+
+                String email = null;
+                String name = null;
+                String assignedRole = null;
+                for (int i = 1; i < tokenParts.length; i++) {
+                    if (tokenParts[i].startsWith("email=")) {
+                        email = tokenParts[i].substring("email=".length());
+                    } else if (tokenParts[i].startsWith("name=")) {
+                        name = tokenParts[i].substring("name=".length());
+                    } else if (tokenParts[i].startsWith("role=")) {
+                        assignedRole = tokenParts[i].substring("role=".length());
+                    }
+                }
+
+                java.util.List<String> roles = java.util.List.of("therapist");
+                if ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(tokenIdentity)
+                        && subject.equals("550e8400-e29b-41d4-a716-446655440000")) {
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+=======
+>>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
+=======
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
                     roles = java.util.List.of("client");
                 }
 

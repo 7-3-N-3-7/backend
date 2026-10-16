@@ -1,9 +1,29 @@
 package com.platform.dto;
 
+<<<<<<< HEAD
+import com.platform.core.dto.BaseDTO;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+
+public class UserRequestDto implements BaseDTO<java.util.UUID> {
+
+    private java.util.UUID id;
+
+    @Override
+    public java.util.UUID getId() {
+        return id;
+    }
+
+    @Override
+    public void setId(java.util.UUID id) {
+        this.id = id;
+    }
+=======
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
 public class UserRequestDto {
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 
     @NotBlank(message = "Username is required")
     private String username;

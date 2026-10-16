@@ -1,7 +1,14 @@
 package com.platform.controller;
 
+<<<<<<< HEAD
+import com.platform.core.controller.BaseController;
 import com.platform.dto.UserRequestDto;
 import com.platform.dto.UserResponseDto;
+import com.platform.entity.UserEntity;
+=======
+import com.platform.dto.UserRequestDto;
+import com.platform.dto.UserResponseDto;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import com.platform.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -9,18 +16,40 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
+<<<<<<< HEAD
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController extends BaseController<UserEntity, UserRequestDto, UUID> {
+=======
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 
     private final UserService userService;
 
     public UserController(UserService userService) {
+<<<<<<< HEAD
+        super(userService);
+        this.userService = userService;
+    }
+
+    @Override
+    @PostMapping
+    public ResponseEntity<UserRequestDto> create(@Valid @RequestBody UserRequestDto request) {
+        return (ResponseEntity<UserRequestDto>) (ResponseEntity<?>) createUser(request);
+    }
+
+    public ResponseEntity<?> createUser(UserRequestDto request) {
+=======
         this.userService = userService;
     }
 
     @PostMapping
     public ResponseEntity<?> createUser(@Valid @RequestBody UserRequestDto request) {
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         try {
             UserResponseDto createdUser = userService.createUser(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);

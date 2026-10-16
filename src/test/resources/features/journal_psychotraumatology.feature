@@ -25,6 +25,19 @@ Feature: Clinical Journaling, Psychotraumatology Assessment Tests, and Audit Log
     And the saved entity in PostgreSQL should have a valid generated UUID
     And the journal entry should be cached in Redisson Redis under key "journal:client:550e8400-e29b-41d4-a716-446655440000"
 
+  Scenario: Client sees shared therapist journal entries while confidential clinical notes remain hidden in JGit history and client bundle
+    Given a valid therapist with UUID "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+    When the therapist creates a confidential clinical note for client "550e8400-e29b-41d4-a716-446655440000" with text "Ander skal IKKE kunne se den her besked (Notat 1)"
+    Then the response status should be 200 OK
+    When the therapist creates a shared journal entry for client "550e8400-e29b-41d4-a716-446655440000" with title "Terapeutisk opfølgning (Delt med klient)" and content "Anders skal kunne se den her besked"
+    Then the response status should be 200 OK
+    When the therapist creates a confidential clinical note for client "550e8400-e29b-41d4-a716-446655440000" with text "Ander skal IKKE kunne se den her besked (Notat 2)"
+    Then the response status should be 200 OK
+    When the client "550e8400-e29b-41d4-a716-446655440000" fetches their journal bundle and JGit commit history
+    Then the client journal bundle and JGit history must contain "Anders skal kunne se den her besked"
+    And the client journal bundle and JGit history must NOT contain "Ander skal IKKE kunne se den her besked"
+    And the client journal bundle and JGit history must NOT contain "INTERNAL_MEDICAL_NOTES"
+
   # =========================================================================
   # 2. PSYCHOTRAUMATOLOGY TEST RESULTS & DUAL UUID REFERENCES
   # =========================================================================

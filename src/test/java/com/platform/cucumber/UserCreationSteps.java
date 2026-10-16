@@ -25,16 +25,34 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration;
+<<<<<<< HEAD
+import org.redisson.spring.starter.RedissonAutoConfigurationV2;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+=======
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+<<<<<<< HEAD
+@EnableAutoConfiguration(exclude = {
+    MongoAutoConfiguration.class,
+    MongoDataAutoConfiguration.class,
+    MongoRepositoriesAutoConfiguration.class,
+    RedissonAutoConfigurationV2.class
+})
+public class UserCreationSteps {
+
+    public static final java.util.Map<String, java.util.Map<String, Object>> CUSTOM_TOKENS = new java.util.concurrent.ConcurrentHashMap<>();
+
+=======
 @EnableAutoConfiguration(exclude = {MongoAutoConfiguration.class, MongoDataAutoConfiguration.class, MongoRepositoriesAutoConfiguration.class})
 public class UserCreationSteps {
 
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     @TestConfiguration
     static class MockSecurityConfig {
         @Bean
@@ -68,8 +86,50 @@ public class UserCreationSteps {
         public JwtDecoder jwtDecoder() {
             return token -> {
                 if (token.contains("expired") || token.contains("invalid")) {
+<<<<<<< HEAD
+                    throw new BadJwtException("Jwt expired");
+                }
+<<<<<<< HEAD
+                java.util.Map<String, Object> customClaims = CUSTOM_TOKENS.get(token);
+                if (customClaims != null) {
+                    String sub = String.valueOf(customClaims.getOrDefault("sub", "550e8400-e29b-41d4-a716-446655440000"));
+                    String email = String.valueOf(customClaims.getOrDefault("email", "jesper@example.com"));
+                    String name = String.valueOf(customClaims.getOrDefault("name", "Jesper Kock"));
+                    String issuer = String.valueOf(customClaims.getOrDefault("iss", "http://localhost:8080"));
+                    @SuppressWarnings("unchecked")
+                    java.util.List<String> customRoles = (java.util.List<String>) customClaims.getOrDefault("roles", java.util.List.of("client"));
+
+                    return Jwt.withTokenValue(token)
+                            .header("alg", "RS256")
+                            .claim("iss", issuer)
+                            .claim("sub", sub)
+                            .claim("email", email)
+                            .claim("name", name)
+                            .claim("realm_access", java.util.Map.of("roles", customRoles))
+                            .issuedAt(java.time.Instant.now().minusSeconds(60))
+                            .expiresAt(java.time.Instant.now().plusSeconds(3600))
+                            .build();
+                }
+
+                String subject = "550e8400-e29b-41d4-a716-446655440000";
+                if (token.startsWith("valid-therapist-token-for-")) {
+                    subject = token.substring("valid-therapist-token-for-".length());
+                } else if (token.startsWith("valid-client-token-for-")) {
+                    subject = token.substring("valid-client-token-for-".length());
+                } else if (token.startsWith("valid-token-for-")) {
+                    subject = token.substring("valid-token-for-".length());
+                } else if (token.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
+                    subject = token;
+                }
+
+                java.util.List<String> roles = java.util.List.of("therapist");
+                if (token.startsWith("valid-client-token-for-")
+                        || ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(token) && subject.equals("550e8400-e29b-41d4-a716-446655440000"))) {
+=======
+=======
                     throw new JwtException("Jwt expired");
                 }
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
                 String[] tokenParts = token.split("\\|");
                 String tokenIdentity = tokenParts[0];
                 String subject = "550e8400-e29b-41d4-a716-446655440000";
@@ -95,6 +155,10 @@ public class UserCreationSteps {
                 java.util.List<String> roles = java.util.List.of("therapist");
                 if ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(tokenIdentity)
                         && subject.equals("550e8400-e29b-41d4-a716-446655440000")) {
+<<<<<<< HEAD
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
                     roles = java.util.List.of("client");
                 }
                 if (assignedRole != null) {

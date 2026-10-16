@@ -1,24 +1,58 @@
 package com.platform.controller;
 
+<<<<<<< HEAD
+import com.platform.core.controller.BaseController;
+import com.platform.crm.model.PsychotraumatologyTest;
+import com.platform.crm.repository.PsychotraumatologyTestRepository;
+import com.platform.dto.PsychotraumatologyTestDto;
+<<<<<<< HEAD
+import com.platform.service.PsychotraumatologyService;
+=======
+import com.platform.repository.AppointmentRepository;
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
 import com.platform.crm.model.PsychotraumatologyTest;
 import com.platform.crm.repository.PsychotraumatologyTestRepository;
 import com.platform.dto.PsychotraumatologyTestDto;
 import com.platform.repository.AppointmentRepository;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+<<<<<<< HEAD
+import org.springframework.web.bind.annotation.*;
+=======
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/psychotraumatology/tests")
+<<<<<<< HEAD
+public class PsychotraumatologyController extends BaseController<PsychotraumatologyTest, PsychotraumatologyTestDto, UUID> {
+
+<<<<<<< HEAD
+    private final PsychotraumatologyService psychotraumatologyService;
+
+    public PsychotraumatologyController(PsychotraumatologyTestRepository testRepository) {
+        this(new PsychotraumatologyService(testRepository));
+    }
+
+    @Autowired
+    public PsychotraumatologyController(PsychotraumatologyService psychotraumatologyService) {
+        super(psychotraumatologyService);
+        this.psychotraumatologyService = psychotraumatologyService;
+    }
+=======
+=======
 public class PsychotraumatologyController {
 
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     private final PsychotraumatologyTestRepository testRepository;
     private final AppointmentRepository appointmentRepository;
 
@@ -60,9 +94,22 @@ public class PsychotraumatologyController {
         test.setScore(dto.getScore());
         test.setSeverity(dto.getSeverity());
         test.setAnswersJson(dto.getAnswersJson());
+<<<<<<< HEAD
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+
+    @Override
+    @PostMapping
+    public ResponseEntity<PsychotraumatologyTest> create(@RequestBody PsychotraumatologyTestDto dto) {
+        return submitTest(dto);
+    }
+
+    public ResponseEntity<PsychotraumatologyTest> submitTest(@RequestBody PsychotraumatologyTestDto dto) {
+        return ResponseEntity.ok(psychotraumatologyService.submitTest(dto));
+=======
 
         PsychotraumatologyTest saved = testRepository.save(test);
         return ResponseEntity.ok(saved);
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     private UUID getCallerUuid(Jwt jwt) {
@@ -77,6 +124,12 @@ public class PsychotraumatologyController {
     public ResponseEntity<List<PsychotraumatologyTest>> getTestsByClient(
             @PathVariable UUID clientUuid,
             Authentication authentication) {
+<<<<<<< HEAD
+<<<<<<< HEAD
+        return ResponseEntity.ok(psychotraumatologyService.getTestsByClient(clientUuid, authentication));
+=======
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
         
         if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
@@ -93,5 +146,9 @@ public class PsychotraumatologyController {
 
         List<PsychotraumatologyTest> tests = testRepository.findByClientUuid(clientUuid);
         return ResponseEntity.ok(tests);
+<<<<<<< HEAD
+>>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+=======
+>>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 }

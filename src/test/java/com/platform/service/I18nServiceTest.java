@@ -77,14 +77,6 @@ public class I18nServiceTest {
         Assertions.assertEquals("hola", newDict.getTranslations().get("greeting"));
         verify(repository).save(any(I18nDictionary.class));
     }
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Test
     @SuppressWarnings("unchecked")
@@ -187,14 +179,4 @@ public class I18nServiceTest {
         Assertions.assertEquals(200, ctrl.replaceRawTranslations("da", new HashMap<>(Map.of("a", "b"))).getStatusCode().value());
         Assertions.assertEquals(200, ctrl.deleteTranslationKey("da", "a").getStatusCode().value());
     }
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 }

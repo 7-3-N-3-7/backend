@@ -2,14 +2,6 @@ package com.platform.service;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
@@ -17,20 +9,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
-<<<<<<< HEAD
-=======
-=======
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,14 +17,6 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,20 +26,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-<<<<<<< HEAD
-=======
-=======
-import java.nio.file.Files;
-import java.nio.file.Path;
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-import java.nio.file.Files;
-import java.nio.file.Path;
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
 @Service
 public class JournalGitService {
@@ -80,23 +36,7 @@ public class JournalGitService {
     private String repoPath;
 
     private Git git;
-<<<<<<< HEAD
     private final Map<String, List<Map<String, String>>> historyCache = new java.util.concurrent.ConcurrentHashMap<>();
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    private final Map<String, List<Map<String, String>>> historyCache = new java.util.concurrent.ConcurrentHashMap<>();
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
-    private final Map<String, List<Map<String, String>>> historyCache = new java.util.concurrent.ConcurrentHashMap<>();
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @PostConstruct
     public void init() {
@@ -121,15 +61,6 @@ public class JournalGitService {
         }
     }
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     public void commitJournalEntry(String patientId, String entryContent, String commitMessage) {
         commitJournalEntryWithHash(patientId, entryContent, commitMessage, "Platform Audit");
     }
@@ -151,34 +82,6 @@ public class JournalGitService {
             log.info("Committed journal entry for patient {}", patientId);
             historyCache.keySet().removeIf(key -> key.startsWith(patientId + ":"));
             return commit.getName().substring(0, 8);
-<<<<<<< HEAD
-=======
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-    public synchronized void commitJournalEntry(String patientId, String entryContent, String commitMessage) {
-        try {
-            File entryFile = new File(repoPath, patientId + ".md");
-            Files.writeString(entryFile.toPath(), entryContent + "\n\n", 
-                java.nio.file.StandardOpenOption.CREATE, 
-                java.nio.file.StandardOpenOption.APPEND);
-
-            git.add().addFilepattern(patientId + ".md").call();
-            git.commit().setMessage(commitMessage).call();
-            
-            log.info("Committed journal entry for patient {}", patientId);
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         } catch (IOException | GitAPIException e) {
             log.error("Failed to commit journal entry for patient " + patientId, e);
             throw new RuntimeException("Commit failed", e);
@@ -195,14 +98,6 @@ public class JournalGitService {
         }
     }
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     public List<Map<String, String>> getCommitHistory(String patientId, boolean isTherapist, JournalService journalService) {
         String cacheKey = patientId + ":" + isTherapist;
         List<Map<String, String>> cached = historyCache.get(cacheKey);
@@ -307,16 +202,6 @@ public class JournalGitService {
         }
     }
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     public Git getGit() {
         return git;
     }

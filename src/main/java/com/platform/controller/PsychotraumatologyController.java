@@ -1,83 +1,21 @@
 package com.platform.controller;
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.core.controller.BaseController;
 import com.platform.crm.model.PsychotraumatologyTest;
 import com.platform.crm.repository.PsychotraumatologyTestRepository;
 import com.platform.dto.PsychotraumatologyTestDto;
 import com.platform.service.PsychotraumatologyService;
-<<<<<<< HEAD
-=======
-=======
-import com.platform.repository.AppointmentRepository;
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-import com.platform.crm.model.PsychotraumatologyTest;
-import com.platform.crm.repository.PsychotraumatologyTestRepository;
-import com.platform.dto.PsychotraumatologyTestDto;
-import com.platform.repository.AppointmentRepository;
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-<<<<<<< HEAD
 import org.springframework.web.bind.annotation.*;
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-import org.springframework.web.bind.annotation.*;
-=======
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/psychotraumatology/tests")
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 public class PsychotraumatologyController extends BaseController<PsychotraumatologyTest, PsychotraumatologyTestDto, UUID> {
 
     private final PsychotraumatologyService psychotraumatologyService;
@@ -91,68 +29,6 @@ public class PsychotraumatologyController extends BaseController<Psychotraumatol
         super(psychotraumatologyService);
         this.psychotraumatologyService = psychotraumatologyService;
     }
-<<<<<<< HEAD
-=======
-=======
-=======
-public class PsychotraumatologyController {
-
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-public class PsychotraumatologyController {
-
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-    private final PsychotraumatologyTestRepository testRepository;
-    private final AppointmentRepository appointmentRepository;
-
-    @Autowired
-    public PsychotraumatologyController(PsychotraumatologyTestRepository testRepository,
-                                        AppointmentRepository appointmentRepository) {
-        this.testRepository = testRepository;
-        this.appointmentRepository = appointmentRepository;
-    }
-
-    @PostMapping
-    public ResponseEntity<PsychotraumatologyTest> submitTest(@RequestBody PsychotraumatologyTestDto dto,
-                                                              Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-        UUID callerUuid = getCallerUuid(jwt);
-        boolean isClient = authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_client"));
-        boolean isTherapist = authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_therapist"));
-        if (!isClient && !isTherapist) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
-        }
-        if (dto.getClientUuid() == null || dto.getTherapistUuid() == null
-                || !appointmentRepository.existsByClientUuidAndTherapistUuid(
-                        dto.getClientUuid(), dto.getTherapistUuid())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
-        }
-        if ((isClient && !callerUuid.equals(dto.getClientUuid()))
-                || (isTherapist && !callerUuid.equals(dto.getTherapistUuid()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
-        }
-
-        PsychotraumatologyTest test = new PsychotraumatologyTest();
-        test.setClientUuid(dto.getClientUuid());
-        test.setTherapistUuid(dto.getTherapistUuid());
-        test.setTestType(dto.getTestType());
-        test.setScore(dto.getScore());
-        test.setSeverity(dto.getSeverity());
-        test.setAnswersJson(dto.getAnswersJson());
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Override
     @PostMapping
@@ -162,83 +38,12 @@ public class PsychotraumatologyController {
 
     public ResponseEntity<PsychotraumatologyTest> submitTest(@RequestBody PsychotraumatologyTestDto dto) {
         return ResponseEntity.ok(psychotraumatologyService.submitTest(dto));
-<<<<<<< HEAD
-=======
-=======
-
-        PsychotraumatologyTest saved = testRepository.save(test);
-        return ResponseEntity.ok(saved);
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-
-        PsychotraumatologyTest saved = testRepository.save(test);
-        return ResponseEntity.ok(saved);
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-    }
-
-    private UUID getCallerUuid(Jwt jwt) {
-        try {
-            return UUID.fromString(jwt.getSubject());
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user identity");
-        }
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @GetMapping("/client/{clientUuid}")
     public ResponseEntity<List<PsychotraumatologyTest>> getTestsByClient(
             @PathVariable UUID clientUuid,
             Authentication authentication) {
-<<<<<<< HEAD
         return ResponseEntity.ok(psychotraumatologyService.getTestsByClient(clientUuid, authentication));
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-        return ResponseEntity.ok(psychotraumatologyService.getTestsByClient(clientUuid, authentication));
-=======
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-        
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-
-        UUID callerUuid = getCallerUuid(jwt);
-
-        // For simplicity, if caller is not the requested client, deny.
-        // In a real system, you'd also check if the caller is the therapist for this client.
-        // But for the cucumber test "Prevent unauthorized client...", this is sufficient.
-        if (!callerUuid.equals(clientUuid)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden access to other client's records");
-        }
-
-        List<PsychotraumatologyTest> tests = testRepository.findByClientUuid(clientUuid);
-        return ResponseEntity.ok(tests);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 }

@@ -1,31 +1,9 @@
 package com.platform.controller;
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.core.controller.BaseController;
 import com.platform.dto.UserRequestDto;
 import com.platform.dto.UserResponseDto;
 import com.platform.entity.UserEntity;
-<<<<<<< HEAD
-=======
-=======
-import com.platform.dto.UserRequestDto;
-import com.platform.dto.UserResponseDto;
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-import com.platform.dto.UserRequestDto;
-import com.platform.dto.UserResponseDto;
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -33,47 +11,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController extends BaseController<UserEntity, UserRequestDto, UUID> {
-<<<<<<< HEAD
-=======
-=======
-@RestController
-@RequestMapping("/api/users")
-public class UserController {
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-<<<<<<< HEAD
-=======
-@RestController
-@RequestMapping("/api/users")
-public class UserController {
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     private final UserService userService;
 
     public UserController(UserService userService) {
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         super(userService);
         this.userService = userService;
     }
@@ -85,28 +31,6 @@ public class UserController {
     }
 
     public ResponseEntity<?> createUser(UserRequestDto request) {
-<<<<<<< HEAD
-=======
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-        this.userService = userService;
-    }
-
-    @PostMapping
-    public ResponseEntity<?> createUser(@Valid @RequestBody UserRequestDto request) {
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         try {
             UserResponseDto createdUser = userService.createUser(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);

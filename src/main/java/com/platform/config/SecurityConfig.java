@@ -38,40 +38,6 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
-=======
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/v1/i18n/**")
-                    .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/users")
-                    .hasAnyAuthority("ROLE_admin", "ROLE_ADMIN")
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> 
@@ -161,20 +127,4 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-<<<<<<< HEAD
 
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
-
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309

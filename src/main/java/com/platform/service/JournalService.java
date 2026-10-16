@@ -1,13 +1,5 @@
 package com.platform.service;
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.core.service.BaseService;
 import com.platform.crm.model.JournalEntry;
 import com.platform.crm.model.TherapistClinicalNote;
@@ -438,37 +430,5 @@ public class JournalService extends BaseService<JournalEntry, JournalEntryDto, U
         } catch (Exception ex) {
             return UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
         }
-<<<<<<< HEAD
-=======
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
-import org.springframework.stereotype.Service;
-import java.util.regex.Pattern;
-
-@Service
-public class JournalService {
-
-    private static final String INTERNAL_NOTES_MARKER = "<!-- INTERNAL_MEDICAL_NOTES -->";
-    private static final Pattern INTERNAL_NOTES_PATTERN = 
-        Pattern.compile(INTERNAL_NOTES_MARKER + ".*", Pattern.DOTALL);
-
-    public String getJournalContent(String rawMarkdown, boolean isTherapist) {
-        if (isTherapist) {
-            return rawMarkdown;
-        }
-        return INTERNAL_NOTES_PATTERN.matcher(rawMarkdown).replaceAll("").trim();
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
-=======
->>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
->>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
->>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 }

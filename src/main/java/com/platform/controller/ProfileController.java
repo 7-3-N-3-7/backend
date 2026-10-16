@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 <<<<<<< HEAD
+import java.util.LinkedHashMap;
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -28,9 +31,9 @@ import java.util.HashMap;
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/v1/user")
@@ -42,13 +45,15 @@ public class ProfileController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         Map<String, String> profile = new LinkedHashMap<>();
         profile.put("userUuid", jwt.getSubject());
-<<<<<<< HEAD
 
         String email = jwt.getClaimAsString("email");
         profile.put("email", (email != null && !email.isBlank()) ? email : "jesper@example.com");
@@ -57,6 +62,8 @@ public class ProfileController {
         profile.put("name", (name != null && !name.isBlank()) ? name : "Jesper Kock");
 
         String primaryRole = extractPrimaryRole(jwt);
+<<<<<<< HEAD
+=======
 =======
 =======
         Map<String, String> profile = new HashMap<>();
@@ -94,16 +101,20 @@ public class ProfileController {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         profile.put("primaryRole", primaryRole);
         return ResponseEntity.ok(profile);
     }
 
+<<<<<<< HEAD
+=======
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     private String extractPrimaryRole(Jwt jwt) {
         Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
         if (realmAccess != null && realmAccess.get("roles") instanceof List<?> roles && !roles.isEmpty()) {
@@ -114,6 +125,11 @@ public class ProfileController {
             return rawRole.toUpperCase();
         }
         return "CLIENT";
+<<<<<<< HEAD
+    }
+}
+
+=======
 =======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
@@ -146,3 +162,4 @@ public class ProfileController {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309

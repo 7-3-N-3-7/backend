@@ -5,17 +5,13 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 @Entity
 @Table(name = "appointments")
 public class Appointment extends BaseEntity<UUID> {
 
-<<<<<<< HEAD
     public Appointment() {}
+<<<<<<< HEAD
+=======
 =======
     protected Appointment() {}
 <<<<<<< HEAD
@@ -28,6 +24,7 @@ public class Appointment extends BaseEntity<UUID> {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Column(nullable = false)
     private UUID clientUuid;

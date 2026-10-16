@@ -1,27 +1,26 @@
 package com.platform.controller;
 
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.core.controller.BaseController;
 import com.platform.crm.model.JournalEntry;
-<<<<<<< HEAD
 import com.platform.crm.model.TherapistClinicalNote;
 import com.platform.crm.repository.JournalEntryRepository;
 import com.platform.crm.repository.TherapistClinicalNoteRepository;
-=======
-import com.platform.crm.model.TherapistNote;
-import com.platform.crm.repository.JournalEntryRepository;
-import com.platform.crm.repository.TherapistNoteRepository;
->>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 import com.platform.dto.JournalEntryDto;
 import com.platform.repository.AppointmentRepository;
 import com.platform.repository.HandshakeRepository;
 import com.platform.service.JournalGitService;
 import com.platform.service.JournalService;
 import com.platform.service.PlatformCacheService;
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -41,20 +40,26 @@ import com.platform.dto.JournalEntryDto;
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -74,19 +79,22 @@ import java.time.LocalDateTime;
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/journals")
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 @CrossOrigin(origins = "*")
 public class JournalController extends BaseController<JournalEntry, JournalEntryDto, UUID> {
 
-<<<<<<< HEAD
     private final JournalService journalService;
 
     public JournalController(JournalEntryRepository journalEntryRepository, JournalGitService journalGitService) {
@@ -101,6 +109,8 @@ public class JournalController extends BaseController<JournalEntry, JournalEntry
     ) {
         this(journalEntryRepository, journalGitService, clinicalNoteRepository, journalService, new PlatformCacheService(), null, null);
     }
+<<<<<<< HEAD
+=======
 =======
 =======
 public class JournalController {
@@ -135,6 +145,7 @@ public class JournalController {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Autowired
     public JournalController(
@@ -158,7 +169,6 @@ public class JournalController {
         );
     }
 
-<<<<<<< HEAD
     @Override
     @PostMapping
     public ResponseEntity<JournalEntry> create(@RequestBody JournalEntryDto dto) {
@@ -176,6 +186,8 @@ public class JournalController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(journalService.updateJournalEntrySharing(entryId, payload));
+<<<<<<< HEAD
+=======
 =======
 =======
 <<<<<<< HEAD
@@ -214,6 +226,7 @@ public class JournalController {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @PostMapping("/therapist-notes")
@@ -222,8 +235,9 @@ public class JournalController {
         if (savedNote != null) {
             return ResponseEntity.ok(savedNote);
         }
-<<<<<<< HEAD
         return ResponseEntity.ok().build();
+<<<<<<< HEAD
+=======
 =======
 =======
 <<<<<<< HEAD
@@ -270,6 +284,7 @@ public class JournalController {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @GetMapping("/client/{clientUuid}")
@@ -278,9 +293,10 @@ public class JournalController {
             @RequestParam(required = false) UUID therapistUuid,
             Authentication auth
     ) {
-<<<<<<< HEAD
         return ResponseEntity.ok(journalService.getClientJournalBundle(clientUuid, therapistUuid, auth));
     }
+<<<<<<< HEAD
+=======
 =======
 =======
 <<<<<<< HEAD
@@ -315,6 +331,7 @@ public class JournalController {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @GetMapping("/history/{clientUuid}")
     public ResponseEntity<List<Map<String, String>>> getJournalCommitHistory(
@@ -346,6 +363,8 @@ public class JournalController {
     ) {
         try {
             return ResponseEntity.ok(journalService.getClientTimeline(clientUuid, auth));
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -367,26 +386,9 @@ public class JournalController {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-
-    private UUID getCallerUuid(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
-        }
-        try {
-            return UUID.fromString(jwt.getSubject());
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user identity");
-        }
-    }
-
-    private boolean hasRole(Jwt jwt, String role) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        Object roles = realmAccess == null ? null : realmAccess.get("roles");
-        return roles instanceof java.util.List<?> roleList
-                && roleList.stream().anyMatch(role::equals);
     }
 }

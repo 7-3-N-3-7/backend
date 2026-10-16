@@ -1,10 +1,13 @@
 package com.platform.service;
 
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.core.service.BaseService;
 import com.platform.crm.model.JournalEntry;
 import com.platform.crm.model.TherapistClinicalNote;
@@ -435,6 +438,8 @@ public class JournalService extends BaseService<JournalEntry, JournalEntryDto, U
         } catch (Exception ex) {
             return UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
         }
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -464,5 +469,6 @@ public class JournalService {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 }

@@ -11,5 +11,4 @@ import java.util.UUID;
 public interface AppointmentRepository extends BaseRepository<Appointment, UUID> {
     List<Appointment> findByClientUuid(UUID clientUuid);
     List<Appointment> findByTherapistUuid(UUID therapistUuid);
-    boolean existsByClientUuidAndTherapistUuid(UUID clientUuid, UUID therapistUuid);
 }

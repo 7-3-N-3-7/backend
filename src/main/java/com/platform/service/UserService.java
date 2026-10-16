@@ -1,6 +1,9 @@
 package com.platform.service;
 
 <<<<<<< HEAD
+import com.platform.core.service.BaseService;
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 import com.platform.core.service.BaseService;
@@ -13,23 +16,28 @@ import com.platform.core.service.BaseService;
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.dto.UserRequestDto;
 import com.platform.dto.UserResponseDto;
 import com.platform.entity.UserEntity;
 import com.platform.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+<<<<<<< HEAD
+=======
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import java.util.UUID;
 
 @Service
 public class UserService extends BaseService<UserEntity, UserRequestDto, UUID> {
+<<<<<<< HEAD
+=======
 =======
 @Service
 public class UserService {
@@ -41,10 +49,14 @@ public class UserService {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
+<<<<<<< HEAD
+    public UserService(UserRepository userRepository) {
+        super(userRepository);
+=======
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -65,8 +77,8 @@ public class UserService {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -79,6 +91,9 @@ public class UserService {
             throw new IllegalArgumentException("username already exists");
         }
 
+<<<<<<< HEAD
+        UserEntity user = toEntity(request);
+=======
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -111,6 +126,7 @@ public class UserService {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
         UserEntity savedUser = userRepository.save(user);
 

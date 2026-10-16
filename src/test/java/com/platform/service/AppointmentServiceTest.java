@@ -3,8 +3,6 @@ package com.platform.service;
 import com.platform.controller.AppointmentController;
 import com.platform.entity.Appointment;
 import com.platform.repository.AppointmentRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +21,9 @@ public class AppointmentServiceTest {
     private AppointmentRepository appointmentRepository;
     private AppointmentService appointmentService;
 <<<<<<< HEAD
+    private AppointmentController appointmentController;
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -38,11 +39,15 @@ public class AppointmentServiceTest {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @BeforeEach
     public void setUp() {
         appointmentRepository = Mockito.mock(AppointmentRepository.class);
         appointmentService = new AppointmentService(appointmentRepository);
+<<<<<<< HEAD
+        appointmentController = new AppointmentController(appointmentService);
+=======
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -59,6 +64,7 @@ public class AppointmentServiceTest {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @Test
@@ -183,6 +189,8 @@ public class AppointmentServiceTest {
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(missingId, updateReq));
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.cancelAppointment(missingId));
     }
+<<<<<<< HEAD
+=======
 
     @Test
     public void testCreateAppointmentRejectsZeroLengthRange() {
@@ -279,4 +287,5 @@ public class AppointmentServiceTest {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
     }
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 }

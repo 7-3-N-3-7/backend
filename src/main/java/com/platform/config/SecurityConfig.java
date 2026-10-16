@@ -39,6 +39,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -69,6 +71,7 @@ public class SecurityConfig {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> 
@@ -159,6 +162,9 @@ public class SecurityConfig {
     }
 }
 <<<<<<< HEAD
+
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 
@@ -171,3 +177,4 @@ public class SecurityConfig {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309

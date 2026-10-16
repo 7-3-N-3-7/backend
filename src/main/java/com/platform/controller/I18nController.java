@@ -1,10 +1,13 @@
 package com.platform.controller;
 
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 import com.platform.entity.I18nDictionary;
 import com.platform.service.I18nService;
 import org.springframework.http.CacheControl;
@@ -15,6 +18,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -34,6 +39,7 @@ import java.util.Map;
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
 @RestController
 @RequestMapping("/api/v1/i18n")
@@ -47,10 +53,13 @@ public class I18nController {
     }
 
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     @GetMapping("/locales")
     public ResponseEntity<List<Map<String, Object>>> getLocales(
             @RequestParam(value = "ref", defaultValue = "da") String ref
@@ -146,6 +155,8 @@ public class I18nController {
                 .orElseGet(() -> i18nService.getDictionary("en")
                         .map(fallback -> ResponseEntity.ok()
                                 .cacheControl(cacheHeader)
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -166,6 +177,7 @@ public class I18nController {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
                                 .header("X-Locale-Fallback", "en")
                                 .body(fallback.getTranslations()))
                         .orElse(ResponseEntity.notFound().build()));
@@ -179,10 +191,13 @@ public class I18nController {
         return ResponseEntity.ok().build();
     }
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @DeleteMapping("/{locale}/{key}")
     public ResponseEntity<Void> deleteTranslationKey(
@@ -194,6 +209,8 @@ public class I18nController {
     }
 }
 
+<<<<<<< HEAD
+=======
 =======
 }
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
@@ -203,3 +220,4 @@ public class I18nController {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309

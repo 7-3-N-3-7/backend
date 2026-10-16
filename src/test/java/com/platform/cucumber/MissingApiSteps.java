@@ -1,6 +1,5 @@
 package com.platform.cucumber;
 
-<<<<<<< HEAD
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.platform.crm.model.JournalEntry;
 import com.platform.crm.model.PsychotraumatologyTest;
@@ -16,15 +15,11 @@ import com.platform.service.AppointmentService;
 import com.platform.service.PlatformCacheService;
 import com.platform.service.PlatformEventService;
 import io.cucumber.datatable.DataTable;
-=======
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import io.cucumber.java.Before;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
-<<<<<<< HEAD
 import jakarta.persistence.EntityManager;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
@@ -44,13 +39,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-=======
-import org.junit.jupiter.api.Assertions;
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 
+<<<<<<< HEAD
+=======
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -88,15 +82,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 public class MissingApiSteps {
 
     @Autowired
     private I18nDictionaryRepository i18nRepository;
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Autowired
     private AppointmentRepository appointmentRepository;
@@ -118,6 +116,8 @@ public class MissingApiSteps {
 
     @Autowired
     private PlatformEventService eventService;
+<<<<<<< HEAD
+=======
 =======
     
     @Autowired
@@ -131,17 +131,21 @@ public class MissingApiSteps {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
@@ -155,6 +159,8 @@ public class MissingApiSteps {
 
     @Autowired
     private JwtDecoder jwtDecoder;
+<<<<<<< HEAD
+=======
 =======
     private TherapistNoteRepository therapistNoteRepository;
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
@@ -167,14 +173,10 @@ public class MissingApiSteps {
 >>>>>>> 266b19092e0a4e40a20f5cd2eaf04be642298e92
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
-    @LocalServerPort
-    private int port;
-
-    private RequestSpecification requestSpec;
+    private RequestSpecification requestSpec = given();
     private Response lastResponse;
-<<<<<<< HEAD
-<<<<<<< HEAD
     private String generatedToken = "dummy-token";
     private final Map<String, Object> pendingJwtClaims = new HashMap<>();
 
@@ -190,6 +192,8 @@ public class MissingApiSteps {
     // =========================================================================
     // AUTHENTICATION & RBAC STEPS (authentication.feature)
     // =========================================================================
+<<<<<<< HEAD
+=======
 =======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
@@ -206,6 +210,7 @@ public class MissingApiSteps {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
 
     @Given("Keycloak IAM is running and healthy at {string}")
     public void keycloak_iam_is_running_and_healthy_at(String url) {
@@ -214,6 +219,8 @@ public class MissingApiSteps {
         Assertions.assertNotNull(jwtDecoder, "JwtDecoder bean must be initialized");
         requestSpec = given();
         pendingJwtClaims.clear();
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -225,21 +232,17 @@ public class MissingApiSteps {
     public void keycloak_iam_is_running_and_healthy_at(String url) {
         // Assume mock IDP is running
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @Given("the backend Spring Security filter chain is configured as an OAuth2 Resource Server")
     public void the_backend_spring_security_filter_chain_is_configured_as_an_o_auth2_resource_server() {
-<<<<<<< HEAD
         Assertions.assertNotNull(securityFilterChain, "SecurityFilterChain bean must be active");
         Assertions.assertFalse(securityFilterChain.getFilters().isEmpty(), "Security filter chain must contain active filters");
-=======
-        // Asserted implicitly by the context loading
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @Given("Keycloak public JWKS key set is available at {string}")
     public void keycloak_public_jwks_key_set_is_available_at(String url) {
-<<<<<<< HEAD
         Assertions.assertTrue(url.endsWith("/keys") || url.contains("certs"), "JWKS endpoint URL must be configured");
         Jwt decoded = jwtDecoder.decode("valid-token-for-550e8400-e29b-41d4-a716-446655440000");
         Assertions.assertNotNull(decoded, "JwtDecoder must decode valid tokens");
@@ -254,21 +257,13 @@ public class MissingApiSteps {
     @Given("an {string} header with value {string}")
     public void an_header_with_value(String headerName, String headerValue) {
         requestSpec = given().header(headerName, headerValue);
-=======
-        // Mock server handles this
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @Given("a Keycloak JWT token with expiration timestamp in the past {string}")
     public void a_keycloak_jwt_token_with_expiration_timestamp_in_the_past(String timestamp) {
-<<<<<<< HEAD
         Assertions.assertNotNull(timestamp);
         this.generatedToken = "expired-token-" + timestamp.replace(":", "-");
         requestSpec = given().header("Authorization", "Bearer " + this.generatedToken);
-=======
-        this.generatedToken = "expired-token";
-        requestSpec.header("Authorization", "Bearer " + this.generatedToken);
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @When("a client sends a GET request to {string} with the expired token")
@@ -276,7 +271,6 @@ public class MissingApiSteps {
         lastResponse = requestSpec.when().get(endpoint);
     }
 
-<<<<<<< HEAD
     @When("a client sends a GET request to {string}")
     public void a_client_sends_a_get_request_to(String endpoint) {
         lastResponse = requestSpec.when().get(endpoint);
@@ -286,11 +280,6 @@ public class MissingApiSteps {
     public void the_system_should_reject_the_request() {
         Assertions.assertNotNull(lastResponse, "HTTP response must not be null");
         Assertions.assertTrue(lastResponse.getStatusCode() >= 400, "Expected error status code >= 400");
-=======
-    @Then("the system should reject the request")
-    public void the_system_should_reject_the_request() {
-        Assertions.assertNotNull(lastResponse);
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @Then("return an HTTP response with status code {int} Unauthorized")
@@ -302,10 +291,13 @@ public class MissingApiSteps {
     public void the_error_details_should_state(String errorDetail) {
         String wwwAuth = lastResponse.getHeader("WWW-Authenticate");
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         String body = lastResponse.getBody().asString();
         boolean matchedHeader = wwwAuth != null && wwwAuth.contains(errorDetail);
         boolean matchedBody = body != null && body.contains(errorDetail);
@@ -393,6 +385,8 @@ public class MissingApiSteps {
         String normalized = role.startsWith("ROLE_") ? role.substring(5).toLowerCase() : role.toLowerCase();
         pendingJwtClaims.put("roles", List.of(normalized));
         UserCreationSteps.CUSTOM_TOKENS.put(this.generatedToken, new HashMap<>(pendingJwtClaims));
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -424,30 +418,19 @@ public class MissingApiSteps {
         this.generatedToken = "valid-token-for-" + uuid;
         requestSpec.header("Authorization", "Bearer " + this.generatedToken);
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @Given("the user has role {string}")
     public void the_user_has_role(String role) {
-<<<<<<< HEAD
         String normalized = role.startsWith("ROLE_") ? role.substring(5).toLowerCase() : role.toLowerCase();
         pendingJwtClaims.put("roles", List.of(normalized));
         UserCreationSteps.CUSTOM_TOKENS.put(this.generatedToken, new HashMap<>(pendingJwtClaims));
-=======
-        // Assume token builder handles role injection for test purposes
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @When("the user sends a POST request to {string} with body:")
     public void the_user_sends_a_post_request_to_with_body(String endpoint, String docString) {
-        if (endpoint.endsWith("/therapist-notes")) {
-            try {
-                expectedTherapistNote = objectMapper.readTree(docString).path("therapistNote").asText();
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Invalid therapist note request", e);
-            }
-        }
         lastResponse = requestSpec
-<<<<<<< HEAD
                 .contentType("application/json")
                 .body(docString)
                 .when()
@@ -468,12 +451,6 @@ public class MissingApiSteps {
     @Then("the response body should contain error message {string}")
     public void the_response_body_should_contain_error_message(String expectedErrorMessage) {
         lastResponse.then().body(containsString(expectedErrorMessage));
-=======
-            .contentType("application/json")
-            .body(docString)
-        .when()
-            .post(endpoint);
->>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
     }
 
     @Then("the response status should be {int} OK")
@@ -482,8 +459,6 @@ public class MissingApiSteps {
     }
 
     @Then("the note should be saved and linked to therapist UUID {string}")
-<<<<<<< HEAD
-<<<<<<< HEAD
     public void the_note_should_be_saved_and_linked_to_therapist_uuid(String expectedTherapistUuid) {
         String responseTherapistUuid = lastResponse.jsonPath().getString("authorTherapistUuid");
         Assertions.assertEquals(expectedTherapistUuid, responseTherapistUuid, "Saved clinical note must return matching authorTherapistUuid");
@@ -492,6 +467,8 @@ public class MissingApiSteps {
         Optional<TherapistClinicalNote> savedNote = clinicalNoteRepository.findById(noteId);
         Assertions.assertTrue(savedNote.isPresent(), "TherapistClinicalNote must be persisted in PostgreSQL");
         Assertions.assertEquals(UUID.fromString(expectedTherapistUuid), savedNote.get().getAuthorTherapistUuid());
+<<<<<<< HEAD
+=======
 =======
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
@@ -505,6 +482,7 @@ public class MissingApiSteps {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     // =========================================================================
@@ -522,7 +500,6 @@ public class MissingApiSteps {
         Assertions.assertEquals(0, appointmentRepository.count(), "Appointments table must be clean before scenario");
     }
 
-<<<<<<< HEAD
     @Given("Hibernate ORM is initialized with prepared statements and UUID generation")
     public void hibernate_orm_is_initialized_with_prepared_statements_and_uuid_generation() {
         Assertions.assertNotNull(entityManager, "JPA EntityManager must be initialized");
@@ -532,6 +509,8 @@ public class MissingApiSteps {
         Class<?> resolvedIdType = org.springframework.core.GenericTypeResolver.resolveTypeArgument(
                 Appointment.class, com.platform.core.entity.BaseEntity.class);
         Assertions.assertEquals(UUID.class, resolvedIdType != null ? resolvedIdType : appointmentType.getIdType().getJavaType(), "Appointment ID type must be UUID");
+<<<<<<< HEAD
+=======
 =======
 =======
 <<<<<<< HEAD
@@ -748,11 +727,11 @@ public class MissingApiSteps {
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 
     @Given("Redisson Redis cache is connected")
     public void redisson_redis_cache_is_connected() {
-<<<<<<< HEAD
         Assertions.assertNotNull(cacheService, "PlatformCacheService must be initialized");
         Assertions.assertTrue(cacheService.isConnected(), "Redis cache service must report connected");
     }
@@ -806,11 +785,12 @@ public class MissingApiSteps {
     }
 
     @Then("a Kafka event should be published to topic {string} with action {string}")
-<<<<<<< HEAD
     public void a_kafka_event_should_be_published_to_topic_with_action(String expectedTopic, String expectedAction) {
         Assertions.assertTrue(
                 eventService.hasEvent(expectedTopic, expectedAction),
                 "Expected Kafka event on topic '" + expectedTopic + "' with action '" + expectedAction + "'"
+<<<<<<< HEAD
+=======
 =======
 =======
         // mock
@@ -993,6 +973,7 @@ public class MissingApiSteps {
 =======
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
 >>>>>>> fa4972dbc8a433d3937f53daa44e44c3ed6b905a
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
         );
     }
 
@@ -1473,6 +1454,8 @@ public class MissingApiSteps {
         lastResponse = requestSpec.when().get(endpoint);
         lastResponse.then().statusCode(200);
         lastResponse.then().body(key, Matchers.equalTo(expectedValue));
+<<<<<<< HEAD
+=======
 =======
 <<<<<<< HEAD
 =======
@@ -1498,5 +1481,6 @@ public class MissingApiSteps {
 =======
 >>>>>>> 3d3aa53f18dac79b5509f233401d317d3db0787d
 >>>>>>> 16f2191da8c19882528cd7f0f6ff79480a370715
+>>>>>>> d6bd62f49cdd26c1f0dfc9614c1ba49cc9f83309
     }
 }

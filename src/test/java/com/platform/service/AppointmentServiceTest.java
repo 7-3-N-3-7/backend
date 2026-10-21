@@ -151,4 +151,92 @@ public class AppointmentServiceTest {
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.rescheduleAppointment(missingId, updateReq));
         Assertions.assertThrows(ResponseStatusException.class, () -> appointmentController.cancelAppointment(missingId));
     }
+
+    @Test
+    public void testAppointmentServiceRemainingBranchesAndConstructors() {
+        UUID clientUuid = UUID.randomUUID();
+        UUID therapistUuid = UUID.randomUUID();
+        UUID aptId = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.now().plusDays(2);
+
+        // Cover 3-arg and 5-arg constructors
+        PlatformCacheService cache = new PlatformCacheService();
+        PlatformEventService events = new PlatformEventService();
+        AppointmentService svc3 = new AppointmentService(appointmentRepository, cache, events);
+        AppointmentService svc5 = new AppointmentService(appointmentRepository, cache, events, null, null);
+        Assertions.assertNotNull(svc3);
+        Assertions.assertNotNull(svc5);
+
+        // Cover getAppointmentsForClient(UUID) & date range filtering (including null startTime, before range, after range, inside range)
+        Appointment aNullStart = new Appointment(clientUuid, therapistUuid, null, null, "Null", "CONFIRMED");
+        Appointment aBefore = new Appointment(clientUuid, therapistUuid, now.minusDays(10), now.minusDays(10).plusHours(1), "Before", "CONFIRMED");
+        Appointment aInside = new Appointment(clientUuid, therapistUuid, now, now.plusHours(1), "Inside", "CONFIRMED");
+        Appointment aAfter = new Appointment(clientUuid, therapistUuid, now.plusDays(10), now.plusDays(10).plusHours(1), "After", "CONFIRMED");
+        Mockito.when(appointmentRepository.findByClientUuid(clientUuid)).thenReturn(List.of(aNullStart, aBefore, aInside, aAfter));
+
+        Assertions.assertEquals(4, svc3.getAppointmentsForClient(clientUuid).size());
+        Assertions.assertEquals(1, svc3.getAppointmentsForClient(clientUuid, now.toLocalDate().minusDays(1), now.toLocalDate().plusDays(1)).size());
+        // Calling with only fromDate (toDate == null) or only toDate (fromDate == null)
+        Assertions.assertEquals(4, svc3.getAppointmentsForClient(clientUuid, now.toLocalDate(), null).size());
+        Assertions.assertEquals(4, svc3.getAppointmentsForClient(clientUuid, null, now.toLocalDate()).size());
+
+        // Cover createAppointment when repository returns null, or saved has null clientUuid/id, or git throws exception
+        Mockito.when(appointmentRepository.findByTherapistUuid(therapistUuid)).thenReturn(List.of());
+        Mockito.when(appointmentRepository.save(any())).thenReturn(null);
+        Assertions.assertNull(svc3.createAppointment(aInside));
+
+        JournalGitService failingGit = Mockito.mock(JournalGitService.class);
+        Mockito.when(failingGit.commitJournalEntryWithHash(any(), any(), any(), any())).thenThrow(new RuntimeException("Git err"));
+        AppointmentService svcFailingGit = new AppointmentService(appointmentRepository, cache, events, null, null, failingGit, null);
+
+        Appointment savedNullFields = new Appointment(null, therapistUuid, now, now.plusHours(1), "No Client", "CONFIRMED");
+        Mockito.when(appointmentRepository.save(any())).thenReturn(savedNullFields);
+        svcFailingGit.createAppointment(savedNullFields);
+
+        Appointment savedWithClient = new Appointment(clientUuid, therapistUuid, now, now.plusHours(1), "With Client", "CONFIRMED");
+        savedWithClient.setId(aptId);
+        savedWithClient.setLocation("Room 1");
+        Mockito.when(appointmentRepository.save(any())).thenReturn(savedWithClient);
+        svcFailingGit.createAppointment(savedWithClient);
+
+        // Cover rescheduleAppointment branches (null startTime on existing/updated, blank location, non-blank location, git failure, null clientUuid)
+        Appointment existingNoClient = new Appointment(null, therapistUuid, null, now.plusHours(1), "Title", "CONFIRMED");
+        existingNoClient.setId(aptId);
+        Mockito.when(appointmentRepository.findById(aptId)).thenReturn(Optional.of(existingNoClient));
+        Appointment updateWithLoc = new Appointment(null, therapistUuid, now.plusHours(2), now.plusHours(3), "New Title", "CONFIRMED");
+        updateWithLoc.setLocation("New Room");
+        svcFailingGit.rescheduleAppointment(aptId, updateWithLoc);
+
+        existingNoClient.setClientUuid(clientUuid);
+        existingNoClient.setStartTime(now.plusHours(1));
+        updateWithLoc.setLocation("   ");
+        svcFailingGit.rescheduleAppointment(aptId, updateWithLoc);
+
+        // Cover cancelAppointment branches (null startTime, null clientUuid, git failure)
+        existingNoClient.setStartTime(null);
+        existingNoClient.setClientUuid(null);
+        svcFailingGit.cancelAppointment(aptId);
+
+        existingNoClient.setClientUuid(clientUuid);
+        svcFailingGit.cancelAppointment(aptId);
+
+        // Cover getAppointmentGitHistory branches (not found, null journalGitService, null clientUuid, filter branches)
+        UUID missingAptId = UUID.randomUUID();
+        Mockito.when(appointmentRepository.findById(missingAptId)).thenReturn(Optional.empty());
+        Assertions.assertThrows(ResponseStatusException.class, () -> svc3.getAppointmentGitHistory(missingAptId));
+
+        Assertions.assertTrue(svc3.getAppointmentGitHistory(aptId).isEmpty());
+        existingNoClient.setClientUuid(null);
+        Assertions.assertTrue(svcFailingGit.getAppointmentGitHistory(aptId).isEmpty());
+
+        existingNoClient.setClientUuid(clientUuid);
+        Mockito.when(failingGit.getCommitHistory(any(), Mockito.eq(false), any())).thenReturn(List.of(
+                java.util.Map.of("message", "Contains " + aptId, "snapshot", ""),
+                java.util.Map.of("message", "Other", "snapshot", "Refs-Appointment: #" + aptId),
+                java.util.Map.of("message", "Other", "snapshot", "Raw " + aptId),
+                java.util.Map.of("message", "Unrelated", "snapshot", "Unrelated")
+        ));
+        Assertions.assertEquals(3, svcFailingGit.getAppointmentGitHistory(aptId).size());
+    }
 }
+

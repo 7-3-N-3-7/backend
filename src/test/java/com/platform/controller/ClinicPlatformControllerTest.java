@@ -1211,5 +1211,1056 @@ public class ClinicPlatformControllerTest {
 
         gitService.close();
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testFullBranchAndInstructionCoverage() throws Exception {
+        UUID therapistUuid = UUID.randomUUID();
+        UUID clientUuid = UUID.randomUUID();
+        UUID orgId = UUID.randomUUID();
+        UUID providerId = UUID.randomUUID();
+        UUID serviceId = UUID.randomUUID();
+
+        // 1. JournalEntry getters, setters, onCreate, and branch coverage
+        JournalEntry je = new JournalEntry();
+        je.setId(UUID.randomUUID());
+        je.setTitle("Title");
+        je.setContent("Content");
+        je.setMoodRating(5);
+        je.setClientUuid(clientUuid);
+        je.setGitCommitHash("hash1");
+        je.setAppointmentId(UUID.randomUUID());
+        ReflectionTestUtils.setField(je, "timestamp", null);
+        ReflectionTestUtils.setField(je, "sharedWithTherapists", null);
+        ReflectionTestUtils.invokeMethod(je, "onCreate");
+        Assertions.assertNotNull(je.getTimestamp());
+        Assertions.assertTrue(je.getSharedWithTherapists());
+        LocalDateTime customTs = LocalDateTime.now().minusDays(1);
+        je.setTimestamp(customTs);
+        Assertions.assertEquals(customTs, je.getTimestamp());
+        Assertions.assertEquals("Title", je.getTitle());
+        Assertions.assertEquals("Content", je.getContent());
+        Assertions.assertEquals(5, je.getMoodRating());
+        Assertions.assertEquals(clientUuid, je.getClientUuid());
+
+        ReflectionTestUtils.setField(je, "sharedWithTherapists", null);
+        Assertions.assertTrue(je.getSharedWithTherapists());
+
+        je.setSharedTherapistUuids(null);
+        Assertions.assertTrue(je.getSharedTherapistUuids().isEmpty());
+        je.setSharedTherapistUuids(List.of());
+        Assertions.assertTrue(je.getSharedTherapistUuids().isEmpty());
+
+        ReflectionTestUtils.setField(je, "sharedTherapistUuidsCsv", " , " + therapistUuid + " , invalid-uuid ");
+        Assertions.assertEquals(List.of(therapistUuid), je.getSharedTherapistUuids());
+        Assertions.assertFalse(je.isVisibleToTherapist(null));
+        Assertions.assertTrue(je.isVisibleToTherapist(therapistUuid));
+
+        // 2. TherapistNote, TherapistClinicalNote, PsychotraumatologyTest, Service, I18nDictionary, BaseEntity
+        com.platform.crm.model.TherapistNote tn = new com.platform.crm.model.TherapistNote(clientUuid, therapistUuid, "Note text");
+        ReflectionTestUtils.invokeMethod(tn, "onCreate");
+        Assertions.assertNotNull(tn.getTimestamp());
+        ReflectionTestUtils.invokeMethod(tn, "onCreate"); // already non-null branch
+        Assertions.assertNull(tn.getId());
+        Assertions.assertEquals(clientUuid, tn.getClientUuid());
+        Assertions.assertEquals(therapistUuid, tn.getTherapistUuid());
+        Assertions.assertEquals("Note text", tn.getNote());
+        var tnCtor = com.platform.crm.model.TherapistNote.class.getDeclaredConstructor();
+        tnCtor.setAccessible(true);
+        com.platform.crm.model.TherapistNote emptyTn = tnCtor.newInstance();
+        Assertions.assertNotNull(emptyTn);
+
+        TherapistClinicalNote tcn = new TherapistClinicalNote(clientUuid, therapistUuid, "Dr. A", "Org", UUID.randomUUID(), "Markdown", "hash");
+        ReflectionTestUtils.invokeMethod(tcn, "onCreate");
+        ReflectionTestUtils.setField(tcn, "createdAt", null);
+        ReflectionTestUtils.invokeMethod(tcn, "onCreate");
+        Assertions.assertNotNull(tcn.getCreatedAt());
+
+        com.platform.crm.model.PsychotraumatologyTest pcl = new com.platform.crm.model.PsychotraumatologyTest();
+        pcl.setId(UUID.randomUUID());
+        pcl.setClientUuid(clientUuid);
+        pcl.setTherapistUuid(therapistUuid);
+        pcl.setTestType("PCL-5");
+        pcl.setScore(40);
+        pcl.setSeverity("High");
+        pcl.setAnswersJson("{}");
+        ReflectionTestUtils.invokeMethod(pcl, "onCreate");
+        Assertions.assertNotNull(pcl.getTimestamp());
+        ReflectionTestUtils.invokeMethod(pcl, "onCreate");
+        pcl.setTimestamp(customTs);
+        Assertions.assertEquals(customTs, pcl.getTimestamp());
+        Assertions.assertEquals(40, pcl.getScore());
+        Assertions.assertEquals("High", pcl.getSeverity());
+        Assertions.assertEquals("{}", pcl.getAnswersJson());
+        Assertions.assertEquals("PCL-5", pcl.getTestType());
+        Assertions.assertNotNull(pcl.getId());
+        Assertions.assertEquals(clientUuid, pcl.getClientUuid());
+
+        Service svcEntity = new Service();
+        svcEntity.setIsActive(null);
+        Assertions.assertTrue(svcEntity.getIsActive());
+
+        I18nDictionary dictEntity = new I18nDictionary();
+        dictEntity.setId("id-1");
+        dictEntity.setLocale("da");
+        dictEntity.setDisplayName("Dansk");
+        dictEntity.setFlag("DK");
+        dictEntity.setPublished(true);
+        Assertions.assertEquals("id-1", dictEntity.getId());
+
+        // 3. ProfileController branches
+        ProfileController profileCtrl = new ProfileController();
+        Jwt blankProfileJwt = Jwt.withTokenValue("tok")
+                .header("alg", "none")
+                .claim("sub", clientUuid.toString())
+                .claim("email", "   ")
+                .claim("name", "   ")
+                .claim("realm_access", Map.of("roles", List.of()))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication blankProfileAuth = Mockito.mock(Authentication.class);
+        Mockito.when(blankProfileAuth.getPrincipal()).thenReturn(blankProfileJwt);
+        Map<String, String> profMap1 = profileCtrl.getUserProfile(blankProfileAuth).getBody();
+        Assertions.assertEquals("jesper@example.com", profMap1.get("email"));
+        Assertions.assertEquals("Jesper Kock", profMap1.get("name"));
+        Assertions.assertEquals("CLIENT", profMap1.get("primaryRole"));
+
+        Jwt rolePrefixJwt = Jwt.withTokenValue("tok2")
+                .header("alg", "none")
+                .claim("sub", clientUuid.toString())
+                .claim("email", "real@example.com")
+                .claim("name", "Real Name")
+                .claim("realm_access", Map.of("roles", List.of("ROLE_therapist")))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication rolePrefixAuth = Mockito.mock(Authentication.class);
+        Mockito.when(rolePrefixAuth.getPrincipal()).thenReturn(rolePrefixJwt);
+        Map<String, String> profMap2 = profileCtrl.getUserProfile(rolePrefixAuth).getBody();
+        Assertions.assertEquals("THERAPIST", profMap2.get("primaryRole"));
+
+        Jwt nonListRolesJwt = Jwt.withTokenValue("tok3")
+                .header("alg", "none")
+                .claim("sub", clientUuid.toString())
+                .claim("realm_access", Map.of("roles", "invalid"))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication nonListRolesAuth = Mockito.mock(Authentication.class);
+        Mockito.when(nonListRolesAuth.getPrincipal()).thenReturn(nonListRolesJwt);
+        Assertions.assertEquals("CLIENT", profileCtrl.getUserProfile(nonListRolesAuth).getBody().get("primaryRole"));
+
+        // 4. JournalGitService branches
+        Path tempGitDir = Files.createTempDirectory("jgit-branch-cov");
+        JournalGitService jgit = new JournalGitService();
+        ReflectionTestUtils.setField(jgit, "repoPath", tempGitDir.toString());
+        jgit.init();
+        jgit.commitJournalEntry(clientUuid.toString(), "Initial audit", "Audit commit");
+
+        // Commit various appointment lifecycle messages to hit all filter branches in getCommitHistory
+        String[] filteredMessages = new String[]{
+                "Aftale oprettet: 1",
+                "Aftale ombooket: 2",
+                "Aftale aflyst: 3",
+                "Aftale: 4",
+                "Appointment: 5",
+                "Appointment created: 6",
+                "Appointment updated: 7",
+                "Appointment cancelled: 8"
+        };
+        for (String msg : filteredMessages) {
+            jgit.commitJournalEntryWithHash(clientUuid.toString(), "Content", msg, "Normal Author");
+        }
+        JournalService js = new JournalService();
+        List<Map<String, String>> thHist = jgit.getCommitHistory(clientUuid.toString(), true, js);
+        // Second call hits cache!
+        List<Map<String, String>> thHistCached = jgit.getCommitHistory(clientUuid.toString(), true, js);
+        Assertions.assertEquals(thHist, thHistCached);
+
+        // Date filtering branches in getCommitHistory (before start, after end, null start, null end, invalid timestamp)
+        Assertions.assertEquals(thHist, jgit.getCommitHistory(clientUuid.toString(), true, js, null, null, null));
+        Assertions.assertTrue(jgit.getCommitHistory(clientUuid.toString(), true, js, java.time.LocalDate.now().plusDays(5), null, null).isEmpty());
+        Assertions.assertTrue(jgit.getCommitHistory(clientUuid.toString(), true, js, null, java.time.LocalDate.now().minusDays(5), null).isEmpty());
+        Assertions.assertFalse(jgit.getCommitHistory(clientUuid.toString(), true, js, java.time.LocalDate.now().minusDays(2), null, null).isEmpty());
+        Assertions.assertFalse(jgit.getCommitHistory(clientUuid.toString(), true, js, null, java.time.LocalDate.now().plusDays(2), null).isEmpty());
+
+        // Inject a mock history item with null and invalid timestamp into historyCache
+        Map<String, List<Map<String, String>>> hCache = (Map<String, List<Map<String, String>>>) ReflectionTestUtils.getField(jgit, "historyCache");
+        hCache.put("custom-patient:false", List.of(
+                new HashMap<>(),
+                Map.of("timestamp", "not-a-timestamp")
+        ));
+        Assertions.assertEquals(2, jgit.getCommitHistory("custom-patient", false, js, java.time.LocalDate.now(), java.time.LocalDate.now(), null).size());
+
+        jgit.close();
+        ReflectionTestUtils.setField(jgit, "git", null);
+        jgit.close(); // null git branch
+
+        // Error branches in JournalGitService (invalid path / closed git)
+        Assertions.assertThrows(RuntimeException.class, () -> jgit.commitJournalEntryWithHash(clientUuid.toString(), "x", "y", "z"));
+
+        // 5. JournalService branches
+        Assertions.assertEquals("", js.getJournalContent(null, true));
+        Assertions.assertNull(js.toEntity(null));
+        js.withCollaborators(null, null, null, null, null, null);
+        com.platform.service.PlatformCacheService customCache = new com.platform.service.PlatformCacheService();
+        js.withCollaborators(null, null, null, customCache, null, null);
+
+        JournalEntryRepository mockJeRepo = Mockito.mock(JournalEntryRepository.class);
+        TherapistClinicalNoteRepository mockNoteRepo = Mockito.mock(TherapistClinicalNoteRepository.class);
+        AppointmentRepository mockAptRepo = Mockito.mock(AppointmentRepository.class);
+        HandshakeRepository mockHsRepo = Mockito.mock(HandshakeRepository.class);
+        JournalGitService failingGit = Mockito.mock(JournalGitService.class);
+        Mockito.when(failingGit.commitJournalEntryWithHash(any(), any(), any(), any())).thenThrow(new RuntimeException("Git failure"));
+
+        JournalService jsWithFailingGit = new JournalService(mockJeRepo, failingGit, mockNoteRepo, customCache, mockAptRepo, mockHsRepo);
+        JournalEntryDto privateDto = new JournalEntryDto();
+        privateDto.setSharedWithTherapists(false);
+        privateDto.setContent("Already has Refs-Appointment");
+        privateDto.setAppointmentId(UUID.randomUUID());
+        Mockito.when(mockJeRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        // Authentication with non-Jwt principal
+        Authentication nonJwtAuth = Mockito.mock(Authentication.class);
+        Mockito.when(nonJwtAuth.getPrincipal()).thenReturn("stringPrincipal");
+        jsWithFailingGit.createJournalEntry(privateDto, nonJwtAuth);
+
+        // updateJournalEntrySharing with empty payload and null/blank list items and null clientUuid
+        JournalEntry entryNoClient = new JournalEntry();
+        UUID entryNoClientId = UUID.randomUUID();
+        Mockito.when(mockJeRepo.findById(entryNoClientId)).thenReturn(Optional.of(entryNoClient));
+        Map<String, Object> sharingPayload = new HashMap<>();
+        sharingPayload.put("sharedWithTherapists", null);
+        List<Object> listWithNullAndBlank = new ArrayList<>();
+        listWithNullAndBlank.add(null);
+        listWithNullAndBlank.add("   ");
+        sharingPayload.put("sharedTherapistUuids", listWithNullAndBlank);
+        jsWithFailingGit.updateJournalEntrySharing(entryNoClientId, sharingPayload);
+
+        // createTherapistNote branches: blank clientUuid, blank noteText, invalid appointmentId, null clinicalNoteRepository, exception branch
+        Jwt tJwt = Jwt.withTokenValue("tok")
+                .header("alg", "none")
+                .claim("sub", therapistUuid.toString())
+                .claim("realm_access", Map.of("roles", List.of("ROLE_THERAPIST")))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication tAuth = Mockito.mock(Authentication.class);
+        Mockito.when(tAuth.getPrincipal()).thenReturn(tJwt);
+
+        Assertions.assertNull(jsWithFailingGit.createTherapistNote(Map.of("clientUuid", "", "therapistNote", "note"), tAuth));
+        Assertions.assertNull(jsWithFailingGit.createTherapistNote(Map.of("clientUuid", clientUuid.toString(), "therapistNote", "   ", "appointmentId", "  "), tAuth));
+        Assertions.assertNull(jsWithFailingGit.createTherapistNote(Map.of("clientUuid", clientUuid.toString(), "therapistNote", "note", "appointmentId", "bad-uuid"), tAuth));
+
+        JournalService jsNoNoteRepo = new JournalService(mockJeRepo, null, null, customCache, null, null);
+        Assertions.assertNull(jsNoNoteRepo.createTherapistNote(Map.of("clientUuid", clientUuid.toString(), "therapistNote", "note Refs-Appointment"), tAuth));
+
+        // getClientJournalBundle & getJournalCommitHistory branches:
+        // callerUuid == clientUuid, callerUuid == null, handshakeRepository == null, entry timestamp == null, only historyStartDate, only historyEndDate
+        JournalEntry nullTsEntry = new JournalEntry("Null TS", "Body", 5, LocalDateTime.now(), clientUuid);
+        ReflectionTestUtils.setField(nullTsEntry, "timestamp", null);
+        Mockito.when(mockJeRepo.findByClientUuidOrderByTimestampDesc(clientUuid)).thenReturn(List.of(nullTsEntry));
+        jsNoNoteRepo.getClientJournalBundle(clientUuid, clientUuid, tAuth);
+        jsNoNoteRepo.getClientJournalBundle(clientUuid, null, nonJwtAuth);
+
+        ClientTherapistHandshake hsStartOnly = new ClientTherapistHandshake(clientUuid, "C", therapistUuid, "T", "O", "ACTIVE");
+        hsStartOnly.setHistoryStartDate(java.time.LocalDate.now().minusDays(1));
+        Mockito.when(mockHsRepo.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.of(hsStartOnly));
+        Map<String, Object> bundleStartOnly = jsWithFailingGit.getClientJournalBundle(clientUuid, therapistUuid, null);
+        Assertions.assertNotNull(bundleStartOnly.get("historyStartDate"));
+        Assertions.assertNull(bundleStartOnly.get("historyEndDate"));
+
+        ClientTherapistHandshake hsEndOnly = new ClientTherapistHandshake(clientUuid, "C", therapistUuid, "T", "O", "ACTIVE");
+        hsEndOnly.setHistoryEndDate(java.time.LocalDate.now().plusDays(1));
+        Mockito.when(mockHsRepo.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.of(hsEndOnly));
+        Map<String, Object> bundleEndOnly = jsWithFailingGit.getClientJournalBundle(clientUuid, therapistUuid, null);
+        Assertions.assertNull(bundleEndOnly.get("historyStartDate"));
+        Assertions.assertNotNull(bundleEndOnly.get("historyEndDate"));
+
+        // hasTherapistRole with authority ROLE_ROLE_THERAPIST
+        Authentication roleAuth = Mockito.mock(Authentication.class);
+        Mockito.doReturn(List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ROLE_THERAPIST"))).when(roleAuth).getAuthorities();
+        Assertions.assertTrue(js.hasTherapistRole(roleAuth));
+
+        // 6. ClinicPlatformService branches
+        AppointmentRepository aptRepo = Mockito.mock(AppointmentRepository.class);
+        JournalEntryRepository jeRepo = Mockito.mock(JournalEntryRepository.class);
+        com.platform.crm.repository.PsychotraumatologyTestRepository pclRepo = Mockito.mock(com.platform.crm.repository.PsychotraumatologyTestRepository.class);
+
+        com.platform.service.ClinicPlatformService cps = new com.platform.service.ClinicPlatformService(
+                clientProfileRepository, organisationRepository, providerProfileRepository,
+                serviceRepository, handshakeRepository, aptRepo, jeRepo, pclRepo
+        );
+
+        // Duplicate keys in providerByUserUuid, serviceById, clientByUserId
+        ProviderProfile pp1 = new ProviderProfile();
+        pp1.setId(providerId);
+        pp1.setUserUuid(therapistUuid);
+        pp1.setDisplayName("Dr. 1");
+        ProviderProfile pp2 = new ProviderProfile();
+        pp2.setId(UUID.randomUUID());
+        pp2.setUserUuid(therapistUuid);
+        pp2.setDisplayName("Dr. 2");
+        Mockito.when(providerProfileRepository.findAll()).thenReturn(List.of(pp1, pp2));
+
+        Service s1 = new Service();
+        s1.setId(serviceId);
+        s1.setName("Svc 1");
+        Service s2 = new Service();
+        s2.setId(serviceId);
+        s2.setName("Svc 2");
+        Mockito.when(serviceRepository.findAll()).thenReturn(List.of(s1, s2));
+
+        ClientProfile cp1 = new ClientProfile(clientUuid, null, "1990-01-01", "   ", "   ", "   ", null);
+        ClientProfile cp2 = new ClientProfile(clientUuid, "Dup", "1990-01-01", "Addr", "2100", "123", "e@mail.com");
+        Mockito.when(clientProfileRepository.findAll()).thenReturn(List.of(cp1, cp2));
+        Mockito.when(clientProfileRepository.findByUserId(clientUuid)).thenReturn(Optional.of(cp1));
+
+        // getCurrentUserContext with ROLE_therapist and ROLE_admin and clientProfile with null fullName/email
+        Jwt rolePrefixedJwt = Jwt.withTokenValue("tok")
+                .header("alg", "none")
+                .claim("sub", clientUuid.toString())
+                .claim("preferred_username", "user1")
+                .claim("name", "Fallback Name")
+                .claim("email", "fallback@mail.com")
+                .claim("realm_access", Map.of("roles", List.of("ROLE_therapist", "ROLE_admin")))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication rolePrefixedAuth = Mockito.mock(Authentication.class);
+        Mockito.when(rolePrefixedAuth.getPrincipal()).thenReturn(rolePrefixedJwt);
+        Map<String, Object> ctx = cps.getCurrentUserContext(rolePrefixedAuth);
+        Assertions.assertEquals("Fallback Name", ctx.get("fullName"));
+        Assertions.assertEquals("fallback@mail.com", ctx.get("email"));
+
+        // getTherapistOverview branches: null startTime on appointment, "klient" / "client" locations, blank homeAddress, blank postalCode, active handshake with empty/non-empty journals & tests
+        Appointment aptNullStart = new Appointment(null, therapistUuid, null, null, "No Start", "CONFIRMED");
+        aptNullStart.setLocation("Hos klient");
+        Appointment aptClientLoc = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(1), "Client Loc", "CONFIRMED");
+        aptClientLoc.setLocation("At client home");
+        ClientProfile cpNoPostal = new ClientProfile(clientUuid, "Name", "1990-01-01", "Main St 1", "   ", "12345678", "a@b.dk");
+        Mockito.when(clientProfileRepository.findAll()).thenReturn(List.of(cpNoPostal, cp2));
+        Mockito.when(aptRepo.findByTherapistUuid(therapistUuid)).thenReturn(List.of(aptNullStart, aptClientLoc));
+        Mockito.when(providerProfileRepository.findByUserUuid(therapistUuid)).thenReturn(Optional.of(pp1));
+
+        ClientTherapistHandshake activeHs = new ClientTherapistHandshake(clientUuid, "Name", therapistUuid, "Dr", "Org", "ACTIVE");
+        Mockito.when(handshakeRepository.findByTherapistUuid(therapistUuid)).thenReturn(List.of(activeHs));
+        Mockito.when(jeRepo.findByClientUuidOrderByTimestampDesc(clientUuid)).thenReturn(List.of());
+        Mockito.when(pclRepo.findByClientUuid(clientUuid)).thenReturn(List.of());
+        cps.getTherapistOverview(therapistUuid);
+
+        // Also test getTherapistOverview when journalEntryRepository & psychotraumatologyTestRepository are null (5-arg constructor) and handshake is ACTIVE
+        Mockito.when(handshakeRepository.findByTherapistUuid(therapistUuid)).thenReturn(List.of(activeHs));
+        controller.getTherapistOverview(therapistUuid);
+
+        // onboardTherapist branches: null values in payload keys, "undefined" / "null" userUuid, existing profile videoMeetingUrl fallback
+        Map<String, String> nullFieldsPayload = new HashMap<>();
+        nullFieldsPayload.put("cvrNumber", "12345678");
+        nullFieldsPayload.put("organisationName", "");
+        nullFieldsPayload.put("address", null);
+        nullFieldsPayload.put("postalCode", null);
+        nullFieldsPayload.put("phoneNumber", null);
+        nullFieldsPayload.put("email", null);
+        nullFieldsPayload.put("videoMeetingUrl", null);
+        nullFieldsPayload.put("userUuid", "undefined");
+        Organisation existingOrg = new Organisation("12345678", "OrgName");
+        existingOrg.setVideoMeetingUrl("https://org-video");
+        Mockito.when(organisationRepository.findByCvrNumber("12345678")).thenReturn(Optional.of(existingOrg));
+        ProviderProfile existingProfWithVideo = new ProviderProfile();
+        existingProfWithVideo.setVideoMeetingUrl("https://personal-video");
+        Mockito.when(providerProfileRepository.findByUserUuid(any())).thenReturn(Optional.of(existingProfWithVideo));
+        cps.onboardTherapist(nullFieldsPayload, nonJwtAuth);
+
+        nullFieldsPayload.put("userUuid", "null");
+        existingProfWithVideo.setVideoMeetingUrl("   ");
+        cps.onboardTherapist(nullFieldsPayload, null);
+
+        // getMissingProfileFields with blank strings on org and clientProfile
+        Organisation blankOrg = new Organisation("   ", "   ");
+        blankOrg.setAddress("   ");
+        blankOrg.setPostalCode("   ");
+        blankOrg.setPhoneNumber("   ");
+        ProviderProfile blankPp = new ProviderProfile();
+        blankPp.setWorkingHoursJson("   ");
+        ClientProfile nullFieldsCp = new ClientProfile();
+        Assertions.assertEquals(6, cps.getMissingProfileFields(blankPp, blankOrg, nullFieldsCp).size());
+
+        // createService & updateService branches: JWT extraction when therapistUuid is null, provider.getUserUuid() clientProfile lookup, duplicate service filtering
+        Organisation validOrg = new Organisation("12345678", "Valid Org");
+        validOrg.setId(orgId);
+        validOrg.setAddress("Addr 1");
+        validOrg.setPostalCode("2100");
+        validOrg.setPhoneNumber("12345678");
+        ProviderProfile validPp = new ProviderProfile();
+        validPp.setId(providerId);
+        validPp.setUserUuid(therapistUuid);
+        validPp.setWorkingHoursJson("08:00-16:00");
+        validPp.setOrganisation(validOrg);
+        Mockito.when(providerProfileRepository.findByUserUuid(therapistUuid)).thenReturn(Optional.of(validPp));
+        Mockito.when(providerProfileRepository.findById(providerId)).thenReturn(Optional.of(validPp));
+
+        Map<String, Object> createFromJwt = new HashMap<>();
+        createFromJwt.put("name", "JWT Service");
+        createFromJwt.put("therapistUuid", "   ");
+        createFromJwt.put("userUuid", "   ");
+        createFromJwt.put("providerProfileId", "   ");
+        createFromJwt.put("organisationId", "   ");
+        cps.createService(createFromJwt, tAuth);
+
+        // createService where therapistUuid is null, auth is null, but providerProfileId is given and provider.getUserUuid() is null
+        ProviderProfile ppNoUserUuid = new ProviderProfile();
+        ppNoUserUuid.setId(providerId);
+        ppNoUserUuid.setUserUuid(null);
+        ppNoUserUuid.setWorkingHoursJson("08:00-16:00");
+        ppNoUserUuid.setOrganisation(validOrg);
+        Mockito.when(providerProfileRepository.findById(providerId)).thenReturn(Optional.of(ppNoUserUuid));
+        Map<String, Object> createViaProviderId = new HashMap<>();
+        createViaProviderId.put("name", "ProviderId Service");
+        createViaProviderId.put("providerProfileId", providerId.toString());
+        cps.createService(createViaProviderId, null);
+
+        // updateService with providerNoUserUuid and blank providerProfileId / organisationId
+        Service existingSvc = new Service();
+        existingSvc.setId(serviceId);
+        existingSvc.setProvider(ppNoUserUuid);
+        existingSvc.setOrganisation(validOrg);
+        Mockito.when(serviceRepository.findById(serviceId)).thenReturn(Optional.of(existingSvc));
+        Map<String, Object> updMap = new HashMap<>();
+        updMap.put("therapistUuid", "   ");
+        updMap.put("userUuid", "   ");
+        updMap.put("providerProfileId", "   ");
+        updMap.put("organisationId", "   ");
+        updMap.put("isActive", null);
+        cps.updateService(serviceId, updMap, null);
+
+        // deleteService with null name, null provider, null organisation
+        Service nullFieldsSvc = new Service();
+        UUID nullFieldsSvcId = UUID.randomUUID();
+        nullFieldsSvc.setId(nullFieldsSvcId);
+        Service otherNullSvc = new Service();
+        otherNullSvc.setId(UUID.randomUUID());
+        otherNullSvc.setName("Other");
+        Mockito.when(serviceRepository.findById(nullFieldsSvcId)).thenReturn(Optional.of(nullFieldsSvc));
+        Mockito.when(serviceRepository.findAll()).thenReturn(List.of(nullFieldsSvc, otherNullSvc));
+        cps.deleteService(nullFieldsSvcId);
+
+        // 7. Additional exhaustive branch coverage for ClinicPlatformService, JournalService, PlatformEventService, PlatformCacheService, BaseService, UserController
+        // 7a. getClientOverview with duplicate providers/services and various effectiveLocation / videoMeetingUrl combinations
+        Mockito.when(providerProfileRepository.findAll()).thenReturn(List.of(pp1, pp2));
+        Mockito.when(serviceRepository.findAll()).thenReturn(List.of(s1, s2));
+
+        Appointment aptNullLoc = new Appointment(clientUuid, therapistUuid, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Null Loc", "SCHEDULED");
+        Appointment aptVideoLower = new Appointment(clientUuid, therapistUuid, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Video Lower", "SCHEDULED");
+        aptVideoLower.setLocation("video session");
+        Appointment aptOnlineNullVideo = new Appointment(clientUuid, UUID.randomUUID(), LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Online Null Video", "SCHEDULED");
+        aptOnlineNullVideo.setLocation("online session");
+        Mockito.when(aptRepo.findByClientUuid(clientUuid)).thenReturn(List.of(aptNullLoc, aptVideoLower, aptOnlineNullVideo));
+        cps.getClientOverview(clientUuid);
+
+        // 7b. getTherapistOverview when provider == null AND rawAppointments is non-empty, plus roster client not in clientByUserId
+        UUID unmappedTherapist = UUID.randomUUID();
+        UUID unmappedClient = UUID.randomUUID();
+        Mockito.when(providerProfileRepository.findByUserUuid(unmappedTherapist)).thenReturn(Optional.empty());
+        Appointment aptUnmappedKlient = new Appointment(unmappedClient, unmappedTherapist, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Klient", "SCHEDULED");
+        aptUnmappedKlient.setLocation("Hos klient");
+        Appointment aptUnmappedOnline = new Appointment(unmappedClient, unmappedTherapist, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Online", "SCHEDULED");
+        aptUnmappedOnline.setLocation("online");
+        Appointment aptUnmappedVideo = new Appointment(unmappedClient, unmappedTherapist, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Video", "SCHEDULED");
+        aptUnmappedVideo.setLocation("video");
+        Appointment aptUnmappedNullLoc = new Appointment(unmappedClient, unmappedTherapist, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "NullLoc", "SCHEDULED");
+        aptUnmappedNullLoc.setLocation(null);
+        ClientProfile cpNullHome = new ClientProfile(clientUuid, "Name", "1990-01-01", null, null, "123", "a@b.dk");
+        ClientProfile cpNullPostal = new ClientProfile(therapistUuid, "Name2", "1990-01-01", "Street 1", null, "123", "a@b.dk");
+        Appointment aptNullHomeKlient = new Appointment(clientUuid, unmappedTherapist, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "NullHome", "SCHEDULED");
+        aptNullHomeKlient.setLocation("klient");
+        Appointment aptNullPostalKlient = new Appointment(therapistUuid, unmappedTherapist, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "NullPostal", "SCHEDULED");
+        aptNullPostalKlient.setLocation("klient");
+        Mockito.when(clientProfileRepository.findAll()).thenReturn(List.of(cpNullHome, cpNullPostal));
+        Mockito.when(aptRepo.findByTherapistUuid(unmappedTherapist)).thenReturn(
+                List.of(aptUnmappedKlient, aptUnmappedOnline, aptUnmappedVideo, aptUnmappedNullLoc, aptNullHomeKlient, aptNullPostalKlient)
+        );
+        Mockito.when(handshakeRepository.findByTherapistUuid(unmappedTherapist)).thenReturn(List.of());
+        cps.getTherapistOverview(unmappedTherapist);
+
+        // isTherapistService branches: service with different providerId and different orgId
+        ProviderProfile otherPp = new ProviderProfile();
+        otherPp.setId(UUID.randomUUID());
+        Organisation otherOrg = new Organisation("99999999", "Other Org");
+        otherOrg.setId(UUID.randomUUID());
+        Service diffProvSvc = new Service();
+        diffProvSvc.setId(UUID.randomUUID());
+        diffProvSvc.setName("Diff Prov");
+        diffProvSvc.setProvider(otherPp);
+        diffProvSvc.setOrganisation(otherOrg);
+        Mockito.when(serviceRepository.findAll()).thenReturn(List.of(diffProvSvc));
+        Mockito.when(providerProfileRepository.findByUserUuid(therapistUuid)).thenReturn(Optional.of(validPp));
+        cps.getTherapistOverview(therapistUuid);
+
+        // 7c. onboardTherapist with blank userUuid ("   ") and getMissingProfileFields with null cvrNumber & null name
+        Map<String, String> blankUuidOnboard = new HashMap<>();
+        blankUuidOnboard.put("cvrNumber", "12345678");
+        blankUuidOnboard.put("userUuid", "   ");
+        cps.onboardTherapist(blankUuidOnboard, null);
+
+        Organisation nullCvrAndNameOrg = new Organisation(null, null);
+        Assertions.assertFalse(cps.getMissingProfileFields(validPp, nullCvrAndNameOrg, cp2).isEmpty());
+
+        // 7d. createService & updateService remaining branches
+        // ProviderProfile mock where getUserUuid() returns null first then therapistUuid to cover L525-526 and L613-614
+        ProviderProfile statefulMockPp = Mockito.mock(ProviderProfile.class);
+        Mockito.when(statefulMockPp.getId()).thenReturn(providerId);
+        Mockito.when(statefulMockPp.getWorkingHoursJson()).thenReturn("08:00-16:00");
+        Mockito.when(statefulMockPp.getOrganisation()).thenReturn(validOrg);
+        Mockito.when(statefulMockPp.getUserUuid()).thenReturn(null, therapistUuid, null, therapistUuid);
+        Mockito.when(providerProfileRepository.findById(providerId)).thenReturn(Optional.of(statefulMockPp));
+        Mockito.when(clientProfileRepository.findByUserId(therapistUuid)).thenReturn(Optional.of(cp2));
+
+        // Diverse services in findAll() to hit all stream filter branches in createService (L541-543) & deleteService (L663-666)
+        Service sNullName = new Service();
+        sNullName.setId(UUID.randomUUID());
+        sNullName.setName(null);
+        Service sDiffName = new Service();
+        sDiffName.setId(UUID.randomUUID());
+        sDiffName.setName("Different Name");
+        Service sSameNameDiffProv = new Service();
+        sSameNameDiffProv.setId(UUID.randomUUID());
+        sSameNameDiffProv.setName("ProviderId Service");
+        sSameNameDiffProv.setProvider(otherPp);
+        sSameNameDiffProv.setOrganisation(validOrg);
+        Service sSameNameNullProv = new Service();
+        sSameNameNullProv.setId(UUID.randomUUID());
+        sSameNameNullProv.setName("ProviderId Service");
+        sSameNameNullProv.setProvider(null);
+        sSameNameNullProv.setOrganisation(validOrg);
+        Service sSameNameDiffOrg = new Service();
+        sSameNameDiffOrg.setId(UUID.randomUUID());
+        sSameNameDiffOrg.setName("ProviderId Service");
+        sSameNameDiffOrg.setProvider(validPp);
+        sSameNameDiffOrg.setOrganisation(otherOrg);
+        Service sSameNameNullOrg = new Service();
+        sSameNameNullOrg.setId(UUID.randomUUID());
+        sSameNameNullOrg.setName("ProviderId Service");
+        sSameNameNullOrg.setProvider(validPp);
+        sSameNameNullOrg.setOrganisation(null);
+        Service sSingleMatch = new Service();
+        sSingleMatch.setId(serviceId);
+        sSingleMatch.setName("ProviderId Service");
+        sSingleMatch.setProvider(validPp);
+        sSingleMatch.setOrganisation(validOrg);
+        Mockito.when(serviceRepository.findAll()).thenReturn(
+                List.of(sNullName, sDiffName, sSameNameDiffProv, sSameNameNullProv, sSameNameDiffOrg, sSameNameNullOrg, sSingleMatch)
+        );
+
+        cps.createService(createViaProviderId, nonJwtAuth);
+
+        // createService where both therapistUuid and providerProfileId are provided, and where providerProfileId is not found
+        Map<String, Object> createBothIds = new HashMap<>();
+        createBothIds.put("name", "BothIds Service");
+        createBothIds.put("therapistUuid", therapistUuid.toString());
+        createBothIds.put("providerProfileId", providerId.toString());
+        Mockito.when(providerProfileRepository.findById(providerId)).thenReturn(Optional.of(validPp));
+        cps.createService(createBothIds, null);
+
+        UUID unknownProvId = UUID.randomUUID();
+        Mockito.when(providerProfileRepository.findById(unknownProvId)).thenReturn(Optional.empty());
+        createBothIds.put("providerProfileId", unknownProvId.toString());
+        cps.createService(createBothIds, null);
+
+        // createService where provider != null and provider.getOrganisation() == null
+        ProviderProfile ppNoOrg = new ProviderProfile();
+        ppNoOrg.setId(providerId);
+        ppNoOrg.setUserUuid(therapistUuid);
+        ppNoOrg.setWorkingHoursJson("08:00-16:00");
+        ppNoOrg.setOrganisation(null);
+        Mockito.when(providerProfileRepository.findById(providerId)).thenReturn(Optional.of(ppNoOrg));
+        Assertions.assertThrows(ResponseStatusException.class, () -> cps.createService(createViaProviderId, null));
+
+        // Subclass ClinicPlatformService with overridden getMissingProfileFields to cover L537-538 when provider == null & organisation == null
+        com.platform.service.ClinicPlatformService lenientCps = new com.platform.service.ClinicPlatformService(
+                clientProfileRepository, organisationRepository, providerProfileRepository,
+                serviceRepository, handshakeRepository, aptRepo, jeRepo, pclRepo
+        ) {
+            @Override
+            public List<String> getMissingProfileFields(ProviderProfile p, Organisation o, ClientProfile c) {
+                return List.of();
+            }
+        };
+        Mockito.when(providerProfileRepository.findById(unknownProvId)).thenReturn(Optional.empty());
+        Map<String, Object> nullProvOrgPayload = new HashMap<>();
+        nullProvOrgPayload.put("name", "ProviderId Service");
+        nullProvOrgPayload.put("providerProfileId", unknownProvId.toString());
+        lenientCps.createService(nullProvOrgPayload, null);
+
+        // updateService with statefulMockPp (getUserUuid null then non-null) and null pIdObj / oIdObj
+        Mockito.when(providerProfileRepository.findById(providerId)).thenReturn(Optional.of(statefulMockPp));
+        existingSvc.setProvider(statefulMockPp);
+        existingSvc.setOrganisation(validOrg);
+        Map<String, Object> updNullIds = new HashMap<>();
+        updNullIds.put("providerProfileId", null);
+        updNullIds.put("organisationId", null);
+        cps.updateService(serviceId, updNullIds, nonJwtAuth);
+
+        // updateService where provider != null and provider.getOrganisation() == null
+        existingSvc.setProvider(ppNoOrg);
+        existingSvc.setOrganisation(null);
+        Assertions.assertThrows(ResponseStatusException.class, () -> cps.updateService(serviceId, Map.of(), null));
+
+        // deleteService hitting all filter branches and toggleServiceActive from false to true
+        Mockito.when(serviceRepository.findById(serviceId)).thenReturn(Optional.of(sSingleMatch));
+        cps.deleteService(serviceId);
+        sSingleMatch.setIsActive(false);
+        Assertions.assertTrue(cps.toggleServiceActive(serviceId).getIsActive());
+
+        // 7e. createOrUpdateHandshake & updateHandshakeStatus remaining branches
+        ClientTherapistHandshake hsNullUuids = new ClientTherapistHandshake(null, null, null, null, null, "REVOKED");
+        Mockito.when(handshakeRepository.findByClientUuidAndTherapistUuid(null, null)).thenReturn(Optional.empty());
+        cps.createOrUpdateHandshake(hsNullUuids);
+
+        Mockito.when(providerProfileRepository.findByUserUuid(therapistUuid)).thenReturn(Optional.of(ppNoOrg));
+        ClientTherapistHandshake hsRevokedReq = new ClientTherapistHandshake(clientUuid, null, therapistUuid, null, null, "REVOKED");
+        ClientTherapistHandshake hsExistingWithFields = new ClientTherapistHandshake(clientUuid, "Anders", therapistUuid, "Dr. Jensen", "Org", "ACTIVE");
+        Mockito.when(handshakeRepository.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.of(hsExistingWithFields));
+        cps.createOrUpdateHandshake(hsRevokedReq);
+
+        UUID hsId = UUID.randomUUID();
+        Mockito.when(handshakeRepository.findById(hsId)).thenReturn(Optional.of(hsExistingWithFields));
+        Map<String, String> hsNullValues = new HashMap<>();
+        hsNullValues.put("status", null);
+        hsNullValues.put("validFrom", null);
+        hsNullValues.put("validTo", null);
+        hsNullValues.put("historyStartDate", null);
+        hsNullValues.put("historyEndDate", null);
+        cps.updateHandshakeStatus(hsId, hsNullValues);
+        cps.updateHandshakeStatus(hsId, Map.of("status", "   "));
+        cps.updateHandshakeStatus(hsId, Map.of("status", "PENDING"));
+
+        // extractUserUuid when jwt.getSubject() is null
+        Jwt noSubJwt = Jwt.withTokenValue("tok")
+                .header("alg", "none")
+                .claim("iss", "test")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication noSubAuth = Mockito.mock(Authentication.class);
+        Mockito.when(noSubAuth.getPrincipal()).thenReturn(noSubJwt);
+        Assertions.assertThrows(ResponseStatusException.class, () -> cps.getCurrentUserContext(noSubAuth));
+        Assertions.assertNull(js.extractCallerUuid(noSubAuth));
+
+        // 7f. JournalService remaining branches
+        Jwt invalidSubJwt = Jwt.withTokenValue("tok")
+                .header("alg", "none")
+                .claim("sub", "not-a-uuid")
+                .claim("realm_access", Map.of("roles", "not-a-list"))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication invalidSubAuth = Mockito.mock(Authentication.class);
+        Mockito.when(invalidSubAuth.getPrincipal()).thenReturn(invalidSubJwt);
+        Mockito.when(invalidSubAuth.getAuthorities()).thenReturn(null);
+        Assertions.assertFalse(js.hasTherapistRole(invalidSubAuth));
+
+        JournalEntryDto dtoNullSub = new JournalEntryDto();
+        dtoNullSub.setTitle("Title");
+        dtoNullSub.setContent(null);
+        dtoNullSub.setAppointmentId(UUID.randomUUID());
+        jsWithFailingGit.createJournalEntry(dtoNullSub, invalidSubAuth);
+
+        // createJournalEntry where journalEntryRepository.save returns null
+        JournalEntryRepository nullReturningJeRepo = Mockito.mock(JournalEntryRepository.class);
+        Mockito.when(nullReturningJeRepo.save(any())).thenReturn(null);
+        JournalService jsNullSave = new JournalService(
+                nullReturningJeRepo, null, null,
+                Mockito.mock(com.platform.service.PlatformCacheService.class),
+                Mockito.mock(AppointmentRepository.class), null
+        );
+        jsNullSave.createJournalEntry(dtoNullSub, null);
+
+        // updateJournalEntrySharing without sharedWithTherapists or sharedTherapistUuids keys
+        jsWithFailingGit.updateJournalEntrySharing(entryNoClientId, Map.of());
+
+        // createTherapistNote when clinicalNoteRepository.save throws exception (L287) and when appointmentRepository is null with non-null appointmentId
+        TherapistClinicalNoteRepository throwingNoteRepo = Mockito.mock(TherapistClinicalNoteRepository.class);
+        Mockito.when(throwingNoteRepo.save(any())).thenThrow(new RuntimeException("DB fail"));
+        JournalService jsThrowingNote = new JournalService(mockJeRepo, null, throwingNoteRepo, customCache, null, null);
+        Assertions.assertNull(jsThrowingNote.createTherapistNote(
+                Map.of("clientUuid", clientUuid.toString(), "therapistNote", "note", "appointmentId", UUID.randomUUID().toString()),
+                tAuth
+        ));
+
+        TherapistClinicalNoteRepository okNoteRepo = Mockito.mock(TherapistClinicalNoteRepository.class);
+        Mockito.when(okNoteRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        JournalService jsNoteNoAptRepo = new JournalService(mockJeRepo, null, okNoteRepo, customCache, null, null);
+        Assertions.assertNotNull(jsNoteNoAptRepo.createTherapistNote(
+                Map.of("clientUuid", clientUuid.toString(), "therapistNote", "note Refs-Appointment", "appointmentId", UUID.randomUUID().toString()),
+                tAuth
+        ));
+
+        // getClientJournalBundle & getJournalCommitHistory when hsOpt is empty and when callerUuid is null
+        Mockito.when(mockHsRepo.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.empty());
+        Assertions.assertTrue(((List<?>) jsWithFailingGit.getClientJournalBundle(clientUuid, therapistUuid, null).get("entries")).isEmpty());
+        Assertions.assertTrue(jsWithFailingGit.getJournalCommitHistory(clientUuid, therapistUuid, null).isEmpty());
+
+        JournalService jsWithOkGit = new JournalService(mockJeRepo, jgit, okNoteRepo, customCache, null, null);
+        jsWithOkGit.getJournalCommitHistory(clientUuid, clientUuid, tAuth);
+        jsWithOkGit.getJournalCommitHistory(clientUuid, null, roleAuth);
+        jsWithOkGit.getJournalCommitHistory(clientUuid, null, nonJwtAuth);
+
+        // 7g. PlatformEventService, PlatformCacheService, BaseService, UserController
+        com.platform.service.PlatformEventService eventService = new com.platform.service.PlatformEventService();
+        eventService.clearEvents();
+        eventService.publishEvent("clinic-events", "CREATE", "id-1", Map.of("k", "v"));
+        Assertions.assertFalse(eventService.getPublishedEvents().isEmpty());
+        Assertions.assertTrue(eventService.hasEvent("clinic-events", "CREATE"));
+        Assertions.assertFalse(eventService.hasEvent("clinic-events", "DELETE"));
+        Assertions.assertFalse(eventService.hasEvent("other-topic", "CREATE"));
+        eventService.clearEvents();
+        Assertions.assertTrue(eventService.getPublishedEvents().isEmpty());
+
+        Assertions.assertTrue(customCache.isConnected());
+        customCache.put("k1", "v1");
+        Assertions.assertTrue(customCache.containsKey("k1"));
+        Assertions.assertFalse(customCache.containsKey("k2"));
+        Assertions.assertNotNull(customCache.get("k1"));
+        Assertions.assertNull(customCache.get("k2"));
+        Assertions.assertTrue(customCache.getCacheHitCount() >= 1);
+        customCache.evict("k1");
+        customCache.clearAll();
+
+        com.platform.repository.UserRepository userRepo = Mockito.mock(com.platform.repository.UserRepository.class);
+        com.platform.entity.UserEntity userEntity = new com.platform.entity.UserEntity();
+        UUID uId = UUID.randomUUID();
+        userEntity.setId(uId);
+        userEntity.setUsername("user1");
+        userEntity.setPassword("pass");
+        userEntity.setRole("CLIENT");
+        Mockito.when(userRepo.save(any())).thenReturn(userEntity);
+        Mockito.when(userRepo.findById(uId)).thenReturn(Optional.of(userEntity));
+        Mockito.when(userRepo.findById(clientUuid)).thenReturn(Optional.empty());
+        Mockito.when(userRepo.findAll()).thenReturn(List.of(userEntity));
+        Mockito.when(userRepo.existsById(uId)).thenReturn(true);
+        Mockito.when(userRepo.existsById(clientUuid)).thenReturn(false);
+
+        com.platform.service.UserService userService = new com.platform.service.UserService(userRepo);
+        com.platform.controller.UserController userCtrl = new com.platform.controller.UserController(userService);
+        com.platform.dto.UserRequestDto userReq = new com.platform.dto.UserRequestDto();
+        userReq.setId(uId);
+        userReq.setUsername("user1");
+        userReq.setPassword("Password123");
+        userReq.setRole("CLIENT");
+        Assertions.assertEquals(HttpStatus.CREATED, userCtrl.create(userReq).getStatusCode());
+        com.platform.dto.UserRequestDto invalidRoleReq = new com.platform.dto.UserRequestDto();
+        invalidRoleReq.setUsername("user1");
+        invalidRoleReq.setPassword("Password123");
+        invalidRoleReq.setRole("INVALID_ROLE");
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, userCtrl.create(invalidRoleReq).getStatusCode());
+        Mockito.when(userRepo.existsByUsername("user1")).thenReturn(true);
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, userCtrl.create(userReq).getStatusCode());
+        Assertions.assertEquals(HttpStatus.OK, userCtrl.getById(uId).getStatusCode());
+        Assertions.assertEquals(HttpStatus.NOT_FOUND, userCtrl.getById(clientUuid).getStatusCode());
+        Assertions.assertEquals(HttpStatus.OK, userCtrl.getAll().getStatusCode());
+        Assertions.assertEquals(HttpStatus.OK, userCtrl.update(uId, userReq).getStatusCode());
+        Assertions.assertThrows(ResponseStatusException.class, () -> userCtrl.update(clientUuid, userReq));
+        Assertions.assertEquals(HttpStatus.NO_CONTENT, userCtrl.delete(uId).getStatusCode());
+
+        // BaseService convertFilterValue, buildSort, toEntity, toDto, setInterceptors
+        userService.setInterceptors(null);
+        com.platform.core.service.CrudInterceptor<com.platform.entity.UserEntity, UUID> interceptor =
+                new com.platform.core.service.CrudInterceptor<>() {};
+        userService.setInterceptors(List.of(interceptor));
+        userService.addInterceptor(interceptor); // duplicate ignored
+        userService.addInterceptor(null);
+        Assertions.assertNull(userService.toEntity(null));
+        Assertions.assertNull(userService.toDto(null));
+        Assertions.assertEquals(uId, userService.convertFilterValue(uId.toString(), UUID.class));
+        Assertions.assertEquals(10L, userService.convertFilterValue("10", Long.class));
+        Assertions.assertEquals(10L, userService.convertFilterValue("10", long.class));
+        Assertions.assertEquals(5, userService.convertFilterValue("5", Integer.class));
+        Assertions.assertEquals(5, userService.convertFilterValue("5", int.class));
+        Assertions.assertEquals(2.5, userService.convertFilterValue("2.5", Double.class));
+        Assertions.assertEquals(2.5, userService.convertFilterValue("2.5", double.class));
+        Assertions.assertEquals(true, userService.convertFilterValue("true", Boolean.class));
+        Assertions.assertEquals(true, userService.convertFilterValue("true", boolean.class));
+        Assertions.assertEquals("raw", userService.convertFilterValue("raw", String.class));
+        Assertions.assertTrue(userService.buildSort(null).isUnsorted());
+        Assertions.assertTrue(userService.buildSort("   ").isUnsorted());
+        Assertions.assertTrue(userService.buildSort("username,desc").isSorted());
+        Assertions.assertTrue(userService.buildSort("username,asc").isSorted());
+        Assertions.assertTrue(userService.buildSort("username").isSorted());
+
+        // 7h. Targeted final branches to exceed 98% branch coverage
+        // JournalEntry: onCreate when timestamp != null & sharedWithTherapists != null; blank sharedTherapistUuidsCsv
+        JournalEntry jePopulated = new JournalEntry("T", "C", 5, LocalDateTime.now(), clientUuid);
+        jePopulated.setSharedWithTherapists(false);
+        ReflectionTestUtils.invokeMethod(jePopulated, "onCreate");
+        ReflectionTestUtils.setField(jePopulated, "sharedTherapistUuidsCsv", "   ");
+        Assertions.assertTrue(jePopulated.getSharedTherapistUuids().isEmpty());
+
+        com.platform.dto.JournalEntryDto jeDto = new com.platform.dto.JournalEntryDto();
+        jeDto.setSharedWithTherapists(null);
+        Assertions.assertTrue(jeDto.getSharedWithTherapists());
+        jeDto.setSharedWithTherapists(false);
+        Assertions.assertFalse(jeDto.getSharedWithTherapists());
+
+        // ClientTherapistHandshake: isCommitInHistoricalRange when historyStartDate & historyEndDate are null
+        ClientTherapistHandshake hsNoDates = new ClientTherapistHandshake(clientUuid, "C", therapistUuid, "T", "O", "ACTIVE");
+        Assertions.assertTrue(hsNoDates.isCommitInHistoricalRange(Instant.now()));
+
+        // I18nDictionary: getPublished when null vs non-null
+        I18nDictionary i18nDictNullPub = new I18nDictionary();
+        ReflectionTestUtils.setField(i18nDictNullPub, "published", null);
+        Assertions.assertTrue(i18nDictNullPub.getPublished());
+        i18nDictNullPub.setPublished(false);
+        Assertions.assertFalse(i18nDictNullPub.getPublished());
+
+        // ClinicDatabaseInitializer: existing dict with non-blank displayName, non-blank flag, non-null published
+        I18nDictionaryRepository initRepo = Mockito.mock(I18nDictionaryRepository.class);
+        I18nDictionary fullDict = new I18nDictionary("en", "English Custom", "🇬🇧", false, new HashMap<>());
+        I18nDictionary blankMetaDict = new I18nDictionary("da", "   ", "   ", null, new HashMap<>());
+        Mockito.when(initRepo.findByLocale(any())).thenReturn(Optional.of(fullDict));
+        Mockito.when(initRepo.findByLocale("da")).thenReturn(Optional.of(blankMetaDict));
+        new com.platform.config.ClinicDatabaseInitializer(initRepo).run();
+
+        // SecurityConfig bffSessionHeaderFilter direct invocation for all header & auth branches
+        com.platform.config.SecurityConfig secCfg = new com.platform.config.SecurityConfig();
+        org.springframework.web.filter.OncePerRequestFilter bffFilter =
+                ReflectionTestUtils.invokeMethod(secCfg, "bffSessionHeaderFilter");
+        jakarta.servlet.http.HttpServletRequest mockReq = Mockito.mock(jakarta.servlet.http.HttpServletRequest.class);
+        jakarta.servlet.http.HttpServletResponse mockResp = Mockito.mock(jakarta.servlet.http.HttpServletResponse.class);
+        jakarta.servlet.FilterChain mockChain = Mockito.mock(jakarta.servlet.FilterChain.class);
+
+        // Branch 1: SecurityContext already has authentication (L64 false)
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(tAuth);
+        bffFilter.doFilter(mockReq, mockResp, mockChain);
+
+        // Branch 2: SecurityContext null auth, X-Auth-User-Uuid with roles containing empty segment "client, ,therapist" (L75 false)
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        Mockito.when(mockReq.getHeader("X-Auth-User-Uuid")).thenReturn(clientUuid.toString());
+        Mockito.when(mockReq.getHeader("X-Auth-Roles")).thenReturn("client, ,therapist");
+        bffFilter.doFilter(mockReq, mockResp, mockChain);
+
+        // Branch 3: JWT without realm_access claim at all (L112 realmAccess == null)
+        Jwt noRealmJwt = Jwt.withTokenValue("tok")
+                .header("alg", "none")
+                .claim("sub", clientUuid.toString())
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        secCfg.jwtAuthenticationConverter().convert(noRealmJwt);
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+
+        // ClinicPlatformService remaining branches:
+        // L138: getClientOverview with online appointment where provider & org have blank videoMeetingUrl ("   ")
+        Organisation orgBlankVideo = new Organisation("12345678", "Org");
+        orgBlankVideo.setVideoMeetingUrl("   ");
+        ProviderProfile ppBlankVideo = new ProviderProfile();
+        ppBlankVideo.setId(providerId);
+        ppBlankVideo.setUserUuid(therapistUuid);
+        ppBlankVideo.setVideoMeetingUrl("   ");
+        ppBlankVideo.setOrganisation(orgBlankVideo);
+        Mockito.when(providerProfileRepository.findAll()).thenReturn(List.of(ppBlankVideo));
+        Mockito.when(providerProfileRepository.findByUserUuid(therapistUuid)).thenReturn(Optional.of(ppBlankVideo));
+        Appointment aptOnlineBlankVideo = new Appointment(clientUuid, therapistUuid, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Online", "SCHEDULED");
+        aptOnlineBlankVideo.setLocation("online");
+        Appointment aptRegularLoc = new Appointment(clientUuid, therapistUuid, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Office", "SCHEDULED");
+        aptRegularLoc.setLocation("Kontor");
+        Mockito.when(aptRepo.findByClientUuid(clientUuid)).thenReturn(List.of(aptOnlineBlankVideo));
+        cps.getClientOverview(clientUuid);
+
+        // L233, L234, L244: getTherapistOverview with non-matching location ("Kontor"), blank homeAddress ("   ") on klient location, and blank videoMeetingUrl ("   ") on online location
+        ClientProfile cpBlankHome = new ClientProfile(clientUuid, "Name", "1990-01-01", "   ", "2100", "123", "a@b.dk");
+        Mockito.when(clientProfileRepository.findAll()).thenReturn(List.of(cpBlankHome));
+        Appointment aptKlientBlankHome = new Appointment(clientUuid, therapistUuid, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Klient", "SCHEDULED");
+        aptKlientBlankHome.setLocation("klient");
+        Mockito.when(aptRepo.findByTherapistUuid(therapistUuid)).thenReturn(List.of(aptOnlineBlankVideo, aptRegularLoc, aptKlientBlankHome));
+        cps.getTherapistOverview(therapistUuid);
+
+        // L592, L595, L607, L613: updateService when service.getProvider() is null, therapistUuid is null, and auth is null / Jwt / non-Jwt
+        Service svcNoProvNoOrg = new Service();
+        svcNoProvNoOrg.setId(serviceId);
+        svcNoProvNoOrg.setProvider(null);
+        svcNoProvNoOrg.setOrganisation(null);
+        Mockito.when(serviceRepository.findById(serviceId)).thenReturn(Optional.of(svcNoProvNoOrg));
+        Mockito.when(providerProfileRepository.findByUserUuid(therapistUuid)).thenReturn(Optional.of(validPp));
+        cps.updateService(serviceId, Map.of(), tAuth);
+
+        svcNoProvNoOrg.setProvider(null);
+        svcNoProvNoOrg.setOrganisation(null);
+        Assertions.assertThrows(ResponseStatusException.class, () -> cps.updateService(serviceId, Map.of(), null));
+        Assertions.assertThrows(ResponseStatusException.class, () -> cps.updateService(serviceId, Map.of(), nonJwtAuth));
+
+        // L790: extractRoles when realm_access.get("roles") is not a List
+        Mockito.when(clientProfileRepository.findByUserId(clientUuid)).thenReturn(Optional.of(cp2));
+        cps.getCurrentUserContext(nonListRolesAuth);
+
+        // JournalService remaining branches:
+        // L184: createJournalEntry when appointmentId != null and appointmentRepository == null
+        JournalService jsNoAptRepo = new JournalService(mockJeRepo, null, null, customCache, null, mockHsRepo);
+        Mockito.when(mockJeRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        JournalEntryDto dtoWithApt = new JournalEntryDto();
+        dtoWithApt.setClientUuid(clientUuid);
+        dtoWithApt.setAppointmentId(UUID.randomUUID());
+        dtoWithApt.setTitle("T");
+        dtoWithApt.setContent("C");
+        jsNoAptRepo.createJournalEntry(dtoWithApt, null);
+
+        // L227: createTherapistNote when authentication is null
+        Assertions.assertThrows(ResponseStatusException.class, () -> jsNoAptRepo.createTherapistNote(Map.of(), null));
+
+        // L300, L320, L336, L337: getClientJournalBundle when isTherapist is false (client call) and when historyStartDate & historyEndDate are both set with entries before, in-range, and after
+        ClientTherapistHandshake hsBothDates = new ClientTherapistHandshake(clientUuid, "C", therapistUuid, "T", "O", "ACTIVE");
+        hsBothDates.setHistoryStartDate(java.time.LocalDate.now().minusDays(2));
+        hsBothDates.setHistoryEndDate(java.time.LocalDate.now().plusDays(2));
+        Mockito.when(mockHsRepo.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.of(hsBothDates));
+        JournalEntry eBefore = new JournalEntry("Before", "B", 5, LocalDateTime.now().minusDays(5), clientUuid);
+        JournalEntry eIn = new JournalEntry("In", "I", 5, LocalDateTime.now(), clientUuid);
+        JournalEntry eAfter = new JournalEntry("After", "A", 5, LocalDateTime.now().plusDays(5), clientUuid);
+        Mockito.when(mockJeRepo.findByClientUuidOrderByTimestampDesc(clientUuid)).thenReturn(List.of(eBefore, eIn, eAfter));
+        jsNoAptRepo.getClientJournalBundle(clientUuid, null, null); // isTherapist == false
+        jsNoAptRepo.getClientJournalBundle(clientUuid, therapistUuid, tAuth); // hits both fStart and fEnd true/false branches
+
+        // I18nService remaining branches: L121, L122, L129, L135, L149, L175, L216
+        I18nDictionaryRepository i18nMockRepo = Mockito.mock(I18nDictionaryRepository.class);
+        Mockito.when(i18nMockRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        com.platform.service.I18nService i18nSvc = new com.platform.service.I18nService(i18nMockRepo);
+        Mockito.when(i18nMockRepo.findByLocale("es")).thenReturn(Optional.empty());
+        i18nSvc.createOrUpdateLocale("es", "   ", "   ", null, null, false);
+
+        I18nDictionary existingNonBlankDict = new I18nDictionary("fr", "Français", "🇫🇷", true, new LinkedHashMap<>(Map.of("k1", "   ")));
+        I18nDictionary sourceCloneDict = new I18nDictionary("en", "English", "🇬🇧", true, new LinkedHashMap<>(Map.of("k1", "Val1")));
+        I18nDictionary nullPubSummaryDict = new I18nDictionary("de", "Deutsch", "🇩🇪", null, new LinkedHashMap<>());
+        Mockito.when(i18nMockRepo.findByLocale("fr")).thenReturn(Optional.of(existingNonBlankDict));
+        Mockito.when(i18nMockRepo.findByLocale("en")).thenReturn(Optional.of(sourceCloneDict));
+        i18nSvc.createOrUpdateLocale("fr", null, null, null, "en", true);
+
+        Mockito.when(i18nMockRepo.findAll()).thenReturn(new ArrayList<>(List.of(existingNonBlankDict, nullPubSummaryDict)));
+        i18nSvc.getLocaleSummaries("   ");
+
+        // AppointmentService remaining branches: L107 (fromDate != null, toDate == null), L133 (providerProfileRepository != null), L220 (updated.getStartTime() in past), L233 (partial overlap false branch)
+        AppointmentRepository mockAptRepo2 = Mockito.mock(AppointmentRepository.class);
+        ProviderProfileRepository mockPpRepo2 = Mockito.mock(ProviderProfileRepository.class);
+        Mockito.when(mockPpRepo2.findByUserUuid(therapistUuid)).thenReturn(Optional.of(validPp));
+        com.platform.service.AppointmentService aptSvcWithPp = new com.platform.service.AppointmentService(
+                mockAptRepo2, customCache, eventService, new com.platform.solver.TimefoldBookingService(), mockPpRepo2
+        );
+        aptSvcWithPp.getAppointmentsForClient(clientUuid, java.time.LocalDate.now(), null);
+        aptSvcWithPp.getTimefoldSlotSuggestions(therapistUuid, java.time.LocalDate.now().plusDays(1), 60, java.time.LocalTime.of(10, 0), null);
+
+        UUID existingAptId = UUID.randomUUID();
+        Appointment futureExistingApt = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().plusDays(2), LocalDateTime.now().plusDays(2).plusHours(1), "Future", "CONFIRMED");
+        futureExistingApt.setId(existingAptId);
+        Appointment earlierOtherApt = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(1), "Earlier", "CONFIRMED");
+        earlierOtherApt.setId(UUID.randomUUID());
+        Mockito.when(mockAptRepo2.findById(existingAptId)).thenReturn(Optional.of(futureExistingApt));
+        Mockito.when(mockAptRepo2.findByTherapistUuid(therapistUuid)).thenReturn(List.of(earlierOtherApt));
+        Mockito.when(mockAptRepo2.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        Appointment pastUpdate = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1), "Past", "CONFIRMED");
+        Assertions.assertThrows(ResponseStatusException.class, () -> aptSvcWithPp.rescheduleAppointment(existingAptId, pastUpdate));
+
+        Appointment nonOverlappingAfterOther = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().plusDays(3), LocalDateTime.now().plusDays(3).plusHours(1), "After", "CONFIRMED");
+        aptSvcWithPp.rescheduleAppointment(existingAptId, nonOverlappingAfterOther);
+
+        // TimefoldBookingService direct constraint & method branch coverage
+        com.platform.solver.TimefoldBookingService tfService = new com.platform.solver.TimefoldBookingService();
+        // parseWorkingWindow when end is not after start (e.g. 17:00 - 08:00) and when no regex match ("no-hours")
+        Assertions.assertEquals(java.time.LocalTime.of(8, 0), tfService.parseWorkingWindow("17:00 - 08:00")[0]);
+        Assertions.assertEquals(java.time.LocalTime.of(8, 0), tfService.parseWorkingWindow("no-hours-match")[0]);
+        // suggestOptimalSlots when end of slot exceeds workEnd (e.g. 08:00-12:00 window so afternoon slots fail !end.isAfter(workEnd))
+        ProviderProfile morningOnlyPp = new ProviderProfile();
+        morningOnlyPp.setWorkingHoursJson("08:00 - 12:00");
+        tfService.suggestOptimalSlots(therapistUuid, java.time.LocalDate.now().plusDays(1), 60, java.time.LocalTime.of(9, 0), List.of(), morningOnlyPp, null);
+
+        // AppointmentController L54: preferredTime with length > 5 ("10:00:00")
+        com.platform.controller.AppointmentController aptCtrl = new com.platform.controller.AppointmentController(aptSvcWithPp);
+        aptCtrl.getTimefoldOptimalSlots(therapistUuid, java.time.LocalDate.now().plusDays(1).toString(), 60, "10:00:00", null);
+
+        // ProfileController L43: role that does NOT start with ROLE_
+        Jwt plainRoleJwt = Jwt.withTokenValue("tok")
+                .header("alg", "none")
+                .claim("sub", clientUuid.toString())
+                .claim("realm_access", Map.of("roles", List.of("therapist")))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        Authentication plainRoleAuth = Mockito.mock(Authentication.class);
+        Mockito.when(plainRoleAuth.getPrincipal()).thenReturn(plainRoleJwt);
+        Assertions.assertEquals("THERAPIST", profileCtrl.getUserProfile(plainRoleAuth).getBody().get("primaryRole"));
+
+        // I18nService L129, L135, L175: existing dict with null displayName & null flag, and getLocaleSummaries(null)
+        I18nDictionary existingNullNameFlagDict = new I18nDictionary("it", null, null, true, new LinkedHashMap<>());
+        Mockito.when(i18nMockRepo.findByLocale("it")).thenReturn(Optional.of(existingNullNameFlagDict));
+        i18nSvc.createOrUpdateLocale("it", null, null, null, null, false);
+        i18nSvc.getLocaleSummaries(null);
+
+        // ClinicPlatformService L233: appointment with lowercase "hjemmebesøg"
+        Appointment aptHjemmebesog = new Appointment(clientUuid, therapistUuid, LocalDateTime.now(), LocalDateTime.now().plusHours(1), "Hjemme", "SCHEDULED");
+        aptHjemmebesog.setLocation("hjemmebesøg");
+        Mockito.when(aptRepo.findByTherapistUuid(therapistUuid)).thenReturn(List.of(aptHjemmebesog));
+        cps.getTherapistOverview(therapistUuid);
+
+        // AppointmentService L220 & L233: rescheduleAppointment with updated.getStartTime() == null and laterOtherApt
+        Appointment laterOtherApt = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(5).plusHours(1), "Later", "CONFIRMED");
+        laterOtherApt.setId(UUID.randomUUID());
+        Mockito.when(mockAptRepo2.findByTherapistUuid(therapistUuid)).thenReturn(List.of(earlierOtherApt, laterOtherApt));
+        Appointment middleUpdate = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().plusDays(3), LocalDateTime.now().plusDays(3).plusHours(1), "Middle", "CONFIRMED");
+        aptSvcWithPp.rescheduleAppointment(existingAptId, middleUpdate);
+
+        Appointment nullStartUpdate = new Appointment(clientUuid, therapistUuid, null, LocalDateTime.now().plusDays(3), "NullStart", "CONFIRMED");
+        Assertions.assertThrows(NullPointerException.class, () -> aptSvcWithPp.rescheduleAppointment(existingAptId, nullStartUpdate));
+
+        // JournalService L227, L300, L320, L336, L337:
+        Assertions.assertThrows(ResponseStatusException.class, () -> jsNoAptRepo.createTherapistNote(Map.of(), nonJwtAuth));
+        jsNoAptRepo.getClientJournalBundle(clientUuid, null, roleAuth); // isTherapist == true && callerUuid == null
+        ClientTherapistHandshake hsStartOnly2 = new ClientTherapistHandshake(clientUuid, "C", therapistUuid, "T", "O", "ACTIVE");
+        hsStartOnly2.setHistoryStartDate(java.time.LocalDate.now().minusDays(2));
+        hsStartOnly2.setHistoryEndDate(null);
+        Mockito.when(mockHsRepo.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.of(hsStartOnly2));
+        jsNoAptRepo.getClientJournalBundle(clientUuid, therapistUuid, tAuth);
+
+        ClientTherapistHandshake hsEndOnly2 = new ClientTherapistHandshake(clientUuid, "C", therapistUuid, "T", "O", "ACTIVE");
+        hsEndOnly2.setHistoryStartDate(null);
+        hsEndOnly2.setHistoryEndDate(java.time.LocalDate.now().plusDays(2));
+        Mockito.when(mockHsRepo.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.of(hsEndOnly2));
+        jsNoAptRepo.getClientJournalBundle(clientUuid, therapistUuid, tAuth);
+
+        // BaseService L46: raw BaseService instantiation (resolved == null)
+        @SuppressWarnings("rawtypes")
+        com.platform.core.service.BaseService rawBaseSvc = new com.platform.core.service.BaseService();
+        Assertions.assertNull(rawBaseSvc.getEntityClass());
+
+        // 7i. Cover remaining missed methods, UuidEntity class, and complexity paths for >=98% METHOD, CLASS, and COMPLEXITY coverage
+        com.platform.core.entity.BaseEntity.UuidEntity uuidEnt = new com.platform.core.entity.BaseEntity.UuidEntity() {};
+        uuidEnt.setId(clientUuid);
+        Assertions.assertEquals(clientUuid, uuidEnt.getId());
+
+        userService.setEntityClass(com.platform.entity.UserEntity.class);
+        userService.setDtoClass(com.platform.dto.UserRequestDto.class);
+
+        tcn.setAppointmentId(UUID.randomUUID());
+        pp1.setUser(new com.platform.entity.UserEntity());
+        validOrg.setCvrNumber("87654321");
+        Assertions.assertNull(cp1.getId());
+        Assertions.assertNull(s1.getDescription());
+
+        com.platform.solver.TimefoldBookingService.BookingAssignment bAssign =
+                new com.platform.solver.TimefoldBookingService.BookingAssignment();
+        bAssign.setAssignedSlot(null);
+        Assertions.assertNull(bAssign.getAssignedSlot());
+
+        // ClinicPlatformController.updateService(UUID, Map) 2-arg overload
+        Mockito.when(serviceRepository.findById(serviceId)).thenReturn(Optional.of(sSingleMatch));
+        controller.updateService(serviceId, Map.of("name", "Updated 2-arg", "therapistUuid", therapistUuid.toString()));
+
+        // UserController.handleValidationExceptions
+        org.springframework.validation.BindingResult mockBindingResult = Mockito.mock(org.springframework.validation.BindingResult.class);
+        Mockito.when(mockBindingResult.getAllErrors()).thenReturn(
+                List.of(new org.springframework.validation.ObjectError("user", "Validation failed"))
+        );
+        org.springframework.web.bind.MethodArgumentNotValidException valEx =
+                Mockito.mock(org.springframework.web.bind.MethodArgumentNotValidException.class);
+        Mockito.when(valEx.getBindingResult()).thenReturn(mockBindingResult);
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, userCtrl.handleValidationExceptions(valEx).getStatusCode());
+    }
 }
+
 

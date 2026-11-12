@@ -158,5 +158,22 @@ class TimefoldBookingServiceTest {
         assertEquals(HardSoftScore.ZERO, emptySolution.getScore());
         assertNull(emptySolution.getCandidateSlots());
         assertNull(emptySolution.getExistingBookings());
+
+        // Test suggestOptimalSlots with null existingAppointments, null element, null startTime/endTime, and non-matching excludeAppointmentId
+        LocalDate futureDate = LocalDate.now().plusDays(7);
+        solverService.suggestOptimalSlots(therapistId, futureDate, 60, LocalTime.of(9, 0), null, null, null);
+
+        Appointment nullStartApt = new Appointment(UUID.randomUUID(), therapistId, null, null, "Null Start", "CONFIRMED");
+        Appointment nullEndApt = new Appointment(UUID.randomUUID(), therapistId, LocalDateTime.of(futureDate, LocalTime.of(9, 0)), null, "Null End", "CONFIRMED");
+        Appointment diffDayApt = new Appointment(UUID.randomUUID(), therapistId, LocalDateTime.of(futureDate.plusDays(1), LocalTime.of(10, 0)), LocalDateTime.of(futureDate.plusDays(1), LocalTime.of(11, 0)), "Diff Day", "CONFIRMED");
+        diffDayApt.setId(UUID.randomUUID());
+
+        java.util.List<Appointment> mixedList = new java.util.ArrayList<>();
+        mixedList.add(null);
+        mixedList.add(nullStartApt);
+        mixedList.add(nullEndApt);
+        mixedList.add(diffDayApt);
+        solverService.suggestOptimalSlots(therapistId, futureDate, 60, LocalTime.of(9, 0), mixedList, null, UUID.randomUUID());
     }
 }
+

@@ -178,5 +178,33 @@ public class I18nServiceTest {
         Assertions.assertEquals(200, ctrl.replaceRawTranslations("da", Map.of("translations", new HashMap<>(Map.of("a", "b")))).getStatusCode().value());
         Assertions.assertEquals(200, ctrl.replaceRawTranslations("da", new HashMap<>(Map.of("a", "b"))).getStatusCode().value());
         Assertions.assertEquals(200, ctrl.deleteTranslationKey("da", "a").getStatusCode().value());
+
+        // 7. Extra branches in I18nService & I18nController
+        I18nDictionary emptyFlatDict = new I18nDictionary("fi", "Suomi", "🇫🇮", true, new HashMap<>());
+        emptyFlatDict.setUpdatedAt(null);
+        I18nDictionary nullNameDict = new I18nDictionary("pt", null, null, true, Map.of("k", "v"));
+        when(repository.findAll()).thenReturn(new java.util.ArrayList<>(java.util.List.of(emptyFlatDict, nullNameDict)));
+        i18nService.getLocaleSummaries("unknown");
+
+        // flattenMap with null value inside map and null prefix
+        Map<String, Object> mapWithNullVal = new HashMap<>();
+        mapWithNullVal.put("nullKey", null);
+        mapWithNullVal.put("validKey", "val");
+        Assertions.assertEquals(1, I18nService.flattenMap(mapWithNullVal, null).size());
+
+        // deleteTranslationKey when dict.getTranslations() is null
+        I18nDictionary dictNullTrans = new I18nDictionary("is", null);
+        when(repository.findByLocale("is")).thenReturn(Optional.of(dictNullTrans));
+        i18nService.deleteTranslationKey("is", "some.key");
+
+        // createOrUpdateLocale with existing non-blank displayName and flag when null passed
+        I18nDictionary dictWithMeta = new I18nDictionary("nl", "Nederlands", "🇳🇱", true, new HashMap<>());
+        when(repository.findByLocale("nl")).thenReturn(Optional.of(dictWithMeta));
+        i18nService.createOrUpdateLocale("nl", null, null, null, "da", false);
+
+        // I18nController copyValues=false and replaceRawTranslations with non-Map translations key
+        Assertions.assertEquals(200, ctrl.createOrUpdateLocale(Map.of("locale", "nl", "copyValues", false)).getStatusCode().value());
+        Assertions.assertEquals(200, ctrl.replaceRawTranslations("nl", Map.of("translations", "not-a-map")).getStatusCode().value());
     }
 }
+

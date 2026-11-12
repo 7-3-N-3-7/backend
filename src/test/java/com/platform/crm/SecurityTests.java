@@ -181,5 +181,18 @@ public class SecurityTests {
                 .build();
         HttpResponse<String> allowedNoteResp = httpClient.send(allowedNoteReq, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, allowedNoteResp.statusCode());
+
+        // 5. Verify public report redirect endpoints are accessible without authentication
+        HttpRequest jacocoRedirectReq = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/backend-coverage"))
+                .GET()
+                .build();
+        assertEquals(302, httpClient.send(jacocoRedirectReq, HttpResponse.BodyHandlers.ofString()).statusCode());
+
+        HttpRequest cucumberRedirectReq = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/backend-cucumber"))
+                .GET()
+                .build();
+        assertEquals(302, httpClient.send(cucumberRedirectReq, HttpResponse.BodyHandlers.ofString()).statusCode());
     }
 }

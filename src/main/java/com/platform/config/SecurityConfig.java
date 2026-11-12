@@ -29,14 +29,30 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig {
+public class SecurityConfig implements org.springframework.web.servlet.config.annotation.WebMvcConfigurer {
+
+    @Override
+    public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/backend-coverage/**")
+                .addResourceLocations("file:/app/reports/backend-coverage/", "classpath:/static/backend-coverage/");
+        registry.addResourceHandler("/backend-cucumber/**")
+                .addResourceLocations("file:/app/reports/backend-cucumber/", "classpath:/static/backend-cucumber/");
+    }
+
+    @Override
+    public void addViewControllers(org.springframework.web.servlet.config.annotation.ViewControllerRegistry registry) {
+        registry.addRedirectViewController("/backend-coverage", "/backend-coverage/index.html");
+        registry.addRedirectViewController("/backend-coverage/", "/backend-coverage/index.html");
+        registry.addRedirectViewController("/backend-cucumber", "/backend-cucumber/index.html");
+        registry.addRedirectViewController("/backend-cucumber/", "/backend-cucumber/index.html");
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/public/**", "/actuator/health").permitAll()
+                .requestMatchers("/api/v1/public/**", "/actuator/health", "/backend-coverage/**", "/backend-cucumber/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
                 .anyRequest().authenticated()
             )

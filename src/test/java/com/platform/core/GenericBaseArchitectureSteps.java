@@ -5,16 +5,19 @@ import com.platform.core.BaseDomainCore.BaseService;
 import com.platform.core.BaseDomainCore.Identifiable;
 import com.platform.core.BaseWebCore.BaseController;
 import com.platform.features.appointment.AppointmentFeature.Appointment;
-import com.platform.features.appointment.AppointmentFeature.AppointmentPort;
 import com.platform.features.clinic.ClinicPlatformFeature.ClientProfile;
 import com.platform.features.clinic.ClinicPlatformFeature.ClientTherapistHandshake;
 import com.platform.features.clinic.ClinicPlatformFeature.Organisation;
 import com.platform.features.clinic.ClinicPlatformFeature.ProviderProfile;
 import com.platform.features.clinic.ClinicPlatformFeature.Service;
+import com.platform.features.i18n.I18nFeature.I18nDictionary;
 import com.platform.features.journal.JournalFeature.JournalEntry;
 import com.platform.features.journal.JournalFeature.TherapistClinicalNote;
+import com.platform.features.journal.JournalFeature.TherapistNote;
 import com.platform.features.psychotraumatology.PsychotraumatologyFeature.PsychotraumatologyTest;
 import com.platform.features.user.UserFeature.UserEntity;
+import io.cucumber.datatable.DataTable;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.response.Response;
@@ -22,16 +25,15 @@ import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.lang.reflect.Modifier;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static io.restassured.RestAssured.given;
-
 public class GenericBaseArchitectureSteps {
 
     @Autowired
-    private AppointmentPort appointmentPort;
+    private DomainScenarioState state;
 
     private Response lastInheritedResponse;
 
@@ -54,8 +56,10 @@ public class GenericBaseArchitectureSteps {
                 Map.entry("ClientTherapistHandshake", ClientTherapistHandshake.class),
                 Map.entry("UserEntity", UserEntity.class),
                 Map.entry("JournalEntry", JournalEntry.class),
+                Map.entry("TherapistClinicalNote", TherapistClinicalNote.class),
+                Map.entry("TherapistNote", TherapistNote.class),
                 Map.entry("PsychotraumatologyTest", PsychotraumatologyTest.class),
-                Map.entry("TherapistClinicalNote", TherapistClinicalNote.class)
+                Map.entry("I18nDictionary", I18nDictionary.class)
         );
         Class<?> clazz = entities.get(simpleName);
         Assertions.assertNotNull(clazz, "Unknown domain entity: " + simpleName);
@@ -63,10 +67,18 @@ public class GenericBaseArchitectureSteps {
     }
 
     private Class<?> resolveDomainRepository(String simpleName) {
-        Map<String, String> repos = Map.of(
-                "AppointmentRepository", "com.platform.features.appointment.AppointmentFeature$AppointmentRepository",
-                "OrganisationRepository", "com.platform.features.clinic.ClinicPlatformFeature$OrganisationRepository",
-                "ServiceRepository", "com.platform.features.clinic.ClinicPlatformFeature$ServiceRepository"
+        Map<String, String> repos = Map.ofEntries(
+                Map.entry("UserRepository", "com.platform.features.user.UserFeature$UserRepository"),
+                Map.entry("AppointmentRepository", "com.platform.features.appointment.AppointmentFeature$AppointmentRepository"),
+                Map.entry("JournalEntryRepository", "com.platform.features.journal.JournalFeature$JournalEntryRepository"),
+                Map.entry("TherapistClinicalNoteRepository", "com.platform.features.journal.JournalFeature$TherapistClinicalNoteRepository"),
+                Map.entry("TherapistNoteRepository", "com.platform.features.journal.JournalFeature$TherapistNoteRepository"),
+                Map.entry("PsychotraumatologyTestRepository", "com.platform.features.psychotraumatology.PsychotraumatologyFeature$PsychotraumatologyTestRepository"),
+                Map.entry("ClientProfileRepository", "com.platform.features.clinic.ClinicPlatformFeature$ClientProfileRepository"),
+                Map.entry("OrganisationRepository", "com.platform.features.clinic.ClinicPlatformFeature$OrganisationRepository"),
+                Map.entry("ProviderProfileRepository", "com.platform.features.clinic.ClinicPlatformFeature$ProviderProfileRepository"),
+                Map.entry("ServiceRepository", "com.platform.features.clinic.ClinicPlatformFeature$ServiceRepository"),
+                Map.entry("HandshakeRepository", "com.platform.features.clinic.ClinicPlatformFeature$HandshakeRepository")
         );
         String fqcn = repos.get(simpleName);
         Assertions.assertNotNull(fqcn, "Unknown domain repository: " + simpleName);
@@ -99,92 +111,117 @@ public class GenericBaseArchitectureSteps {
         return resolveClassOrFail(fqcn);
     }
 
-    @Then("the domain entity {string} should inherit from BaseEntity")
-    public void the_domain_entity_should_inherit_from_base_entity(String entitySimpleName) {
-        Class<?> entityClass = resolveDomainEntity(entitySimpleName);
-        Assertions.assertTrue(
-                Identifiable.class.isAssignableFrom(entityClass),
-                entitySimpleName + " must implement BaseDomainCore.Identifiable"
-        );
-        Assertions.assertTrue(
-                Modifier.isPublic(entityClass.getModifiers()),
-                entitySimpleName + " must be public"
-        );
+    @Then("the following domain components should extend or implement the core base contracts:")
+    public void verifyDomainComponentsExtendBaseContracts(DataTable dataTable) {
+        for (Map<String, String> row : dataTable.asMaps(String.class, String.class)) {
+            String componentType = row.get("componentType");
+            String className = row.get("className");
+            switch (componentType) {
+                case "entity" -> {
+                    Class<?> entityClass = resolveDomainEntity(className);
+                    Assertions.assertTrue(
+                            Identifiable.class.isAssignableFrom(entityClass),
+                            className + " must implement Identifiable"
+                    );
+                    Assertions.assertTrue(
+                            Modifier.isPublic(entityClass.getModifiers()),
+                            className + " must be public"
+                    );
+                }
+                case "repository" -> {
+                    Class<?> repoClass = resolveDomainRepository(className);
+                    Assertions.assertTrue(
+                            BaseRepository.class.isAssignableFrom(repoClass),
+                            className + " must extend BaseRepository"
+                    );
+                    Assertions.assertFalse(
+                            Modifier.isPublic(repoClass.getModifiers()),
+                            className + " must be package-private"
+                    );
+                }
+                case "service" -> {
+                    Class<?> serviceClass = resolveDomainService(className);
+                    Assertions.assertTrue(
+                            BaseService.class.isAssignableFrom(serviceClass),
+                            className + " must extend BaseService"
+                    );
+                    Assertions.assertFalse(
+                            Modifier.isPublic(serviceClass.getModifiers()),
+                            className + " must be package-private"
+                    );
+                }
+                case "controller" -> {
+                    Class<?> controllerClass = resolveDomainController(className);
+                    Assertions.assertTrue(
+                            BaseController.class.isAssignableFrom(controllerClass),
+                            className + " must extend BaseController"
+                    );
+                    Assertions.assertFalse(
+                            Modifier.isPublic(controllerClass.getModifiers()),
+                            className + " must be package-private"
+                    );
+                }
+                default -> Assertions.fail("Unexpected componentType: " + componentType);
+            }
+        }
     }
 
-    @Then("the domain repository {string} should inherit from BaseRepository")
-    public void the_domain_repository_should_inherit_from_base_repository(String repoSimpleName) {
-        Class<?> repoClass = resolveDomainRepository(repoSimpleName);
-        Assertions.assertTrue(
-                BaseRepository.class.isAssignableFrom(repoClass),
-                repoSimpleName + " must extend BaseDomainCore.BaseRepository"
+    @When("a generic appointment is registered for client {string} at {string}")
+    public void registerGenericAppointment(String clientName, String startTimeStr) {
+        LocalDateTime start = LocalDateTime.parse(startTimeStr);
+        Map<String, Object> body = Map.of(
+                "clientName", clientName,
+                "startTime", startTimeStr,
+                "endTime", start.plusHours(1).toString(),
+                "title", "Generic Domain Session"
         );
-        Assertions.assertFalse(
-                Modifier.isPublic(repoClass.getModifiers()),
-                repoSimpleName + " must be package-private inside its Feature class"
-        );
+        lastInheritedResponse = state.authenticatedRequest()
+                .contentType("application/json")
+                .body(body)
+                .when()
+                .post("/api/v1/appointments");
+        state.setLastResponse(lastInheritedResponse);
+        if (lastInheritedResponse.statusCode() < 300) {
+            String id = lastInheritedResponse.jsonPath().getString("id");
+            if (id != null) {
+                state.setLastAppointmentId(UUID.fromString(id));
+            }
+        }
     }
 
-    @Then("{string} should inherit from BaseService")
-    public void should_inherit_from_base_service(String serviceSimpleName) {
-        Class<?> serviceClass = resolveDomainService(serviceSimpleName);
-        Assertions.assertTrue(
-                BaseService.class.isAssignableFrom(serviceClass),
-                serviceSimpleName + " must extend BaseDomainCore.BaseService"
-        );
-        Assertions.assertFalse(
-                Modifier.isPublic(serviceClass.getModifiers()),
-                serviceSimpleName + " must be package-private inside its Feature class"
-        );
+    @Then("the appointment registration should succeed")
+    public void assertAppointmentRegistrationSucceeded() {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        int status = res.statusCode();
+        Assertions.assertTrue(status == 200 || status == 201, "Expected 200/201 but got " + status + ": " + res.asString());
     }
 
-    @Then("{string} should inherit from BaseController")
-    public void should_inherit_from_base_controller(String controllerSimpleName) {
-        Class<?> controllerClass = resolveDomainController(controllerSimpleName);
-        Assertions.assertTrue(
-                BaseController.class.isAssignableFrom(controllerClass),
-                controllerSimpleName + " must extend BaseWebCore.BaseController"
-        );
-        Assertions.assertFalse(
-                Modifier.isPublic(controllerClass.getModifiers()),
-                controllerSimpleName + " must be package-private inside its Feature class"
-        );
-    }
-
-    @When("the client fetches the created appointment by ID via the inherited BaseController GET endpoint")
-    public void the_client_fetches_the_created_appointment_by_id_via_the_inherited_base_controller_get_endpoint() {
-        List<Appointment> all = appointmentPort.findAll();
-        Assertions.assertFalse(all.isEmpty(), "Expected at least one appointment in DB");
-        UUID id = all.get(0).getId();
-        lastInheritedResponse = given()
-                .header("Authorization", "Bearer valid-client-token-for-5e357ca1-4913-414f-91a6-81a7de9042ab")
+    @And("retrieving that appointment individually should return client {string} at {string}")
+    public void assertRetrieveIndividualAppointment(String expectedClientName, String expectedStartTime) {
+        UUID id = state.getLastAppointmentId();
+        Assertions.assertNotNull(id, "Expected lastAppointmentId to be recorded");
+        Response res = state.authenticatedRequest()
                 .when()
                 .get("/api/v1/appointments/" + id);
+        Assertions.assertEquals(200, res.statusCode(), res.asString());
+        Assertions.assertEquals(expectedClientName, res.jsonPath().getString("clientName"));
+        Assertions.assertTrue(
+                res.jsonPath().getString("startTime").startsWith(expectedStartTime),
+                "Expected startTime " + expectedStartTime + " but got " + res.jsonPath().getString("startTime")
+        );
     }
 
-    @Then("the inherited BaseController GET by ID response status should be {int} and title should be {string}")
-    public void the_inherited_base_controller_get_by_id_response_status_should_be_and_title_should_be(
-            Integer expectedStatus,
-            String expectedTitle
-    ) {
-        Assertions.assertNotNull(lastInheritedResponse);
-        lastInheritedResponse.then().statusCode(expectedStatus);
-        Assertions.assertEquals(expectedTitle, lastInheritedResponse.jsonPath().getString("title"));
-    }
-
-    @When("the client fetches all appointments via the inherited BaseController GET all endpoint")
-    public void the_client_fetches_all_appointments_via_the_inherited_base_controller_get_all_endpoint() {
-        lastInheritedResponse = given()
-                .header("Authorization", "Bearer valid-client-token-for-5e357ca1-4913-414f-91a6-81a7de9042ab")
+    @And("the generic appointment directory should include client {string}")
+    public void assertGenericAppointmentDirectoryIncludes(String expectedClientName) {
+        Response res = state.authenticatedRequest()
                 .when()
                 .get("/api/v1/appointments");
-    }
-
-    @Then("the inherited BaseController GET all response should contain at least {int} appointment")
-    public void the_inherited_base_controller_get_all_response_should_contain_at_least_appointment(Integer minCount) {
-        Assertions.assertNotNull(lastInheritedResponse);
-        lastInheritedResponse.then().statusCode(200);
-        List<?> list = lastInheritedResponse.jsonPath().getList("$");
-        Assertions.assertTrue(list.size() >= minCount, "Expected at least " + minCount + " appointment(s)");
+        Assertions.assertEquals(200, res.statusCode(), res.asString());
+        List<String> clientNames = res.jsonPath().getList("clientName");
+        Assertions.assertTrue(
+                clientNames != null && clientNames.contains(expectedClientName),
+                "Expected appointment directory to include " + expectedClientName + " but got " + clientNames
+        );
     }
 }

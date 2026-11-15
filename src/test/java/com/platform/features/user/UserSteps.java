@@ -1,8 +1,12 @@
 package com.platform.features.user;
 
+import com.platform.config.PlatformCacheService;
+import com.platform.config.PlatformEventService;
 import com.platform.core.CucumberScenarioContext;
+import com.platform.core.DomainScenarioState;
 import com.platform.features.i18n.I18nSteps;
-import io.cucumber.datatable.DataTable;
+import com.platform.features.user.UserFeature.UserEntity;
+import com.platform.features.user.UserFeature.UserRepository;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -23,6 +27,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -30,14 +35,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -72,7 +74,8 @@ public class UserSteps {
                     String sub = String.valueOf(customClaims.getOrDefault("sub", "550e8400-e29b-41d4-a716-446655440000"));
                     String email = String.valueOf(customClaims.getOrDefault("email", "jesper@example.com"));
                     String name = String.valueOf(customClaims.getOrDefault("name", "Jesper Kock"));
-                    String issuer = String.valueOf(customClaims.getOrDefault("iss", "http://localhost:8080"));
+                    String preferredUsername = String.valueOf(customClaims.getOrDefault("preferred_username", name));
+                    String issuer = String.valueOf(customClaims.getOrDefault("iss", "http://127.0.0.1:8085"));
                     @SuppressWarnings("unchecked")
                     List<String> customRoles = (List<String>) customClaims.getOrDefault("roles", List.of("client"));
 
@@ -80,6 +83,7 @@ public class UserSteps {
                             .header("alg", "RS256")
                             .claim("iss", issuer)
                             .claim("sub", sub)
+                            .claim("preferred_username", preferredUsername)
                             .claim("email", email)
                             .claim("name", name)
                             .claim("realm_access", Map.of("roles", customRoles))
@@ -101,7 +105,8 @@ public class UserSteps {
 
                 List<String> roles = List.of("therapist");
                 if (token.startsWith("valid-client-token-for-")
-                        || ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(token) && subject.equals("550e8400-e29b-41d4-a716-446655440000"))) {
+                        || ("valid-token-for-550e8400-e29b-41d4-a716-446655440000".equals(token)
+                                && subject.equals("550e8400-e29b-41d4-a716-446655440000"))) {
                     roles = List.of("client");
                 }
 
@@ -123,237 +128,325 @@ public class UserSteps {
     private CucumberScenarioContext context;
 
     @Autowired
+    private DomainScenarioState state;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private PlatformCacheService cacheService;
+
+    @Autowired
+    private PlatformEventService eventService;
+
+    @Autowired
     private SecurityFilterChain securityFilterChain;
 
     @Autowired
     private JwtDecoder jwtDecoder;
 
-    private Response lastResponse;
-
-    @Before
+    @Before(order = 10000)
     public void setup() {
         RestAssured.port = port;
+        Assertions.assertNotNull(securityFilterChain);
+        Assertions.assertNotNull(jwtDecoder);
         if (context != null) {
             context.resetScenarioState();
         }
+        state.reset();
+        cacheService.clearAll();
+        eventService.clearEvents();
     }
 
-    @Given("the backend server is running")
-    public void the_backend_server_is_running() {
+    @Before(order = 20500)
+    public void cleanUsers() {
+        userRepository.deleteAll();
     }
 
-    @When("I send a POST request to {string} with the following JSON:")
-    public void i_send_a_post_request_to_with_the_following_json(String endpoint, String jsonPayload) {
-        lastResponse = given()
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer dummy-token")
-                .body(jsonPayload)
+    public UUID ensureRegisteredUser(String username, String fullName, String email, String role) {
+        UUID existing = state.getUserIdsByUsername().get(username);
+        if (existing != null) {
+            return existing;
+        }
+        UserEntity entity = userRepository.findAll().stream()
+                .filter(u -> username.equals(u.getUsername()))
+                .findFirst()
+                .orElseGet(() -> userRepository.save(new UserEntity(
+                        null,
+                        username,
+                        passwordEncoder.encode("SecurePassword123!"),
+                        role.toUpperCase()
+                )));
+        UUID uuid = entity.getId();
+        state.getUserIdsByUsername().put(username, uuid);
+        state.getUserRolesByUsername().put(username, role.toUpperCase());
+        state.getUserFullNamesByUsername().put(username, fullName);
+        state.getUserEmailsByUsername().put(username, email);
+
+        Map<String, Object> profilePayload = new LinkedHashMap<>();
+        profilePayload.put("userId", uuid.toString());
+        profilePayload.put("fullName", fullName);
+        profilePayload.put("dateOfBirth", "1990-01-01");
+        profilePayload.put("homeAddress", "Vestergade 10");
+        profilePayload.put("postalCode", "1456");
+        profilePayload.put("phoneNumber", "+45 20 30 40 50");
+        profilePayload.put("email", email);
+        io.restassured.RestAssured.given()
+                .contentType("application/json")
+                .body(profilePayload)
                 .when()
-                .post(endpoint);
+                .post("/api/v1/public/client-profile");
+
+        return uuid;
     }
 
-    @Then("the response status should be {int}")
-    public void the_response_status_should_be(int expectedStatus) {
-        lastResponse.then().statusCode(expectedStatus);
-    }
-
-    @Then("the response body should contain {string}")
-    public void the_response_body_should_contain(String expectedContent) {
-        lastResponse.then().body(containsString(expectedContent));
-    }
-
-    @Given("Keycloak IAM is running and healthy at {string}")
-    public void keycloak_iam_is_running_and_healthy_at(String url) {
-        Assertions.assertNotNull(url);
-        Assertions.assertTrue(url.startsWith("http"), "Keycloak IAM URL must be valid HTTP(S) URI");
-        Assertions.assertNotNull(jwtDecoder, "JwtDecoder bean must be initialized");
-        context.setRequestSpec(given());
-        context.getPendingJwtClaims().clear();
-    }
-
-    @Given("the backend Spring Security filter chain is configured as an OAuth2 Resource Server")
-    public void the_backend_spring_security_filter_chain_is_configured_as_an_o_auth2_resource_server() {
-        Assertions.assertNotNull(securityFilterChain, "SecurityFilterChain bean must be active");
-        Assertions.assertFalse(securityFilterChain.getFilters().isEmpty(), "Security filter chain must contain active filters");
-    }
-
-    @Given("Keycloak public JWKS key set is available at {string}")
-    public void keycloak_public_jwks_key_set_is_available_at(String url) {
-        Assertions.assertTrue(url.endsWith("/keys") || url.contains("certs"), "JWKS endpoint URL must be configured");
-        Jwt decoded = jwtDecoder.decode("valid-token-for-550e8400-e29b-41d4-a716-446655440000");
-        Assertions.assertNotNull(decoded, "JwtDecoder must decode valid tokens");
-    }
-
-    @Given("no {string} header is present in the request")
-    public void no_header_is_present_in_the_request(String headerName) {
-        Assertions.assertNotNull(headerName);
-        context.setRequestSpec(given());
-    }
-
-    @Given("an {string} header with value {string}")
-    public void an_header_with_value(String headerName, String headerValue) {
-        context.setRequestSpec(given().header(headerName, headerValue));
-    }
-
-    @Given("a Keycloak JWT token with expiration timestamp in the past {string}")
-    public void a_keycloak_jwt_token_with_expiration_timestamp_in_the_past(String timestamp) {
-        Assertions.assertNotNull(timestamp);
-        context.setGeneratedToken("expired-token-" + timestamp.replace(":", "-"));
-        context.setRequestSpec(given().header("Authorization", "Bearer " + context.getGeneratedToken()));
-    }
-
-    @When("a client sends a GET request to {string} with the expired token")
-    public void a_client_sends_a_get_request_to_with_the_expired_token(String endpoint) {
-        context.setLastResponse(context.getRequestSpec().when().get(endpoint));
-    }
-
-    @When("a client sends a GET request to {string}")
-    public void a_client_sends_a_get_request_to(String endpoint) {
-        context.setLastResponse(context.getRequestSpec().when().get(endpoint));
-    }
-
-    @Then("the system should reject the request")
-    public void the_system_should_reject_the_request() {
-        Response resp = context.getLastResponse();
-        Assertions.assertNotNull(resp, "HTTP response must not be null");
-        Assertions.assertTrue(resp.getStatusCode() >= 400, "Expected error status code >= 400");
-    }
-
-    @Then("return an HTTP response with status code {int} Unauthorized")
-    public void return_an_http_response_with_status_code_unauthorized(Integer expectedStatus) {
-        context.getLastResponse().then().statusCode(expectedStatus);
-    }
-
-    @Then("the error details should state {string}")
-    public void the_error_details_should_state(String errorDetail) {
-        Response resp = context.getLastResponse();
-        String wwwAuth = resp.getHeader("WWW-Authenticate");
-        String body = resp.getBody().asString();
-        boolean matchedHeader = wwwAuth != null && wwwAuth.contains(errorDetail);
-        boolean matchedBody = body != null && body.contains(errorDetail);
-        Assertions.assertTrue(
-                matchedHeader || matchedBody,
-                "Expected error detail '" + errorDetail + "' in WWW-Authenticate header (" + wwwAuth + ") or body (" + body + ")"
+    @Given("an authenticated administrator session")
+    public void authenticatedAdministratorSession() {
+        UUID adminUuid = ensureRegisteredUser("platform_admin", "Platform Admin", "admin@klinik.dk", "ADMIN");
+        state.setActiveBearerToken(
+                state.issueToken(adminUuid, "platform_admin", "Platform Admin", "admin@klinik.dk", List.of("admin"), "http://127.0.0.1:8085")
         );
     }
 
-    @Then("the response header {string} should contain {string}")
-    public void the_response_header_should_contain(String headerName, String expectedValue) {
-        String actualHeader = context.getLastResponse().getHeader(headerName);
-        Assertions.assertNotNull(actualHeader, "Expected response header '" + headerName + "' to be present");
-        if ("WWW-Authenticate".equalsIgnoreCase(headerName) && expectedValue.contains("unauthorized")) {
-            Assertions.assertTrue(
-                    actualHeader.contains("Bearer") || actualHeader.contains(expectedValue),
-                    "WWW-Authenticate header must indicate Bearer challenge"
-            );
-        } else {
-            Assertions.assertTrue(
-                    actualHeader.contains(expectedValue),
-                    "Header '" + headerName + "' with value '" + actualHeader + "' did not contain '" + expectedValue + "'"
-            );
-        }
+    @Given("an authenticated therapist session for {string}")
+    public void authenticatedTherapistSessionFor(String username) {
+        String fullName = state.getUserFullNamesByUsername().getOrDefault(username, username);
+        String email = state.getUserEmailsByUsername().getOrDefault(username, username + "@klinik.dk");
+        UUID uuid = ensureRegisteredUser(username, fullName, email, "THERAPIST");
+        state.setActiveBearerToken(
+                state.issueToken(uuid, username, fullName, email, List.of("therapist"), "http://127.0.0.1:8085")
+        );
     }
 
-    @Given("a valid Keycloak JWT token signed by {string}")
-    public void a_valid_keycloak_jwt_token_signed_by(String issuer) {
-        String token = "custom-jwt-" + UUID.randomUUID();
-        context.setGeneratedToken(token);
-        context.getPendingJwtClaims().clear();
-        context.getPendingJwtClaims().put("iss", issuer);
-        CUSTOM_TOKENS.put(token, new HashMap<>(context.getPendingJwtClaims()));
-        context.setRequestSpec(given().header("Authorization", "Bearer " + token));
+    @Given("an authenticated client session for {string}")
+    public void authenticatedClientSessionFor(String username) {
+        String fullName = state.getUserFullNamesByUsername().getOrDefault(username, username);
+        String email = state.getUserEmailsByUsername().getOrDefault(username, username + "@example.dk");
+        UUID uuid = ensureRegisteredUser(username, fullName, email, "CLIENT");
+        state.setActiveBearerToken(
+                state.issueToken(uuid, username, fullName, email, List.of("client"), "http://127.0.0.1:8085")
+        );
     }
 
-    @Given("the JWT token contains subject UUID {string}")
-    public void the_jwt_token_contains_subject_uuid(String subUuid) {
-        context.getPendingJwtClaims().put("sub", subUuid);
-        CUSTOM_TOKENS.put(context.getGeneratedToken(), new HashMap<>(context.getPendingJwtClaims()));
+    @Given("an unauthenticated visitor session")
+    public void unauthenticatedVisitorSession() {
+        state.setActiveBearerToken(null);
     }
 
-    @Given("the JWT token contains email {string} and name {string}")
-    public void the_jwt_token_contains_email_and_name(String email, String name) {
-        context.getPendingJwtClaims().put("email", email);
-        context.getPendingJwtClaims().put("name", name);
-        CUSTOM_TOKENS.put(context.getGeneratedToken(), new HashMap<>(context.getPendingJwtClaims()));
+    @Given("a registered user account exists with username {string}, full name {string}, email {string}, and role {string}")
+    public void registeredUserAccountExists(String username, String fullName, String email, String role) {
+        ensureRegisteredUser(username, fullName, email, role);
     }
 
-    @Given("the JWT token contains assigned role {string}")
-    public void the_jwt_token_contains_assigned_role(String role) {
-        context.getPendingJwtClaims().put("roles", List.of(role));
-        CUSTOM_TOKENS.put(context.getGeneratedToken(), new HashMap<>(context.getPendingJwtClaims()));
-    }
-
-    @When("the client sends a GET request to {string} with the valid token")
-    public void the_client_sends_a_get_request_to_with_the_valid_token(String endpoint) {
-        context.setLastResponse(context.getRequestSpec().when().get(endpoint));
-    }
-
-    @Then("the response body should be a JSON object containing:")
-    public void the_response_body_should_be_a_json_object_containing(DataTable dataTable) {
-        Map<String, String> expectedEntries = dataTable.asMap(String.class, String.class);
-        Map<String, Object> actualJson = context.getLastResponse().jsonPath().getMap("$");
-        Assertions.assertNotNull(actualJson, "Response JSON body must not be null");
-        for (Map.Entry<String, String> entry : expectedEntries.entrySet()) {
-            Assertions.assertEquals(
-                    entry.getValue(),
-                    String.valueOf(actualJson.get(entry.getKey())),
-                    "Mismatch for JSON property '" + entry.getKey() + "'"
-            );
-        }
-    }
-
-    @Given("a valid Keycloak JWT token for subject UUID {string}")
-    public void a_valid_keycloak_jwt_token_for_subject_uuid(String uuid) {
-        String token = "custom-jwt-" + uuid + "-" + UUID.randomUUID();
-        context.setGeneratedToken(token);
-        context.getPendingJwtClaims().clear();
-        context.getPendingJwtClaims().put("sub", uuid);
-        CUSTOM_TOKENS.put(token, new HashMap<>(context.getPendingJwtClaims()));
-        context.setRequestSpec(given().header("Authorization", "Bearer " + token));
-    }
-
-    @Given("the user has role {string} only")
-    public void the_user_has_role_only(String role) {
-        String normalized = role.startsWith("ROLE_") ? role.substring(5).toLowerCase() : role.toLowerCase();
-        context.getPendingJwtClaims().put("roles", List.of(normalized));
-        CUSTOM_TOKENS.put(context.getGeneratedToken(), new HashMap<>(context.getPendingJwtClaims()));
-    }
-
-    @Given("the user has role {string}")
-    public void the_user_has_role(String role) {
-        String normalized = role.startsWith("ROLE_") ? role.substring(5).toLowerCase() : role.toLowerCase();
-        context.getPendingJwtClaims().put("roles", List.of(normalized));
-        CUSTOM_TOKENS.put(context.getGeneratedToken(), new HashMap<>(context.getPendingJwtClaims()));
-    }
-
-    @When("the user sends a POST request to {string} with body:")
-    public void the_user_sends_a_post_request_to_with_body(String endpoint, String docString) {
-        context.setLastResponse(context.getRequestSpec()
+    @When("registering a new user account with username {string}, full name {string}, email {string}, password {string}, and role {string}")
+    public void registerNewUserAccount(String username, String fullName, String email, String password, String role) {
+        Map<String, Object> body = Map.of(
+                "username", username,
+                "password", password,
+                "role", role
+        );
+        Response res = state.authenticatedRequest()
                 .contentType("application/json")
-                .body(docString)
+                .body(body)
                 .when()
-                .post(endpoint));
+                .post("/api/v1/users");
+        state.setLastResponse(res);
+        if (res.statusCode() == 200 || res.statusCode() == 201) {
+            String id = res.jsonPath().getString("id");
+            if (id != null) {
+                state.getUserIdsByUsername().put(username, UUID.fromString(id));
+            }
+            state.getUserRolesByUsername().put(username, role.toUpperCase());
+            state.getUserFullNamesByUsername().put(username, fullName);
+            state.getUserEmailsByUsername().put(username, email);
+        }
     }
 
-    @Then("the system should reject the access")
-    public void the_system_should_reject_the_access() {
-        Response resp = context.getLastResponse();
-        Assertions.assertNotNull(resp);
-        Assertions.assertEquals(403, resp.getStatusCode());
+    @Then("the user account registration should succeed")
+    public void assertUserAccountRegistrationSucceeded() {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        Assertions.assertTrue(
+                res.statusCode() == 200 || res.statusCode() == 201,
+                "Expected 200/201 but got " + res.statusCode() + ": " + res.asString()
+        );
     }
 
-    @Then("return an HTTP response with status code {int} Forbidden")
-    public void return_an_http_response_with_status_code_forbidden(Integer expectedStatus) {
-        context.getLastResponse().then().statusCode(expectedStatus);
+    @Then("the user directory should include username {string} with role {string}")
+    public void assertUserDirectoryIncludes(String username, String expectedRole) {
+        Response res = state.authenticatedRequest()
+                .when()
+                .get("/api/users");
+        Assertions.assertEquals(200, res.statusCode(), res.asString());
+        List<Map<String, Object>> users = res.jsonPath().getList("$");
+        boolean found = users.stream().anyMatch(u ->
+                username.equals(u.get("username")) && expectedRole.equalsIgnoreCase(String.valueOf(u.get("role")))
+        );
+        Assertions.assertTrue(found, "Expected directory to include " + username + " (" + expectedRole + ") in " + users);
     }
 
-    @Then("the response body should contain error message {string}")
-    public void the_response_body_should_contain_error_message(String expectedErrorMessage) {
-        context.getLastResponse().then().body(containsString(expectedErrorMessage));
+    @Then("no password hash or secret credential should be exposed in the account record")
+    public void assertNoPasswordExposed() {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        String body = res.asString();
+        Assertions.assertFalse(body.contains("\"password\""), "Password field must not be exposed: " + body);
+        Assertions.assertFalse(body.contains("SecurePassword123!"), "Raw password must not be exposed: " + body);
     }
 
-    @Then("the response status should be {int} OK")
-    public void the_response_status_should_be_ok(Integer expectedStatus) {
-        context.getLastResponse().then().statusCode(expectedStatus);
+    @When("the user account {string} is deleted")
+    public void deleteUserAccount(String username) {
+        UUID userId = state.getUserIdsByUsername().get(username);
+        Assertions.assertNotNull(userId, "Unknown user to delete: " + username);
+        Response res = state.authenticatedRequest()
+                .when()
+                .delete("/api/v1/users/" + userId);
+        state.setLastResponse(res);
+    }
+
+    @Then("the account removal should complete successfully")
+    public void assertAccountRemovalSucceeded() {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        Assertions.assertTrue(
+                res.statusCode() == 200 || res.statusCode() == 204,
+                "Expected 200/204 but got " + res.statusCode() + ": " + res.asString()
+        );
+    }
+
+    @Then("the user directory should not include username {string}")
+    public void assertUserDirectoryExcludes(String username) {
+        Response res = state.authenticatedRequest()
+                .when()
+                .get("/api/v1/users");
+        Assertions.assertEquals(200, res.statusCode(), res.asString());
+        List<Map<String, Object>> users = res.jsonPath().getList("$");
+        boolean found = users.stream().anyMatch(u -> username.equals(u.get("username")));
+        Assertions.assertFalse(found, "Expected directory NOT to include " + username);
+    }
+
+    @When("attempting to view the user directory")
+    public void attemptViewUserDirectory() {
+        state.setLastResponse(state.authenticatedRequest().when().get("/api/v1/users"));
+    }
+
+    @When("attempting to view appointments")
+    public void attemptViewAppointments() {
+        state.setLastResponse(state.authenticatedRequest().when().get("/api/v1/appointments"));
+    }
+
+    @When("attempting to view client journal entries for {string}")
+    public void attemptViewClientJournalEntries(String username) {
+        UUID clientUuid = state.getUserIdsByUsername().getOrDefault(username, UUID.randomUUID());
+        state.setLastResponse(state.authenticatedRequest().when().get("/api/v1/journals/client/" + clientUuid));
+    }
+
+    @Then("access should be denied as unauthenticated")
+    public void assertDeniedAsUnauthenticated() {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        Assertions.assertEquals(401, res.statusCode(), "Expected 401 Unauthorized but got " + res.statusCode() + ": " + res.asString());
+    }
+
+    @Then("access should be denied due to insufficient permissions")
+    public void assertDeniedInsufficientPermissions() {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        Assertions.assertEquals(403, res.statusCode(), "Expected 403 Forbidden but got " + res.statusCode() + ": " + res.asString());
+    }
+
+    @Then("the operation should be rejected with a validation error mentioning {string}")
+    public void assertRejectedWithValidationError(String expectedText) {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        Assertions.assertEquals(400, res.statusCode(), "Expected 400 Bad Request but got " + res.statusCode() + ": " + res.asString());
+        Assertions.assertTrue(
+                res.asString().toLowerCase().contains(expectedText.toLowerCase()),
+                "Expected error body to mention '" + expectedText + "' but got: " + res.asString()
+        );
+    }
+
+    @When("the signed-in user views their personal profile")
+    public void viewSignedInPersonalProfile() {
+        state.setLastResponse(state.authenticatedRequest().when().get("/api/v1/user/profile"));
+    }
+
+    @Then("the personal profile should belong to {string} with role {string}")
+    public void assertPersonalProfileBelongsTo(String username, String expectedRole) {
+        Response res = state.getLastResponse();
+        Assertions.assertNotNull(res);
+        Assertions.assertEquals(200, res.statusCode(), res.asString());
+        String expectedFullName = state.getUserFullNamesByUsername().getOrDefault(username, username);
+        String actualName = res.jsonPath().getString("name");
+        Assertions.assertTrue(
+                expectedFullName.equals(actualName) || username.equals(actualName),
+                "Expected profile name " + expectedFullName + " or " + username + " but got " + actualName
+        );
+        Assertions.assertEquals(expectedRole.toUpperCase(), res.jsonPath().getString("primaryRole"));
+    }
+
+    @When("the signed-in user updates their personal profile full name to {string} and phone to {string}")
+    public void updateSignedInPersonalProfile(String newFullName, String newPhone) {
+        Response meRes = state.authenticatedRequest().when().get("/api/v1/clinic/me");
+        Assertions.assertEquals(200, meRes.statusCode(), meRes.asString());
+        String userUuid = meRes.jsonPath().getString("userUuid");
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("userId", userUuid);
+        payload.put("fullName", newFullName);
+        payload.put("dateOfBirth", "1990-01-01");
+        payload.put("homeAddress", "Vestergade 10");
+        payload.put("postalCode", "1456");
+        payload.put("phoneNumber", newPhone);
+        payload.put("email", meRes.jsonPath().getString("email"));
+
+        Response res = state.authenticatedRequest()
+                .contentType("application/json")
+                .body(payload)
+                .when()
+                .put("/api/v1/clinic/client-profile");
+        state.setLastResponse(res);
+        Assertions.assertEquals(200, res.statusCode(), res.asString());
+    }
+
+    @Then("the personal profile full name should be {string}")
+    public void assertPersonalProfileFullName(String expectedFullName) {
+        Response meRes = state.authenticatedRequest().when().get("/api/v1/clinic/me");
+        Assertions.assertEquals(200, meRes.statusCode(), meRes.asString());
+        String userUuid = meRes.jsonPath().getString("userUuid");
+        Response profileRes = state.authenticatedRequest().when().get("/api/v1/clinic/client-profile/" + userUuid);
+        state.setLastResponse(profileRes);
+        Assertions.assertEquals(200, profileRes.statusCode(), profileRes.asString());
+        Assertions.assertEquals(expectedFullName, profileRes.jsonPath().getString("fullName"));
+    }
+
+    @Given("an identity token with subject {string}, username {string}, and roles {string} issued by an untrusted authority")
+    public void identityTokenUntrustedAuthority(String subject, String username, String roles) {
+        String token = "invalid-issuer-token-" + subject;
+        state.setActiveBearerToken(token);
+    }
+
+    @Given("an identity token with subject {string}, username {string}, and roles {string} issued by the trusted authority")
+    public void identityTokenTrustedAuthority(String subject, String username, String roles) {
+        String token = "custom-jwt-" + subject + "-" + UUID.randomUUID();
+        String fullName = state.getUserFullNamesByUsername().getOrDefault(username, username);
+        String email = state.getUserEmailsByUsername().getOrDefault(username, username + "@example.dk");
+        Map<String, Object> claims = new LinkedHashMap<>();
+        claims.put("sub", subject);
+        claims.put("preferred_username", username);
+        claims.put("name", fullName);
+        claims.put("email", email);
+        claims.put("iss", "http://127.0.0.1:8085");
+        claims.put("roles", List.of(roles.split(",")));
+        CUSTOM_TOKENS.put(token, claims);
+        state.setActiveBearerToken(token);
+    }
+
+    @When("checking the current user profile with that identity token")
+    public void checkCurrentUserProfileWithIdentityToken() {
+        state.setLastResponse(state.authenticatedRequest().when().get("/api/v1/user/profile"));
     }
 }

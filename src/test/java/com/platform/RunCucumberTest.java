@@ -14,5 +14,9 @@ import org.junit.platform.suite.api.Suite;
     key = Constants.PLUGIN_PROPERTY_NAME,
     value = "pretty, html:target/cucumber-reports/cucumber-report.html, json:target/cucumber-reports/cucumber-report.json"
 )
+@ConfigurationParameter(
+    key = Constants.FILTER_TAGS_PROPERTY_NAME,
+    value = "not @ui-only"
+)
 public class RunCucumberTest {
 }

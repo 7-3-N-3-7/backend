@@ -233,7 +233,7 @@ public final class UserFeature {
      * Standard REST CRUD-controller for `/api/users`.
      */
     @RestController
-    @RequestMapping("/api/users")
+    @RequestMapping({"/api/users", "/api/v1/users"})
     static class UserController extends BaseController<UserEntity, UserDto> {
 
         UserController(UserService userService) {

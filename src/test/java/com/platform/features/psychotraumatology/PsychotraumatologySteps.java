@@ -1,81 +1,90 @@
 package com.platform.features.psychotraumatology;
 
-import com.platform.core.CucumberScenarioContext;
-import com.platform.features.psychotraumatology.PsychotraumatologyFeature.PsychotraumatologyTest;
+import com.platform.core.DomainScenarioState;
 import com.platform.features.psychotraumatology.PsychotraumatologyFeature.PsychotraumatologyTestRepository;
-import io.cucumber.java.en.Given;
+import io.cucumber.java.Before;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import org.junit.jupiter.api.Assertions;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-import static io.restassured.RestAssured.given;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.is;
 
 public class PsychotraumatologySteps {
 
-    @Autowired
-    private CucumberScenarioContext context;
+    private final PsychotraumatologyTestRepository testRepository;
+    private final DomainScenarioState state;
 
-    @Autowired
-    private PsychotraumatologyTestRepository psychotraumatologyTestRepository;
-
-    @Given("a completed assessment test for client UUID {string}")
-    public void a_completed_assessment_test_for_client_uuid(String clientUuid) {
-        context.setCurrentClientUuid(clientUuid);
-        context.setRequestSpec(given().header("Authorization", "Bearer valid-client-token-for-" + clientUuid));
+    public PsychotraumatologySteps(
+            PsychotraumatologyTestRepository testRepository,
+            DomainScenarioState state
+    ) {
+        this.testRepository = testRepository;
+        this.state = state;
     }
 
-    @Given("supervising therapist UUID {string}")
-    public void supervising_therapist_uuid(String therapistUuid) {
-        context.setCurrentTherapistUuid(therapistUuid);
-        Assertions.assertNotNull(UUID.fromString(therapistUuid));
+    @Before(order = 20400)
+    public void cleanPsychotraumatologyTests() {
+        testRepository.deleteAll();
     }
 
-    @When("the assessment result is posted to {string} with body:")
-    public void the_assessment_result_is_posted_to_with_body(String endpoint, String docString) {
-        context.setLastResponse(context.getRequestSpec()
-                .contentType("application/json")
-                .body(docString)
-                .when()
-                .post(endpoint));
+    @When("therapist {string} submits a PCL-5 trauma assessment for {string} with total score {int} and severity {string}")
+    public void therapistSubmitsPcl5Assessment(
+            String therapistUsername,
+            String clientUsername,
+            int totalScore,
+            String severity
+    ) {
+        UUID clientUuid = state.getUserIdsByUsername().get(clientUsername);
+        UUID therapistUuid = state.getUserIdsByUsername().get(therapistUsername);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("clientUuid", clientUuid);
+        payload.put("therapistUuid", therapistUuid);
+        payload.put("testType", "PCL-5");
+        payload.put("score", totalScore);
+        payload.put("severity", severity);
+        payload.put("answersJson", "{\"totalScore\":" + totalScore + "}");
+
+        Response response = state.requestAs(therapistUsername, "THERAPIST")
+                .contentType(ContentType.JSON)
+                .body(payload)
+                .post("/api/v1/psychotraumatology/tests");
+        state.setLastResponse(response);
+        assertThat(response.statusCode(), anyOf(is(200), is(201)));
     }
 
-    @Then("the assessment record in PostgreSQL must reference client UUID {string} and therapist UUID {string}")
-    public void the_assessment_record_in_postgre_sql_must_reference_client_uuid_and_therapist_uuid(String expectedClientUuid, String expectedTherapistUuid) {
-        UUID testId = UUID.fromString(context.getLastResponse().jsonPath().getString("id"));
-        PsychotraumatologyTest savedTest = psychotraumatologyTestRepository.findById(testId)
-                .orElseThrow(() -> new AssertionError("PsychotraumatologyTest must be saved in PostgreSQL"));
-        Assertions.assertEquals(UUID.fromString(expectedClientUuid), savedTest.getClientUuid());
-        Assertions.assertEquals(UUID.fromString(expectedTherapistUuid), savedTest.getTherapistUuid());
+    @Then("the PCL-5 assessment should be stored with score {int} and severity {string}")
+    public void pcl5AssessmentStored(int expectedScore, String expectedSeverity) {
+        Response response = state.getLastResponse();
+        assertThat(response.statusCode(), anyOf(is(200), is(201)));
+        assertThat(response.jsonPath().getInt("score"), is(expectedScore));
+        assertThat(response.jsonPath().getString("severity"), is(expectedSeverity));
     }
 
-    @Given("client A with UUID {string}")
-    public void client_a_with_uuid(String clientAUuid) {
-        context.setCurrentClientUuid(clientAUuid);
-        context.setRequestSpec(given().header("Authorization", "Bearer valid-client-token-for-" + clientAUuid));
+    @Then("client {string} retrieving their PCL-5 assessments should include score {int}")
+    public void clientRetrievingPcl5IncludesScore(String clientUsername, int expectedScore) {
+        UUID clientUuid = state.getUserIdsByUsername().get(clientUsername);
+        Response response = state.requestAs(clientUsername, "CLIENT")
+                .get("/api/v1/psychotraumatology/tests/client/{uuid}", clientUuid);
+        assertThat(response.statusCode(), is(200));
+        List<Integer> scores = response.jsonPath().getList("score", Integer.class);
+        assertThat(scores, hasItem(expectedScore));
     }
 
-    @Given("client B with UUID {string}")
-    public void client_b_with_uuid(String clientBUuid) {
-        PsychotraumatologyTest clientBTest = new PsychotraumatologyTest();
-        clientBTest.setClientUuid(UUID.fromString(clientBUuid));
-        clientBTest.setTherapistUuid(UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8"));
-        clientBTest.setTestType("PCL-5-PTSD-ASSESSMENT");
-        clientBTest.setScore(30);
-        clientBTest.setSeverity("HIGH");
-        clientBTest.setAnswersJson("{\"q1\":4}");
-        psychotraumatologyTestRepository.save(clientBTest);
-    }
-
-    @When("client A attempts to access GET {string}")
-    public void client_a_attempts_to_access_get(String endpoint) {
-        context.setLastResponse(context.getRequestSpec().when().get(endpoint));
-    }
-
-    @Then("the system should deny access with HTTP status {int} Forbidden")
-    public void the_system_should_deny_access_with_http_status_forbidden(Integer expectedStatus) {
-        context.getLastResponse().then().statusCode(expectedStatus);
+    @When("client {string} attempts to retrieve PCL-5 assessments for {string}")
+    public void clientAttemptsRetrieveOthersPcl5(String actorClientUsername, String targetClientUsername) {
+        UUID targetUuid = state.getUserIdsByUsername().get(targetClientUsername);
+        Response response = state.requestAs(actorClientUsername, "CLIENT")
+                .get("/api/v1/psychotraumatology/tests/client/{uuid}", targetUuid);
+        state.setLastResponse(response);
     }
 }

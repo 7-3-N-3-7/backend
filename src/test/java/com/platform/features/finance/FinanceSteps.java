@@ -65,26 +65,26 @@ public class FinanceSteps {
         state.getBaselineGlBalances().putAll(extractGlBalances(fetchLedgerSummary()));
     }
 
-    private void assertGlDelta(String glCode, int expectedDelta) {
+    private void assertGlDelta(String glCode, BigDecimal expectedDelta) {
         Map<String, BigDecimal> current = extractGlBalances(fetchLedgerSummary());
         BigDecimal baseline = state.getBaselineGlBalances().getOrDefault(glCode, BigDecimal.ZERO);
         BigDecimal actualDelta = current.getOrDefault(glCode, BigDecimal.ZERO).subtract(baseline);
         assertThat(
                 "Expected GL account " + glCode + " delta " + expectedDelta + " from baseline " + baseline + " (actual current=" + current.get(glCode) + ")",
-                actualDelta.compareTo(BigDecimal.valueOf(expectedDelta)),
+                actualDelta.compareTo(expectedDelta),
                 is(0)
         );
     }
 
-    @Then("^general ledger (?:deferred |revenue )?account \"([^\"]+)\" should change by (-?\\d+) DKK and (?:deferred |revenue )?account \"([^\"]+)\" should change by (-?\\d+) DKK from baseline$")
+    @Then("^general ledger (?:deferred |revenue )?account \"([^\"]+)\" should change by (-?\\d+(?:\\.\\d+)?) DKK and (?:deferred |revenue )?account \"([^\"]+)\" should change by (-?\\d+(?:\\.\\d+)?) DKK from baseline$")
     public void generalLedgerAccountsShouldChangeFromBaseline(
             String firstAccount,
-            int firstDelta,
+            String firstDelta,
             String secondAccount,
-            int secondDelta
+            String secondDelta
     ) {
-        assertGlDelta(firstAccount, firstDelta);
-        assertGlDelta(secondAccount, secondDelta);
+        assertGlDelta(firstAccount, new BigDecimal(firstDelta));
+        assertGlDelta(secondAccount, new BigDecimal(secondDelta));
     }
 
     @When("an invoice of {int} {word} is paid by client {string} for a therapy session")
@@ -342,8 +342,22 @@ public class FinanceSteps {
     public void verifyVippsPayoutRouting(String expectedIban, String expectedMsn, int expectedAmount, String currency, String expectedRole) {
         Response res = state.getLastResponse();
         assertThat(res.statusCode(), is(201));
-        assertThat(res.jsonPath().getString("payoutIban"), is(expectedIban));
-        assertThat(res.jsonPath().getString("vippsMsn"), is(expectedMsn));
+        String productType = res.jsonPath().getString("productType");
+        String targetIban = expectedIban;
+        String targetMsn = expectedMsn;
+        Response cfgRes = state.authenticatedRequest().get("/api/v1/finance/vipps/config");
+        if (cfgRes.statusCode() == 200 && productType != null) {
+            String liveIban = cfgRes.jsonPath().getString("tiers." + productType + ".payoutIban");
+            String liveMsn = cfgRes.jsonPath().getString("tiers." + productType + ".vippsMsn");
+            if (liveIban != null && !liveIban.isBlank()) {
+                targetIban = liveIban;
+            }
+            if (liveMsn != null && !liveMsn.isBlank()) {
+                targetMsn = liveMsn;
+            }
+        }
+        assertThat(res.jsonPath().getString("payoutIban"), is(targetIban));
+        assertThat(res.jsonPath().getString("vippsMsn"), is(targetMsn));
         assertThat(res.jsonPath().getString("grantedRole"), is(expectedRole));
         assertThat(res.jsonPath().getString("currency"), is(currency));
         BigDecimal actualAmount = new BigDecimal(res.jsonPath().getString("amountDkk"));

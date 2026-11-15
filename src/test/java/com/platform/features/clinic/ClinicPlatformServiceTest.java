@@ -238,7 +238,7 @@ public class ClinicPlatformServiceTest {
         req.put("name", "Traumeterapi (PCL-5 Opfølgning)");
         req.put("description", "Individuel session");
         req.put("durationMinutes", 60);
-        req.put("price", 950.0);
+        req.put("price", 2.0);
         req.put("location", "Klinik / Online");
         req.put("providerProfileId", providerId.toString());
         req.put("organisationId", orgId.toString());
@@ -396,7 +396,7 @@ public class ClinicPlatformServiceTest {
         Service svc = new Service();
         svc.setId(UUID.randomUUID());
         svc.setName("EMDR Terapi");
-        svc.setPrice(1150.0);
+        svc.setPrice(2.0);
         svc.setLocation("København K");
         svc.setProvider(existingPp);
         svc.setOrganisation(org);
@@ -624,7 +624,7 @@ public class ClinicPlatformServiceTest {
         Map<String, Object> payload = new HashMap<>();
         payload.put("name", "Trauma Therapy");
         payload.put("description", "EMDR session");
-        payload.put("price", "950.0");
+        payload.put("price", "2.0");
         payload.put("durationMinutes", 60);
         payload.put("location", "København");
         payload.put("therapistUuid", therapistId.toString());
@@ -702,7 +702,7 @@ public class ClinicPlatformServiceTest {
         existingService.setName("Trauma Therapy");
         existingService.setDescription("Desc");
         existingService.setDurationMinutes(60);
-        existingService.setPrice(950.0);
+        existingService.setPrice(2.0);
         existingService.setLocation("Online Video");
         existingService.setOrganisation(org);
         existingService.setProvider(pp);
@@ -712,7 +712,7 @@ public class ClinicPlatformServiceTest {
         duplicateService.setName("Trauma Therapy");
         duplicateService.setDescription("Dup");
         duplicateService.setDurationMinutes(60);
-        duplicateService.setPrice(950.0);
+        duplicateService.setPrice(2.0);
         duplicateService.setLocation("Online");
         duplicateService.setOrganisation(org);
         duplicateService.setProvider(pp);
@@ -740,7 +740,7 @@ public class ClinicPlatformServiceTest {
         Map<String, Object> createPayload = new HashMap<>();
         createPayload.put("name", "Trauma Therapy");
         createPayload.put("description", "Updated Desc");
-        createPayload.put("price", 1100.0);
+        createPayload.put("price", 3.0);
         createPayload.put("durationMinutes", 60);
         createPayload.put("location", "Online Video");
         createPayload.put("userUuid", therapistId.toString());
@@ -750,7 +750,7 @@ public class ClinicPlatformServiceTest {
         updatePayload.put("nameDa", "Trauma Therapy v2");
         updatePayload.put("descriptionDa", "Updated Description Da");
         updatePayload.put("durationMinutes", 90);
-        updatePayload.put("priceDkk", 1250.0);
+        updatePayload.put("priceDkk", 4.0);
         updatePayload.put("location", "Hjemmebesøg hos klienten");
         updatePayload.put("isActive", true);
         updatePayload.put("providerProfileId", providerProfileId.toString());

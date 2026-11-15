@@ -203,7 +203,7 @@ public final class ManagementFeature {
         public List<ManagementKpiDto> findAll() {
             if (repository.count() == 0) {
                 repository.saveAll(List.of(
-                        new ManagementKpi(null, "Gennemsnitlig sessionspris", 1200.0, "DKK", "Psykotraumatologi"),
+                        new ManagementKpi(null, "Gennemsnitlig sessionspris", 2.0, "DKK", "Psykotraumatologi"),
                         new ManagementKpi(null, "Månedlig kapacitetsudnyttelse", 84.0, "%", "Klinikdrift"),
                         new ManagementKpi(null, "Klientfastholdelse (3 mdr.)", 92.0, "%", "Kvalitet & Audit")
                 ));

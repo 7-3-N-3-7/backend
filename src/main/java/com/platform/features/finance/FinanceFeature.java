@@ -45,6 +45,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -53,6 +54,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -107,9 +109,12 @@ public final class FinanceFeature {
     /** Konto 4300: Platform Licens- & Adgangsomsætning (Indtægt / INCOME). */
     public static final String GL_ACCOUNT_PLATFORM_ACCESS_REVENUE = "4300";
 
-    /** Standardpris for Therapist-adgang (799 DKK/md) og Management-adgang (1.499 DKK/md). */
-    public static final BigDecimal PRICE_THERAPIST_ACCESS_DKK = new BigDecimal("799.00");
-    public static final BigDecimal PRICE_MANAGEMENT_ACCESS_DKK = new BigDecimal("1499.00");
+    /** Standardpriser (2, 3, 4 og 5 DKK) for Enkeltsession, Abonnement/Klippekort, Therapist-adgang og Management-adgang. */
+    public static final BigDecimal PRICE_SINGLE_SESSION_DKK = new BigDecimal("2.00");
+    public static final BigDecimal PRICE_SUBSCRIPTION_DKK = new BigDecimal("3.00");
+    public static final BigDecimal PRICE_CLIP_CARD_DKK = new BigDecimal("3.00");
+    public static final BigDecimal PRICE_THERAPIST_ACCESS_DKK = new BigDecimal("4.00");
+    public static final BigDecimal PRICE_MANAGEMENT_ACCESS_DKK = new BigDecimal("5.00");
 
     private FinanceFeature() {}
 
@@ -999,9 +1004,27 @@ public final class FinanceFeature {
         public static final String BUNDLE_SYMBOLIC_NAME = "com.platform.killbill.vipps-mobilepay-plugin";
         public static final String BUNDLE_VERSION = "1.0.0";
         private static final Pattern RAW_PAN_PATTERN = Pattern.compile(".*\\d{12,19}.*");
+        private static final Pattern JSON_TOKEN_PATTERN = Pattern.compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"");
+        private static final Pattern JSON_AGREEMENT_ID_PATTERN = Pattern.compile("\"agreementId\"\\s*:\\s*\"([^\"]+)\"");
+        private static final Pattern JSON_CHARGE_ID_PATTERN = Pattern.compile("\"chargeId\"\\s*:\\s*\"([^\"]+)\"");
+        private static final Pattern JSON_REFERENCE_PATTERN = Pattern.compile("\"reference\"\\s*:\\s*\"([^\"]+)\"");
+        private static final Pattern JSON_CONFIRMATION_URL_PATTERN = Pattern.compile("\"vippsConfirmationUrl\"\\s*:\\s*\"([^\"]+)\"");
+        private static final Pattern JSON_REDIRECT_URL_PATTERN = Pattern.compile("\"redirectUrl\"\\s*:\\s*\"([^\"]+)\"");
 
-        @Value("${vipps.api.base.url:${vipps_api_base_url:https://apitest.vipps.no}}")
-        private String apiBaseUrl = "https://apitest.vipps.no";
+        @Value("${vipps.api.base.url:${vipps_api_base_url:https://api.vipps.no}}")
+        private String apiBaseUrl = "https://api.vipps.no";
+
+        @Value("${vipps.merchant.name:${vipps_merchant_name:73N37}}")
+        private String merchantName = "73N37";
+
+        @Value("${vipps.merchant.cvr:${vipps_merchant_cvr:46688244}}")
+        private String merchantCvr = "46688244";
+
+        @Value("${vipps.merchant.serial.number:${vipps_merchant_serial_number:}}")
+        private String singleMerchantSerialNumber = "";
+
+        @Value("${vipps.public.base.url:${vipps_public_base_url:https://73n37.dk}}")
+        private String publicBaseUrl = "https://73n37.dk";
 
         @Value("${vipps.client.id:${vipps_client_id:vipps-sandbox-client-id}}")
         private String clientId = "vipps-sandbox-client-id";
@@ -1034,7 +1057,7 @@ public final class FinanceFeature {
         private boolean remoteEnabled = false;
 
         private final HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(3))
+                .connectTimeout(Duration.ofSeconds(5))
                 .build();
 
         private final Map<String, Map<String, Object>> agreementsById = new ConcurrentHashMap<>();
@@ -1052,6 +1075,14 @@ public final class FinanceFeature {
             this.remoteEnabled = enabled;
         }
 
+        public void setSingleMerchantSerialNumber(String singleMsn) {
+            this.singleMerchantSerialNumber = singleMsn == null ? "" : singleMsn.trim();
+        }
+
+        private String resolveEffectiveMsn(String tierMsn) {
+            return singleMerchantSerialNumber.isBlank() ? tierMsn : singleMerchantSerialNumber;
+        }
+
         public synchronized boolean hasPlatformAccess(UUID userUuid) {
             return !upgradedRolesByUser.getOrDefault(userUuid, List.of()).isEmpty();
         }
@@ -1066,7 +1097,7 @@ public final class FinanceFeature {
             therapistTier.put("planName", "Therapist-adgang");
             therapistTier.put("amountDkk", PRICE_THERAPIST_ACCESS_DKK);
             therapistTier.put("payoutIban", therapistPayoutIban);
-            therapistTier.put("vippsMsn", therapistVippsMsn);
+            therapistTier.put("vippsMsn", resolveEffectiveMsn(therapistVippsMsn));
             therapistTier.put("glAccount", GL_ACCOUNT_PLATFORM_ACCESS_REVENUE);
             therapistTier.put("grantedRole", "THERAPIST");
 
@@ -1075,7 +1106,7 @@ public final class FinanceFeature {
             managementTier.put("planName", "Management-adgang");
             managementTier.put("amountDkk", PRICE_MANAGEMENT_ACCESS_DKK);
             managementTier.put("payoutIban", managementPayoutIban);
-            managementTier.put("vippsMsn", managementVippsMsn);
+            managementTier.put("vippsMsn", resolveEffectiveMsn(managementVippsMsn));
             managementTier.put("glAccount", GL_ACCOUNT_PLATFORM_ACCESS_REVENUE);
             managementTier.put("grantedRole", "ADMIN");
 
@@ -1084,8 +1115,14 @@ public final class FinanceFeature {
             cfg.put("bundleVersion", BUNDLE_VERSION);
             cfg.put("pluginName", "killbill-vipps-mobilepay");
             cfg.put("apiBaseUrl", apiBaseUrl);
+            cfg.put("merchantName", merchantName);
+            cfg.put("merchantCvr", merchantCvr);
+            cfg.put("remoteEnabled", remoteEnabled);
             cfg.put("clinicPayoutIban", clinicDefaultIban);
-            cfg.put("clinicVippsMsn", clinicDefaultMsn);
+            cfg.put("clinicVippsMsn", resolveEffectiveMsn(clinicDefaultMsn));
+            cfg.put("singleSessionAmountDkk", PRICE_SINGLE_SESSION_DKK);
+            cfg.put("subscriptionAmountDkk", PRICE_SUBSCRIPTION_DKK);
+            cfg.put("clipCardAmountDkk", PRICE_CLIP_CARD_DKK);
             cfg.put("tiers", Map.of("THERAPIST_ACCESS", therapistTier, "MANAGEMENT_ACCESS", managementTier));
             cfg.put("grantedRoles", getGrantedRoles(userUuid));
             cfg.put("agreements", getClientAgreements(userUuid));
@@ -1130,23 +1167,23 @@ public final class FinanceFeature {
             return switch (type) {
                 case "THERAPIST_ACCESS" -> new CheckoutPlanSpec(
                         "THERAPIST_ACCESS", "Therapist-adgang", PRICE_THERAPIST_ACCESS_DKK,
-                        true, GL_ACCOUNT_PLATFORM_ACCESS_REVENUE, therapistPayoutIban, therapistVippsMsn, "THERAPIST", "therapist"
+                        true, GL_ACCOUNT_PLATFORM_ACCESS_REVENUE, therapistPayoutIban, resolveEffectiveMsn(therapistVippsMsn), "THERAPIST", "therapist"
                 );
                 case "MANAGEMENT_ACCESS" -> new CheckoutPlanSpec(
                         "MANAGEMENT_ACCESS", "Management-adgang", PRICE_MANAGEMENT_ACCESS_DKK,
-                        true, GL_ACCOUNT_PLATFORM_ACCESS_REVENUE, managementPayoutIban, managementVippsMsn, "ADMIN", "admin"
+                        true, GL_ACCOUNT_PLATFORM_ACCESS_REVENUE, managementPayoutIban, resolveEffectiveMsn(managementVippsMsn), "ADMIN", "admin"
                 );
                 case "SUBSCRIPTION" -> new CheckoutPlanSpec(
                         "SUBSCRIPTION", customPlanName, requestedAmount,
-                        true, GL_ACCOUNT_SUBSCRIPTION_REVENUE, clinicDefaultIban, clinicDefaultMsn, null, null
+                        true, GL_ACCOUNT_SUBSCRIPTION_REVENUE, clinicDefaultIban, resolveEffectiveMsn(clinicDefaultMsn), null, null
                 );
                 case "CLIP_CARD" -> new CheckoutPlanSpec(
                         "CLIP_CARD", customPlanName, requestedAmount,
-                        false, GL_ACCOUNT_PREPAID_CLIPS_LIABILITY, clinicDefaultIban, clinicDefaultMsn, null, null
+                        false, GL_ACCOUNT_PREPAID_CLIPS_LIABILITY, clinicDefaultIban, resolveEffectiveMsn(clinicDefaultMsn), null, null
                 );
                 case "SESSION_INVOICE" -> new CheckoutPlanSpec(
                         "SESSION_INVOICE", customPlanName, requestedAmount,
-                        false, GL_ACCOUNT_CONSULTATION_REVENUE, clinicDefaultIban, clinicDefaultMsn, null, null
+                        false, GL_ACCOUNT_CONSULTATION_REVENUE, clinicDefaultIban, resolveEffectiveMsn(clinicDefaultMsn), null, null
                 );
                 default -> throw ErrorCode.BAD_REQUEST.toException("Unsupported Vipps productType: " + rawProductType);
             };
@@ -1176,19 +1213,40 @@ public final class FinanceFeature {
                 String paymentMethod,
                 String maskedInstrument,
                 String currency,
-                String subscriptionId
+                String subscriptionId,
+                String rawPhoneNumber
         ) {
             long minorUnits = spec.amount().multiply(BigDecimal.valueOf(100)).longValue();
             String gatewayRef;
             String chargeId;
+            String redirectUrl;
+            String redirectBase = sanitizeJson(publicBaseUrl).replaceAll("/+$", "");
+            String cleanPlanName = sanitizeJson(spec.planName());
+            String cleanCurrency = sanitizeJson(currency);
+            String cleanDesc = sanitizeJson(merchantName) + " (CVR " + sanitizeJson(merchantCvr) + ") (" + sanitizeJson(spec.payoutIban()) + ")";
 
             if (spec.recurring()) {
-                String agreementId = "AGR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-                chargeId = "CHG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-                sendVippsHttp("POST", "/recurring/v3/agreements", spec.vippsMsn(),
-                        "{\"productName\":\"" + spec.planName() + "\",\"amount\":" + minorUnits + ",\"currency\":\"" + currency + "\"}");
-                sendVippsHttp("POST", "/recurring/v3/agreements/" + agreementId + "/charges", spec.vippsMsn(),
-                        "{\"amount\":" + minorUnits + ",\"transactionType\":\"DIRECT_CAPTURE\"}");
+                String msisdn = normalizeMsisdn(rawPhoneNumber);
+                String agreementBody = "{"
+                        + "\"pricing\":{\"type\":\"LEGACY\",\"amount\":" + minorUnits + ",\"currency\":\"" + cleanCurrency + "\"},"
+                        + "\"interval\":{\"unit\":\"MONTH\",\"count\":1},"
+                        + "\"merchantRedirectUrl\":\"" + redirectBase + "/vipps/callback\","
+                        + "\"merchantAgreementUrl\":\"" + redirectBase + "/da/dashboard\","
+                        + "\"productName\":\"" + cleanPlanName + "\","
+                        + "\"productDescription\":\"" + cleanDesc + "\","
+                        + "\"initialCharge\":{\"amount\":" + minorUnits + ",\"currency\":\"" + cleanCurrency + "\",\"description\":\"" + cleanPlanName + "\",\"transactionType\":\"DIRECT_CAPTURE\"},"
+                        + "\"phoneNumber\":\"" + msisdn + "\","
+                        + "\"scope\":\"name address email phoneNumber\""
+                        + "}";
+                String agrRes = sendVippsHttp("POST", "/recurring/v3/agreements", spec.vippsMsn(), agreementBody);
+                String agreementId = extractJsonField(JSON_AGREEMENT_ID_PATTERN, agrRes, "AGR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                chargeId = extractJsonField(JSON_CHARGE_ID_PATTERN, agrRes, null);
+                redirectUrl = extractJsonField(JSON_CONFIRMATION_URL_PATTERN, agrRes, null);
+                if (chargeId == null) {
+                    String chargeBody = "{\"amount\":" + minorUnits + ",\"currency\":\"" + cleanCurrency + "\",\"transactionType\":\"DIRECT_CAPTURE\",\"description\":\"" + cleanPlanName + "\",\"due\":\"" + LocalDate.now().plusDays(1) + "\",\"retryDays\":2}";
+                    String chargeRes = sendVippsHttp("POST", "/recurring/v3/agreements/" + agreementId + "/charges", spec.vippsMsn(), chargeBody);
+                    chargeId = extractJsonField(JSON_CHARGE_ID_PATTERN, chargeRes, "CHG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                }
 
                 Map<String, Object> agreement = new LinkedHashMap<>();
                 agreement.put("agreementId", agreementId);
@@ -1214,10 +1272,23 @@ public final class FinanceFeature {
                 gatewayRef = agreementId;
             } else {
                 String epayRef = "EPAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-                sendVippsHttp("POST", "/epayment/v1/payments", spec.vippsMsn(),
-                        "{\"reference\":\"" + epayRef + "\",\"amount\":{\"currency\":\"" + currency + "\",\"value\":" + minorUnits + "}}");
-                gatewayRef = epayRef;
-                chargeId = epayRef;
+                String vippsMethod = "CREDIT_CARD".equalsIgnoreCase(paymentMethod) ? "CARD" : "WALLET";
+                String customerJson = "WALLET".equals(vippsMethod)
+                        ? "\"customer\":{\"phoneNumber\":\"" + normalizeMsisdn(rawPhoneNumber) + "\"},"
+                        : "";
+                String epayBody = "{"
+                        + "\"amount\":{\"currency\":\"" + cleanCurrency + "\",\"value\":" + minorUnits + "},"
+                        + customerJson
+                        + "\"paymentMethod\":{\"type\":\"" + vippsMethod + "\"},"
+                        + "\"reference\":\"" + epayRef + "\","
+                        + "\"userFlow\":\"WEB_REDIRECT\","
+                        + "\"returnUrl\":\"" + redirectBase + "/vipps/callback\","
+                        + "\"paymentDescription\":\"" + cleanPlanName + " (" + sanitizeJson(maskedInstrument) + " -> " + sanitizeJson(spec.payoutIban()) + ")\""
+                        + "}";
+                String epayRes = sendVippsHttp("POST", "/epayment/v1/payments", spec.vippsMsn(), epayBody);
+                gatewayRef = extractJsonField(JSON_REFERENCE_PATTERN, epayRes, epayRef);
+                chargeId = gatewayRef;
+                redirectUrl = extractJsonField(JSON_REDIRECT_URL_PATTERN, epayRes, null);
             }
 
             if (spec.grantedRole() != null) {
@@ -1230,6 +1301,10 @@ public final class FinanceFeature {
             result.put("agreementId", spec.recurring() ? gatewayRef : null);
             result.put("vippsReferenceId", gatewayRef);
             result.put("chargeId", chargeId);
+            result.put("redirectUrl", redirectUrl);
+            result.put("merchantName", merchantName);
+            result.put("merchantCvr", merchantCvr);
+            result.put("apiBaseUrl", apiBaseUrl);
             result.put("payoutIban", spec.payoutIban());
             result.put("vippsMsn", spec.vippsMsn());
             result.put("grantedRole", spec.grantedRole());
@@ -1242,11 +1317,19 @@ public final class FinanceFeature {
             ErrorCode.NOT_FOUND.require(agreement != null, "Vipps agreement not found: " + agreementId);
             ErrorCode.BAD_REQUEST.require("ACTIVE".equals(agreement.get("status")), "Cannot charge stopped Vipps agreement: " + agreementId);
 
-            String chargeId = "CHG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             BigDecimal amount = (BigDecimal) agreement.get("amountDkk");
-            sendVippsHttp("POST", "/recurring/v3/agreements/" + agreementId + "/charges",
+            String chargeBody = "{"
+                    + "\"amount\":" + amount.multiply(BigDecimal.valueOf(100)).longValue() + ","
+                    + "\"currency\":\"" + sanitizeJson(String.valueOf(agreement.get("currency"))) + "\","
+                    + "\"transactionType\":\"DIRECT_CAPTURE\","
+                    + "\"description\":\"" + sanitizeJson(String.valueOf(agreement.get("planName"))) + "\","
+                    + "\"due\":\"" + LocalDate.now().plusDays(1) + "\","
+                    + "\"retryDays\":2"
+                    + "}";
+            String chargeRes = sendVippsHttp("POST", "/recurring/v3/agreements/" + agreementId + "/charges",
                     (String) agreement.get("vippsMsn"),
-                    "{\"amount\":" + amount.multiply(BigDecimal.valueOf(100)).longValue() + ",\"transactionType\":\"DIRECT_CAPTURE\"}");
+                    chargeBody);
+            String chargeId = extractJsonField(JSON_CHARGE_ID_PATTERN, chargeRes, "CHG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
 
             agreement.put("chargeCount", ((Integer) agreement.get("chargeCount")) + 1);
             agreement.put("lastChargeId", chargeId);
@@ -1264,11 +1347,32 @@ public final class FinanceFeature {
             return new LinkedHashMap<>(agreement);
         }
 
-        private void sendVippsHttp(String method, String path, String merchantSerialNumber, String jsonBody) {
+        static String normalizeMsisdn(String phone) {
+            if (phone == null || phone.isBlank()) {
+                return "4520123456";
+            }
+            String digits = phone.replaceAll("[^0-9]", "");
+            return digits.length() == 8 ? "45" + digits : digits;
+        }
+
+        static String extractJsonField(Pattern pattern, String body, String fallback) {
+            if (body == null) {
+                return fallback;
+            }
+            Matcher matcher = pattern.matcher(body);
+            return matcher.find() ? matcher.group(1) : fallback;
+        }
+
+        static String sanitizeJson(String value) {
+            return value == null ? "" : value.replace("\"", "").replace("\\", "");
+        }
+
+        private String sendVippsHttp(String method, String path, String merchantSerialNumber, String jsonBody) {
             if (!remoteEnabled) {
-                return;
+                return null;
             }
             try {
+                String systemName = "EduJournal-" + sanitizeJson(merchantName);
                 HttpRequest tokenReq = HttpRequest.newBuilder()
                         .uri(URI.create(apiBaseUrl + "/accesstoken/get"))
                         .timeout(Duration.ofSeconds(3))
@@ -1276,25 +1380,36 @@ public final class FinanceFeature {
                         .header("client_secret", clientSecret)
                         .header("Ocp-Apim-Subscription-Key", subscriptionKey)
                         .header("Merchant-Serial-Number", merchantSerialNumber)
+                        .header("Vipps-System-Name", systemName)
+                        .header("Vipps-System-Version", "1.0.0")
+                        .header("Vipps-System-Plugin-Name", BUNDLE_SYMBOLIC_NAME)
+                        .header("Vipps-System-Plugin-Version", BUNDLE_VERSION)
                         .POST(HttpRequest.BodyPublishers.noBody())
                         .build();
                 HttpResponse<String> tokenRes = httpClient.send(tokenReq, HttpResponse.BodyHandlers.ofString());
                 if (tokenRes.statusCode() >= 400) {
                     throw new IllegalStateException("Vipps token endpoint returned HTTP " + tokenRes.statusCode());
                 }
+                String accessToken = extractJsonField(JSON_TOKEN_PATTERN, tokenRes.body(), "sandbox-bearer-token");
                 HttpRequest apiReq = HttpRequest.newBuilder()
                         .uri(URI.create(apiBaseUrl + path))
                         .timeout(Duration.ofSeconds(3))
+                        .header("Authorization", "Bearer " + accessToken)
                         .header("Content-Type", "application/json")
                         .header("Ocp-Apim-Subscription-Key", subscriptionKey)
                         .header("Merchant-Serial-Number", merchantSerialNumber)
                         .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .header("Vipps-System-Name", systemName)
+                        .header("Vipps-System-Version", "1.0.0")
+                        .header("Vipps-System-Plugin-Name", BUNDLE_SYMBOLIC_NAME)
+                        .header("Vipps-System-Plugin-Version", BUNDLE_VERSION)
                         .method(method, HttpRequest.BodyPublishers.ofString(jsonBody))
                         .build();
                 HttpResponse<String> apiRes = httpClient.send(apiReq, HttpResponse.BodyHandlers.ofString());
                 if (apiRes.statusCode() >= 400) {
                     throw new IllegalStateException("Vipps API returned HTTP " + apiRes.statusCode());
                 }
+                return apiRes.body();
             } catch (IllegalStateException e) {
                 throw e;
             } catch (Exception e) {
@@ -1712,9 +1827,12 @@ public final class FinanceFeature {
             requireClientSelfOrTherapist(clientUuid, auth);
 
             String rawProductType = parseString(payload.get("productType"), "SUBSCRIPTION");
+            BigDecimal defaultAmount = "SESSION_INVOICE".equalsIgnoreCase(rawProductType)
+                    ? PRICE_SINGLE_SESSION_DKK
+                    : PRICE_SUBSCRIPTION_DKK;
             BigDecimal requestedAmount = payload.get("amount") != null
                     ? parsePositiveAmount(payload.get("amount"), "amount")
-                    : new BigDecimal("499.00");
+                    : defaultAmount;
             String customPlanName = parseString(payload.get("planName"), "EduJournal Betaling");
             VippsMobilePayOsgiPlugin.CheckoutPlanSpec spec = vippsPlugin.resolveSpec(rawProductType, requestedAmount, customPlanName);
 
@@ -1762,7 +1880,8 @@ public final class FinanceFeature {
             }
 
             Map<String, Object> gatewayResult = vippsPlugin.executeGatewayPayment(
-                    clientUuid, spec, paymentMethod, maskedInstrument, currency, subscriptionId
+                    clientUuid, spec, paymentMethod, maskedInstrument, currency, subscriptionId,
+                    parseString(payload.get("phoneNumber"), null)
             );
 
             String markdown = "- **Kill Bill OSGi Plugin:** `" + gatewayResult.get("bundleSymbolicName") + "`\n"

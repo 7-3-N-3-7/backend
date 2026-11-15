@@ -37,7 +37,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -145,7 +147,7 @@ class FinanceServiceTest {
         // 1. Bill unpaid session (payImmediately = false) and refund unpaid invoice (credits 1200)
         Map<String, Object> unpaidPayload = new LinkedHashMap<>();
         unpaidPayload.put("clientUuid", clientA.toString());
-        unpaidPayload.put("amount", "850.00");
+        unpaidPayload.put("amount", "2.00");
         unpaidPayload.put("payImmediately", false);
         unpaidPayload.put("description", "   ");
         ResponseEntity<Map<String, Object>> unpaidResp = financeController.billSingleSession(unpaidPayload, adminAuth);
@@ -157,7 +159,7 @@ class FinanceServiceTest {
         // Second session for same client reuses existing Kill Bill account
         Map<String, Object> paidPayload = new LinkedHashMap<>();
         paidPayload.put("clientUuid", clientA.toString());
-        paidPayload.put("amount", "1200.00");
+        paidPayload.put("amount", "2.00");
         paidPayload.put("payImmediately", true);
         paidPayload.put("clinicalCommitHash", "   ");
         ResponseEntity<Map<String, Object>> paidResp = financeController.billSingleSession(paidPayload, clientAAuth);
@@ -165,7 +167,7 @@ class FinanceServiceTest {
         // Also test default payImmediately (when key is omitted)
         Map<String, Object> defaultPayPayload = new LinkedHashMap<>();
         defaultPayPayload.put("clientUuid", clientA.toString());
-        defaultPayPayload.put("amount", "500.00");
+        defaultPayPayload.put("amount", "2.00");
         financeController.billSingleSession(defaultPayPayload, clientAAuth);
         assertEquals(HttpStatus.CREATED, paidResp.getStatusCode());
         String paidInvoiceId = (String) paidResp.getBody().get("invoiceId");
@@ -175,7 +177,7 @@ class FinanceServiceTest {
         // Refund unpaid invoice with custom amount
         ResponseEntity<Map<String, Object>> refundUnpaidResp = financeController.refundInvoice(
                 unpaidInvoiceId,
-                Map.of("amount", "850.00", "reason", "Kreditnota ubetalt"),
+                Map.of("amount", "2.00", "reason", "Kreditnota ubetalt"),
                 therapistAuth
         );
         assertEquals(HttpStatus.OK, refundUnpaidResp.getStatusCode());
@@ -191,7 +193,7 @@ class FinanceServiceTest {
 
         // 2. Prepaid Klippekort top-up & full clip consumption
         ResponseEntity<Map<String, Object>> topupResp = financeController.topUpPrepaidCard(
-                Map.of("clientUuid", clientA.toString(), "amount", "2000.00", "clips", 2),
+                Map.of("clientUuid", clientA.toString(), "amount", "3.00", "clips", 2),
                 clientAAuth
         );
         assertEquals(HttpStatus.CREATED, topupResp.getStatusCode());
@@ -222,19 +224,19 @@ class FinanceServiceTest {
 
         // 3. Subscription & Installment Plan (repay custom amount + final installment closing loan)
         ResponseEntity<Map<String, Object>> subResp = financeController.createSubscription(
-                Map.of("clientUuid", clientA.toString(), "planName", "monthly-care", "monthlyAmount", "1500.00"),
+                Map.of("clientUuid", clientA.toString(), "planName", "monthly-care", "monthlyAmount", "3.00"),
                 clientAAuth
         );
         assertEquals(HttpStatus.CREATED, subResp.getStatusCode());
 
         ResponseEntity<Map<String, Object>> loanResp = financeController.createInstallmentPlan(
-                Map.of("clientUuid", clientA.toString(), "principalAmount", "3000.00", "installmentsCount", 2),
+                Map.of("clientUuid", clientA.toString(), "principalAmount", "6.00", "installmentsCount", 2),
                 therapistAuth
         );
         assertEquals(HttpStatus.CREATED, loanResp.getStatusCode());
         String loanId = (String) loanResp.getBody().get("loanId");
 
-        // First repayment with default installment amount (1500)
+        // First repayment with default installment amount (3.00)
         ResponseEntity<Map<String, Object>> repay1 = financeController.repayInstallment(
                 loanId,
                 Map.of(),
@@ -243,10 +245,10 @@ class FinanceServiceTest {
         assertEquals(HttpStatus.OK, repay1.getStatusCode());
         assertEquals("ACTIVE", repay1.getBody().get("status"));
 
-        // Second repayment with explicit amount (1500) closes loan
+        // Second repayment with explicit amount (3.00) closes loan
         ResponseEntity<Map<String, Object>> repay2 = financeController.repayInstallment(
                 loanId,
-                Map.of("amount", "1500.00"),
+                Map.of("amount", "3.00"),
                 therapistAuth
         );
         assertEquals(HttpStatus.OK, repay2.getStatusCode());
@@ -463,15 +465,15 @@ class FinanceServiceTest {
         financeService.resetAll();
 
         ResponseEntity<Map<String, Object>> createdA = financeController.createInvoice(
-                Map.of("clientUuid", clientA.toString(), "amountGrossDkk", "950", "description", "Session A"),
+                Map.of("clientUuid", clientA.toString(), "amountGrossDkk", "2", "description", "Session A"),
                 therapistJwtAuth
         );
         assertEquals(HttpStatus.CREATED, createdA.getStatusCode());
         assertNotNull(createdA.getBody().get("id"));
-        assertEquals(new BigDecimal("950"), createdA.getBody().get("amountGrossDkk"));
+        assertEquals(new BigDecimal("2"), createdA.getBody().get("amountGrossDkk"));
 
         ResponseEntity<Map<String, Object>> createdB = financeController.createInvoice(
-                Map.of("clientUuid", clientB.toString(), "amount", "500", "description", "Session B"),
+                Map.of("clientUuid", clientB.toString(), "amount", "3", "description", "Session B"),
                 therapistJwtAuth
         );
         assertEquals(HttpStatus.CREATED, createdB.getStatusCode());
@@ -494,6 +496,30 @@ class FinanceServiceTest {
     void testVippsMobilePayOsgiCheckoutAccessRoutingAndRemoteBranches() {
         int port = mockServer.getAddress().getPort();
         String baseUrl = "http://127.0.0.1:" + port;
+        AtomicBoolean returnInitialCharge = new AtomicBoolean(true);
+        mockServer.removeContext("/");
+        mockServer.createContext("/", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            String json;
+            if ("/accesstoken/get".equals(path)) {
+                json = "{\"access_token\":\"vipps-live-token\"}";
+            } else if ("/recurring/v3/agreements".equals(path)) {
+                json = returnInitialCharge.getAndSet(false)
+                        ? "{\"agreementId\":\"AGR-LIVE-1\",\"chargeId\":\"CHG-LIVE-1\",\"vippsConfirmationUrl\":\"https://landing.vipps.no/agr-1\"}"
+                        : "{\"agreementId\":\"AGR-LIVE-2\"}";
+            } else if ("/epayment/v1/payments".equals(path)) {
+                json = "{\"reference\":\"EPAY-LIVE-1\",\"redirectUrl\":\"https://landing.vipps.no/epay-1\"}";
+            } else if (path.endsWith("/charges")) {
+                json = "{\"chargeId\":\"CHG-LIVE-NEXT\"}";
+            } else {
+                json = "{\"status\":\"STOPPED\"}";
+            }
+            byte[] resp = json.getBytes();
+            exchange.sendResponseHeaders(mockStatusCode.get(), resp.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(resp);
+            }
+        });
         vippsPlugin.setRemoteConfiguration(baseUrl, true);
         mockStatusCode.set(200);
         financeService.resetAll();
@@ -502,12 +528,28 @@ class FinanceServiceTest {
         Authentication clientAAuth = createJwtAuth(clientA, "Anders Sand", "client");
         Authentication clientBAuth = createJwtAuth(clientB, "Client B", "client");
 
-        // 1. Public config endpoint
+        // 0. Static helpers, null/blank MSISDN & single shared MSN override
+        assertEquals("4520123456", VippsMobilePayOsgiPlugin.normalizeMsisdn(null));
+        assertEquals("4520123456", VippsMobilePayOsgiPlugin.normalizeMsisdn("   "));
+        assertEquals("4540112233", VippsMobilePayOsgiPlugin.normalizeMsisdn("40112233"));
+        assertEquals("4520123456", VippsMobilePayOsgiPlugin.normalizeMsisdn("+4520123456"));
+        assertEquals("", VippsMobilePayOsgiPlugin.sanitizeJson(null));
+        assertEquals("fb", VippsMobilePayOsgiPlugin.extractJsonField(Pattern.compile("\"k\":\"([^\"]+)\""), null, "fb"));
+        assertEquals("fb", VippsMobilePayOsgiPlugin.extractJsonField(Pattern.compile("\"k\":\"([^\"]+)\""), "{}", "fb"));
+
+        vippsPlugin.setSingleMerchantSerialNumber("554433");
+        ResponseEntity<Map<String, Object>> singleMsnCfg = financeController.getVippsConfig(clientAAuth);
+        assertEquals("73N37", singleMsnCfg.getBody().get("merchantName"));
+        assertEquals("46688244", singleMsnCfg.getBody().get("merchantCvr"));
+        assertEquals("554433", singleMsnCfg.getBody().get("clinicVippsMsn"));
+        vippsPlugin.setSingleMerchantSerialNumber(null);
+
+        // 1. Public config endpoint (with default MSN tiers restored)
         ResponseEntity<Map<String, Object>> cfgResp = financeController.getVippsConfig(clientAAuth);
         assertEquals(HttpStatus.OK, cfgResp.getStatusCode());
         assertEquals("com.platform.killbill.vipps-mobilepay-plugin", cfgResp.getBody().get("bundleSymbolicName"));
 
-        // 2. Client A purchases THERAPIST_ACCESS via MOBILEPAY -> upgrades role & allows GL summary access
+        // 2. Client A purchases THERAPIST_ACCESS (4 DKK) via MOBILEPAY (returns initialCharge + vippsConfirmationUrl)
         Map<String, Object> therapistCheckout = new LinkedHashMap<>();
         therapistCheckout.put("productType", "THERAPIST_ACCESS");
         therapistCheckout.put("paymentMethod", "MOBILEPAY");
@@ -517,6 +559,7 @@ class FinanceServiceTest {
         assertEquals("DK8130000012345678", tResp.getBody().get("payoutIban"));
         assertEquals("700101", tResp.getBody().get("vippsMsn"));
         assertEquals("THERAPIST", tResp.getBody().get("grantedRole"));
+        assertEquals("https://landing.vipps.no/agr-1", tResp.getBody().get("redirectUrl"));
         assertTrue(vippsPlugin.hasPlatformAccess(clientA));
         assertEquals(HttpStatus.OK, financeController.getGeneralLedgerSummary(clientAAuth).getStatusCode());
 
@@ -525,7 +568,8 @@ class FinanceServiceTest {
         assertEquals(HttpStatus.OK, chargedResp.getStatusCode());
         assertEquals(2, chargedResp.getBody().get("chargeCount"));
 
-        // 3. Purchase MANAGEMENT_ACCESS, SUBSCRIPTION (with omitted amount/clientUuid), CLIP_CARD, SESSION_INVOICE
+        // 3. Purchase MANAGEMENT_ACCESS (5 DKK, hits fallback /charges when initialChargeId absent),
+        //    SUBSCRIPTION (omitted amount -> 3.00 DKK), CLIP_CARD (3.00 DKK CARD), SESSION_INVOICE (omitted amount -> 2.00 DKK WALLET)
         ResponseEntity<Map<String, Object>> mgmtResp = financeController.vippsCheckout(
                 Map.of(
                         "clientUuid", therapistUuid.toString(),
@@ -549,13 +593,14 @@ class FinanceServiceTest {
                 clientBAuth
         );
         assertEquals(HttpStatus.CREATED, subResp.getStatusCode());
+        assertEquals(FinanceFeature.PRICE_SUBSCRIPTION_DKK, subResp.getBody().get("amountDkk"));
         String subAgreementId = (String) subResp.getBody().get("agreementId");
 
         ResponseEntity<Map<String, Object>> clipResp = financeController.vippsCheckout(
                 Map.of(
                         "clientUuid", clientB.toString(),
                         "productType", "CLIP_CARD",
-                        "amount", "5000",
+                        "amount", "3.00",
                         "clips", 5,
                         "paymentMethod", "CREDIT_CARD",
                         "cardToken", "tok_card_clip_1234",
@@ -570,13 +615,14 @@ class FinanceServiceTest {
                 Map.of(
                         "clientUuid", clientB.toString(),
                         "productType", "SESSION_INVOICE",
-                        "amount", "1200",
                         "paymentMethod", "MOBILEPAY",
-                        "phoneNumber", "+4530405060"
+                        "phoneNumber", "30405060"
                 ),
                 clientBAuth
         );
         assertEquals(HttpStatus.CREATED, sessionResp.getStatusCode());
+        assertEquals(FinanceFeature.PRICE_SINGLE_SESSION_DKK, sessionResp.getBody().get("amountDkk"));
+        assertEquals("https://landing.vipps.no/epay-1", sessionResp.getBody().get("redirectUrl"));
 
         // Cancel one subscription agreement (exercises both matching & non-matching subscription loop branches)
         ResponseEntity<Map<String, Object>> cancelResp = financeController.cancelVippsAgreement(therapistAgreementId, clientAAuth);

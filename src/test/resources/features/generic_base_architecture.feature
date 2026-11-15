@@ -1,14 +1,14 @@
 @api @architecture
-Feature: Generic Base Architecture Inheritance (BaseEntity, BaseRepository, BaseDAO, BaseDTO, BaseService, BaseController)
+Feature: Layered Base-Core Consolidation & Vertical Slice Architecture (BaseDomainCore, BaseWebCore, <Feature>Feature)
   As a Backend Developer on the EduJournal platform
-  I want domain entities, repositories, DAOs, DTOs, services, and controllers to inherit from generic Base classes wired dynamically via Spring IoC
-  So that standard CRUD, dynamic filtering, and lifecycle hooks flow cleanly through Controller -> Service -> Repository -> Entity / DTO swimlanes
+  I want all domain entities, records, repositories, services, and controllers to inherit from BaseDomainCore and BaseWebCore inside cohesive Vertical Slice Feature files
+  So that standard CRUD, functional ErrorCode guards, and RFC 7807 ProblemDetail error responses flow cleanly with strict package-private encapsulation
 
   Background:
     Given Business PostgreSQL database is clean and accessible
     And the clinic marketplace tables are clean in PostgreSQL
 
-  Scenario: Domain Entities, Repositories, Services, and Controllers inherit from Generic Base Architecture classes
+  Scenario: Domain Entities, Repositories, Services, and Controllers inherit from BaseDomainCore and BaseWebCore
     Then the domain entity "Appointment" should inherit from BaseEntity
     And the domain entity "Organisation" should inherit from BaseEntity
     And the domain entity "ClientProfile" should inherit from BaseEntity

@@ -1,97 +1,86 @@
 package com.platform.core;
 
-import com.platform.controller.AppointmentController;
-import com.platform.controller.ClinicPlatformController;
-import com.platform.controller.JournalController;
-import com.platform.controller.PsychotraumatologyController;
-import com.platform.controller.UserController;
-import com.platform.core.controller.BaseController;
-import com.platform.core.dao.BaseDAO;
-import com.platform.core.dto.BaseDTO;
-import com.platform.core.entity.BaseEntity;
-import com.platform.core.repository.BaseRepository;
-import com.platform.core.service.BaseService;
-import com.platform.core.service.CrudInterceptor;
-import com.platform.crm.model.JournalEntry;
-import com.platform.crm.model.PsychotraumatologyTest;
-import com.platform.crm.model.TherapistClinicalNote;
-import com.platform.crm.repository.JournalEntryRepository;
-import com.platform.crm.repository.PsychotraumatologyTestRepository;
-import com.platform.crm.repository.TherapistClinicalNoteRepository;
-import com.platform.dto.JournalEntryDto;
-import com.platform.dto.PsychotraumatologyTestDto;
-import com.platform.dto.UserRequestDto;
-import com.platform.dto.UserResponseDto;
-import com.platform.entity.Appointment;
-import com.platform.entity.ClientProfile;
-import com.platform.entity.ClientTherapistHandshake;
-import com.platform.entity.Organisation;
-import com.platform.entity.ProviderProfile;
-import com.platform.entity.Service;
-import com.platform.entity.UserEntity;
-import com.platform.repository.AppointmentRepository;
-import com.platform.repository.ClientProfileRepository;
-import com.platform.repository.HandshakeRepository;
-import com.platform.repository.OrganisationRepository;
-import com.platform.repository.ProviderProfileRepository;
-import com.platform.repository.ServiceRepository;
-import com.platform.repository.UserRepository;
-import com.platform.service.AppointmentService;
-import com.platform.service.ClinicPlatformService;
-import com.platform.service.JournalService;
-import com.platform.service.PsychotraumatologyService;
-import com.platform.service.UserService;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Order;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import com.platform.core.BaseDomainCore.BaseRepository;
+import com.platform.core.BaseDomainCore.BaseService;
+import com.platform.core.BaseDomainCore.DomainException;
+import com.platform.core.BaseDomainCore.ErrorCode;
+import com.platform.core.BaseDomainCore.HasId;
+import com.platform.core.BaseDomainCore.Identifiable;
+import com.platform.core.BaseWebCore.BaseController;
+import com.platform.core.BaseWebCore.GlobalExceptionHandler;
+import com.platform.features.appointment.AppointmentFeature.Appointment;
+import com.platform.features.appointment.AppointmentFeature.AppointmentDto;
+import com.platform.features.clinic.ClinicPlatformFeature.ClientProfile;
+import com.platform.features.clinic.ClinicPlatformFeature.ClientProfileDto;
+import com.platform.features.clinic.ClinicPlatformFeature.ClientTherapistHandshake;
+import com.platform.features.clinic.ClinicPlatformFeature.ClientTherapistHandshakeDto;
+import com.platform.features.clinic.ClinicPlatformFeature.HandshakeRequestDto;
+import com.platform.features.clinic.ClinicPlatformFeature.OnboardingRequestDto;
+import com.platform.features.clinic.ClinicPlatformFeature.Organisation;
+import com.platform.features.clinic.ClinicPlatformFeature.OrganisationDto;
+import com.platform.features.clinic.ClinicPlatformFeature.ProviderProfile;
+import com.platform.features.clinic.ClinicPlatformFeature.ProviderProfileDto;
+import com.platform.features.clinic.ClinicPlatformFeature.Service;
+import com.platform.features.clinic.ClinicPlatformFeature.ServiceDto;
+import com.platform.features.finance.FinanceFeature.FinancialVoucherDto;
+import com.platform.features.finance.FinanceFeature.InvoiceDto;
+import com.platform.features.finance.FinanceFeature.LedgerSummaryDto;
+import com.platform.features.finance.FinanceFeature.PaymentDto;
+import com.platform.features.finance.FinanceFeature.RefundDto;
+import com.platform.features.i18n.I18nFeature.I18nDictionary;
+import com.platform.features.i18n.I18nFeature.I18nDictionaryDto;
+import com.platform.features.i18n.I18nFeature.TranslationUpdateRequest;
+import com.platform.features.journal.JournalFeature.JournalEntry;
+import com.platform.features.journal.JournalFeature.JournalEntryDto;
+import com.platform.features.journal.JournalFeature.TherapistClinicalNote;
+import com.platform.features.journal.JournalFeature.TherapistClinicalNoteDto;
+import com.platform.features.journal.JournalFeature.TherapistNote;
+import com.platform.features.journal.JournalFeature.TherapistNoteDto;
+import com.platform.features.psychotraumatology.PsychotraumatologyFeature.PsychotraumatologyTest;
+import com.platform.features.psychotraumatology.PsychotraumatologyFeature.PsychotraumatologyTestDto;
+import com.platform.features.user.UserFeature.UserDto;
+import com.platform.features.user.UserFeature.UserEntity;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class GenericBaseArchitectureTest {
 
-    public static class DummyEntity extends BaseEntity<UUID> {
-        private String title;
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-    }
-
-    public static class DummyDTO implements BaseDTO<UUID> {
+    public static class DummyEntity implements Identifiable {
         private UUID id;
         private String title;
+
+        public DummyEntity() {}
+
+        public DummyEntity(UUID id, String title) {
+            this.id = id;
+            this.title = title;
+        }
 
         @Override
         public UUID getId() {
@@ -112,494 +101,285 @@ public class GenericBaseArchitectureTest {
         }
     }
 
-    public static class DefaultIdDTO implements BaseDTO<UUID> {
-    }
+    public record DummyDto(UUID id, String title) implements HasId {}
 
-    public static class NoArgBlockedEntity extends BaseEntity<UUID> {
-        public NoArgBlockedEntity(String requiredArg) {
+    static class DummyService extends BaseService<DummyEntity, DummyDto> {
+        DummyService(BaseRepository<DummyEntity> repository) {
+            super(repository);
+        }
+
+        @Override
+        protected DummyDto toDto(DummyEntity entity) {
+            return new DummyDto(entity.getId(), entity.getTitle());
+        }
+
+        @Override
+        protected DummyEntity toEntity(DummyDto dto) {
+            return new DummyEntity(dto.id(), dto.title());
         }
     }
 
-    public static class NoArgBlockedDTO implements BaseDTO<UUID> {
-        public NoArgBlockedDTO(String requiredArg) {
-        }
-    }
-
-    static class DummyServiceWithSeparateDto extends BaseService<DummyEntity, DummyDTO, UUID> {
-        public DummyServiceWithSeparateDto() {
-            super();
-        }
-
-        public DummyServiceWithSeparateDto(BaseRepository<DummyEntity, UUID> repo) {
-            super(repo);
-        }
-    }
-
-    static class BlockedTypeService extends BaseService<NoArgBlockedEntity, NoArgBlockedDTO, UUID> {
-    }
-
-    static class DummyDAO extends BaseDAO<DummyEntity, UUID> {
-        public DummyDAO() {
-            super();
-        }
-
-        public DummyDAO(EntityManager em) {
-            super(DummyEntity.class, em);
-        }
-
-        public Object exposeConvert(String val, Class<?> type) {
-            return convertValue(val, type);
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
-    static class RawDAO extends BaseDAO {
-        public RawDAO() {
-            super();
-        }
-    }
-
-    static class DummyController extends BaseController<DummyEntity, DummyEntity, UUID> {
-        public DummyController() {
-            super();
-        }
-
-        public DummyController(BaseService<DummyEntity, DummyEntity, UUID> service) {
+    static class DummyController extends BaseController<DummyEntity, DummyDto> {
+        DummyController(DummyService service) {
             super(service);
         }
     }
 
     @Test
-    public void testBaseClassesExistAndAreInheritedByDomain() throws Exception {
-        Class<?> baseEntityClass = Class.forName("com.platform.core.entity.BaseEntity");
-        Class<?> baseRepoClass = Class.forName("com.platform.core.repository.BaseRepository");
-        Class<?> baseDaoClass = Class.forName("com.platform.core.dao.BaseDAO");
-        Class<?> baseDtoClass = Class.forName("com.platform.core.dto.BaseDTO");
-        Class<?> baseServiceClass = Class.forName("com.platform.core.service.BaseService");
-        Class<?> baseControllerClass = Class.forName("com.platform.core.controller.BaseController");
-        Class<?> crudInterceptorClass = Class.forName("com.platform.core.service.CrudInterceptor");
+    public void testCleanArchitectureDependencyRuleAndVerticalSliceEncapsulation() throws Exception {
+        // 1. Verify BaseDomainCore has zero imports from org.springframework.web or jakarta.servlet
+        Path baseDomainPath = Path.of("src/main/java/com/platform/core/BaseDomainCore.java");
+        if (Files.exists(baseDomainPath)) {
+            String source = Files.readString(baseDomainPath);
+            Assertions.assertFalse(source.contains("import org.springframework.web"),
+                    "BaseDomainCore must NEVER import org.springframework.web");
+            Assertions.assertFalse(source.contains("import jakarta.servlet"),
+                    "BaseDomainCore must NEVER import jakarta.servlet");
+        }
 
-        Assertions.assertNotNull(baseDaoClass);
-        Assertions.assertNotNull(crudInterceptorClass);
+        // 2. Verify all JPA/Mongo Entities implement Identifiable with UUID id
+        List<Class<?>> entities = List.of(
+                Appointment.class,
+                Organisation.class,
+                ClientProfile.class,
+                ProviderProfile.class,
+                Service.class,
+                ClientTherapistHandshake.class,
+                UserEntity.class,
+                JournalEntry.class,
+                TherapistClinicalNote.class,
+                TherapistNote.class,
+                PsychotraumatologyTest.class,
+                I18nDictionary.class
+        );
+        for (Class<?> entityClass : entities) {
+            Assertions.assertTrue(Identifiable.class.isAssignableFrom(entityClass),
+                    entityClass.getSimpleName() + " must implement Identifiable");
+            Assertions.assertEquals(UUID.class, entityClass.getMethod("getId").getReturnType(),
+                    entityClass.getSimpleName() + ".getId() must return UUID");
+            Assertions.assertTrue(Modifier.isPublic(entityClass.getModifiers()),
+                    entityClass.getSimpleName() + " must be public");
+        }
 
-        // Verify all JPA Entities inherit from BaseEntity
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(Appointment.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(Organisation.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(ClientProfile.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(ProviderProfile.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(Service.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(ClientTherapistHandshake.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(UserEntity.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(JournalEntry.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(PsychotraumatologyTest.class));
-        Assertions.assertTrue(baseEntityClass.isAssignableFrom(TherapistClinicalNote.class));
+        // 3. Verify all Record DTOs implement HasId with UUID id and are Java records
+        List<Class<?>> recordDtos = List.of(
+                AppointmentDto.class,
+                ClientProfileDto.class,
+                OrganisationDto.class,
+                ProviderProfileDto.class,
+                ServiceDto.class,
+                ClientTherapistHandshakeDto.class,
+                OnboardingRequestDto.class,
+                HandshakeRequestDto.class,
+                JournalEntryDto.class,
+                TherapistClinicalNoteDto.class,
+                TherapistNoteDto.class,
+                PsychotraumatologyTestDto.class,
+                UserDto.class,
+                I18nDictionaryDto.class,
+                TranslationUpdateRequest.class,
+                InvoiceDto.class,
+                PaymentDto.class,
+                RefundDto.class,
+                FinancialVoucherDto.class,
+                LedgerSummaryDto.class
+        );
+        for (Class<?> dtoClass : recordDtos) {
+            Assertions.assertTrue(dtoClass.isRecord(), dtoClass.getSimpleName() + " must be a Java record");
+            Assertions.assertTrue(HasId.class.isAssignableFrom(dtoClass),
+                    dtoClass.getSimpleName() + " must implement HasId");
+            Assertions.assertEquals(UUID.class, dtoClass.getMethod("id").getReturnType(),
+                    dtoClass.getSimpleName() + ".id() must return UUID");
+            Assertions.assertTrue(Modifier.isPublic(dtoClass.getModifiers()),
+                    dtoClass.getSimpleName() + " must be public");
+        }
 
-        // Verify all JPA Repositories inherit from BaseRepository
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(AppointmentRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(OrganisationRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(ClientProfileRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(ProviderProfileRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(ServiceRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(HandshakeRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(UserRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(JournalEntryRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(PsychotraumatologyTestRepository.class));
-        Assertions.assertTrue(baseRepoClass.isAssignableFrom(TherapistClinicalNoteRepository.class));
+        // 4. Verify all Repositories inherit from BaseRepository and are package-private
+        List<String> repositories = List.of(
+                "com.platform.features.appointment.AppointmentFeature$AppointmentRepository",
+                "com.platform.features.clinic.ClinicPlatformFeature$ClientProfileRepository",
+                "com.platform.features.clinic.ClinicPlatformFeature$OrganisationRepository",
+                "com.platform.features.clinic.ClinicPlatformFeature$ProviderProfileRepository",
+                "com.platform.features.clinic.ClinicPlatformFeature$ServiceRepository",
+                "com.platform.features.clinic.ClinicPlatformFeature$HandshakeRepository",
+                "com.platform.features.user.UserFeature$UserRepository",
+                "com.platform.features.journal.JournalFeature$JournalEntryRepository",
+                "com.platform.features.journal.JournalFeature$TherapistClinicalNoteRepository",
+                "com.platform.features.journal.JournalFeature$TherapistNoteRepository",
+                "com.platform.features.psychotraumatology.PsychotraumatologyFeature$PsychotraumatologyTestRepository",
+                "com.platform.features.i18n.I18nFeature$I18nDictionaryRepository"
+        );
+        for (String fqcn : repositories) {
+            Class<?> repoClass = Class.forName(fqcn);
+            Assertions.assertFalse(Modifier.isPublic(repoClass.getModifiers()),
+                    repoClass.getSimpleName() + " must be package-private");
+        }
 
-        // Verify DTOs implement BaseDTO
-        Assertions.assertTrue(baseDtoClass.isAssignableFrom(JournalEntryDto.class));
-        Assertions.assertTrue(baseDtoClass.isAssignableFrom(PsychotraumatologyTestDto.class));
-        Assertions.assertTrue(baseDtoClass.isAssignableFrom(UserRequestDto.class));
-        Assertions.assertTrue(baseDtoClass.isAssignableFrom(UserResponseDto.class));
+        // 5. Verify all JPA Services and Controllers inherit from BaseService/BaseController and are package-private
+        List<String> services = List.of(
+                "com.platform.features.appointment.AppointmentFeature$AppointmentService",
+                "com.platform.features.clinic.ClinicPlatformFeature$ClinicPlatformService",
+                "com.platform.features.user.UserFeature$UserService",
+                "com.platform.features.journal.JournalFeature$JournalService",
+                "com.platform.features.psychotraumatology.PsychotraumatologyFeature$PsychotraumatologyService"
+        );
+        for (String fqcn : services) {
+            Class<?> serviceClass = Class.forName(fqcn);
+            Assertions.assertTrue(BaseService.class.isAssignableFrom(serviceClass),
+                    serviceClass.getSimpleName() + " must extend BaseService");
+            Assertions.assertFalse(Modifier.isPublic(serviceClass.getModifiers()),
+                    serviceClass.getSimpleName() + " must be package-private");
+        }
+        Assertions.assertFalse(Modifier.isPublic(
+                Class.forName("com.platform.features.i18n.I18nFeature$I18nService").getModifiers()));
+        Assertions.assertFalse(Modifier.isPublic(
+                Class.forName("com.platform.features.finance.FinanceFeature$FinanceService").getModifiers()));
 
-        // Verify ALL domain Services and Controllers inherit from BaseService and BaseController
-        Assertions.assertTrue(baseServiceClass.isAssignableFrom(AppointmentService.class));
-        Assertions.assertTrue(baseServiceClass.isAssignableFrom(JournalService.class));
-        Assertions.assertTrue(baseServiceClass.isAssignableFrom(PsychotraumatologyService.class));
-        Assertions.assertTrue(baseServiceClass.isAssignableFrom(UserService.class));
-        Assertions.assertTrue(baseServiceClass.isAssignableFrom(ClinicPlatformService.class));
-
-        Assertions.assertTrue(baseControllerClass.isAssignableFrom(AppointmentController.class));
-        Assertions.assertTrue(baseControllerClass.isAssignableFrom(JournalController.class));
-        Assertions.assertTrue(baseControllerClass.isAssignableFrom(PsychotraumatologyController.class));
-        Assertions.assertTrue(baseControllerClass.isAssignableFrom(UserController.class));
-        Assertions.assertTrue(baseControllerClass.isAssignableFrom(ClinicPlatformController.class));
+        List<String> controllers = List.of(
+                "com.platform.features.appointment.AppointmentFeature$AppointmentController",
+                "com.platform.features.clinic.ClinicPlatformFeature$ClinicPlatformController",
+                "com.platform.features.user.UserFeature$UserController",
+                "com.platform.features.journal.JournalFeature$JournalController",
+                "com.platform.features.psychotraumatology.PsychotraumatologyFeature$PsychotraumatologyController"
+        );
+        for (String fqcn : controllers) {
+            Class<?> ctrlClass = Class.forName(fqcn);
+            Assertions.assertTrue(BaseController.class.isAssignableFrom(ctrlClass),
+                    ctrlClass.getSimpleName() + " must extend BaseController");
+            Assertions.assertFalse(Modifier.isPublic(ctrlClass.getModifiers()),
+                    ctrlClass.getSimpleName() + " must be package-private");
+        }
+        Assertions.assertFalse(Modifier.isPublic(
+                Class.forName("com.platform.features.i18n.I18nFeature$I18nController").getModifiers()));
+        Assertions.assertFalse(Modifier.isPublic(
+                Class.forName("com.platform.features.finance.FinanceFeature$FinanceController").getModifiers()));
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void testBaseServiceAndInterceptorsAndControllerAndSpecifications() {
-        BaseRepository<DummyEntity, UUID> repo = mock(BaseRepository.class);
-        BaseService<DummyEntity, DummyEntity, UUID> service = new BaseService<>() {};
-        service.setRepository(repo);
-        Assertions.assertSame(repo, service.getRepository());
-        Assertions.assertEquals(DummyEntity.class, service.getEntityClass());
-        Assertions.assertEquals(DummyEntity.class, service.getDtoClass());
+    @SuppressWarnings("unchecked")
+    public void testBaseServiceBaseControllerErrorCodeAndGlobalExceptionHandler() {
+        BaseRepository<DummyEntity> repo = mock(BaseRepository.class);
+        DummyService service = new DummyService(repo);
+        DummyController controller = new DummyController(service);
 
-        BaseService<DummyEntity, DummyEntity, UUID> constructedService = new BaseService<>(repo) {};
-        Assertions.assertSame(repo, constructedService.getRepository());
-
-        // Test raw BaseService without resolved generic type parameters
-        BaseService rawService = new BaseService();
-        Assertions.assertNull(rawService.getEntityClass());
-        Assertions.assertNull(rawService.getDtoClass());
-        DummyEntity rawEntity = new DummyEntity();
-        Assertions.assertThrows(IllegalStateException.class, () -> rawService.toEntity(rawEntity));
-        Assertions.assertThrows(IllegalStateException.class, () -> rawService.toDto(rawEntity));
-
-        // Test separate DTO <-> Entity mapping via BeanUtils in BaseService
-        DummyServiceWithSeparateDto dtoService = new DummyServiceWithSeparateDto(repo);
-        Assertions.assertEquals(DummyEntity.class, dtoService.getEntityClass());
-        Assertions.assertEquals(DummyDTO.class, dtoService.getDtoClass());
-        Assertions.assertNull(dtoService.toEntity(null));
-        Assertions.assertNull(dtoService.toDto(null));
-
-        UUID dtoId = UUID.randomUUID();
-        DummyDTO inputDto = new DummyDTO();
-        inputDto.setId(dtoId);
-        inputDto.setTitle("Mapped Title");
-
-        DummyEntity mappedEntity = dtoService.toEntity(inputDto);
-        Assertions.assertEquals(dtoId, mappedEntity.getId());
-        Assertions.assertEquals("Mapped Title", mappedEntity.getTitle());
-
-        DummyDTO mappedBackDto = dtoService.toDto(mappedEntity);
-        Assertions.assertEquals(dtoId, mappedBackDto.getId());
-        Assertions.assertEquals("Mapped Title", mappedBackDto.getTitle());
-
-        when(repo.save(any(DummyEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(repo.findAll()).thenReturn(List.of(mappedEntity));
-        when(repo.findById(dtoId)).thenReturn(Optional.of(mappedEntity));
-        when(repo.existsById(dtoId)).thenReturn(true);
-
-        Assertions.assertEquals(1, dtoService.findAllDtos().size());
-        Assertions.assertTrue(dtoService.findDtoById(dtoId).isPresent());
-        Assertions.assertEquals("Mapped Title", dtoService.createFromDto(inputDto).getTitle());
-        Assertions.assertEquals("Mapped Title", dtoService.updateFromDto(dtoId, inputDto).getTitle());
-
-        // Test reflection error branches on BlockedTypeService
-        BlockedTypeService blockedService = new BlockedTypeService();
-        NoArgBlockedDTO blockedDto = new NoArgBlockedDTO("x");
-        NoArgBlockedEntity blockedEntity = new NoArgBlockedEntity("x");
-        Assertions.assertThrows(org.springframework.beans.BeanInstantiationException.class, () -> blockedService.toEntity(blockedDto));
-        Assertions.assertThrows(org.springframework.beans.BeanInstantiationException.class, () -> blockedService.toDto(blockedEntity));
-
-        // Test default CrudInterceptor methods
-        CrudInterceptor<DummyEntity, UUID> defaultInterceptor = new CrudInterceptor<>() {};
-        DummyEntity e = new DummyEntity();
         UUID id = UUID.randomUUID();
-        defaultInterceptor.beforeCreate(e);
-        defaultInterceptor.afterCreate(e);
-        defaultInterceptor.beforeUpdate(e);
-        defaultInterceptor.afterUpdate(e);
-        defaultInterceptor.beforeDelete(id);
-        defaultInterceptor.afterDelete(id);
+        DummyEntity entity = new DummyEntity(id, "Test Item");
+        DummyDto dto = new DummyDto(id, "Test Item");
 
-        List<String> events = new ArrayList<>();
-        service.setInterceptors(null);
-        service.setInterceptors(List.of(defaultInterceptor));
-        Assertions.assertEquals(1, service.getInterceptors().size());
-        service.setInterceptors(new ArrayList<>());
+        // Identifiable default id() method
+        Assertions.assertEquals(id, entity.id());
 
-        service.addInterceptor(null); // null branch
-        service.addInterceptor(new CrudInterceptor<>() {
-            @Override
-            public void beforeCreate(DummyEntity entity) {
-                events.add("beforeCreate");
-            }
-
-            @Override
-            public void afterCreate(DummyEntity entity) {
-                events.add("afterCreate");
-            }
-
-            @Override
-            public void beforeUpdate(DummyEntity entity) {
-                events.add("beforeUpdate");
-            }
-
-            @Override
-            public void afterUpdate(DummyEntity entity) {
-                events.add("afterUpdate");
-            }
-
-            @Override
-            public void beforeDelete(UUID id) {
-                events.add("beforeDelete");
-            }
-
-            @Override
-            public void afterDelete(UUID id) {
-                events.add("afterDelete");
-            }
-        });
-
-        when(repo.findAll()).thenReturn(List.of(e));
-        when(repo.findById(id)).thenReturn(Optional.of(e));
+        when(repo.findAll()).thenReturn(List.of(entity));
+        when(repo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(entity)));
+        when(repo.findById(id)).thenReturn(Optional.of(entity));
         when(repo.existsById(id)).thenReturn(true);
         when(repo.count()).thenReturn(1L);
+        when(repo.save(any(DummyEntity.class))).thenAnswer(inv -> {
+            DummyEntity saved = inv.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(id);
+            }
+            return saved;
+        });
 
-        DummyEntity created = service.create(e);
-        Assertions.assertSame(e, created);
-        Assertions.assertEquals(List.of("beforeCreate", "afterCreate"), events);
-
-        Assertions.assertSame(e, service.save(e));
+        // BaseService operations
         Assertions.assertEquals(1, service.findAll().size());
-        Assertions.assertTrue(service.findById(id).isPresent());
-        Assertions.assertSame(e, service.getByIdOrThrow(id));
-        Assertions.assertTrue(service.existsById(id));
-        Assertions.assertEquals(1L, service.count());
+        Page<DummyDto> paged = service.findAllPaged(PageRequest.of(0, 10));
+        Assertions.assertEquals(1, paged.getTotalElements());
+        Assertions.assertTrue(service.findOptionalById(id).isPresent());
+        Assertions.assertEquals("Test Item", service.findById(id).title());
+        Assertions.assertEquals(id, service.findEntityById(id).getId());
 
-        DummyEntity updated = service.update(id, e);
-        Assertions.assertEquals(id, updated.getId());
-        Assertions.assertTrue(events.contains("beforeUpdate"));
-        Assertions.assertTrue(events.contains("afterUpdate"));
+        DummyDto created = service.create(new DummyDto(UUID.randomUUID(), "Created"));
+        Assertions.assertEquals(id, created.id());
+        Assertions.assertEquals("Created", created.title());
+
+        DummyDto updated = service.update(id, new DummyDto(null, "Updated"));
+        Assertions.assertEquals(id, updated.id());
+        Assertions.assertEquals("Updated", updated.title());
 
         service.deleteById(id);
-        Assertions.assertTrue(events.contains("beforeDelete"));
-        Assertions.assertTrue(events.contains("afterDelete"));
+        verify(repo).deleteById(id);
 
+        // Missing ID throws DomainException (NOT_FOUND)
         UUID missingId = UUID.randomUUID();
         when(repo.findById(missingId)).thenReturn(Optional.empty());
         when(repo.existsById(missingId)).thenReturn(false);
 
-        Assertions.assertThrows(ResponseStatusException.class, () -> service.getByIdOrThrow(missingId));
-        Assertions.assertThrows(ResponseStatusException.class, () -> service.update(missingId, e));
+        DomainException notFoundEx = Assertions.assertThrows(DomainException.class, () -> service.findById(missingId));
+        Assertions.assertEquals(ErrorCode.NOT_FOUND, notFoundEx.getErrorCode());
+        Assertions.assertEquals(404, notFoundEx.getStatus());
+        Assertions.assertEquals("Ressource ikke fundet", notFoundEx.getTitle());
+        Assertions.assertNotNull(notFoundEx.getTimestamp());
 
-        // Test BaseDTO default getId and setId
-        DefaultIdDTO defaultDto = new DefaultIdDTO();
-        Assertions.assertNull(defaultDto.getId());
-        defaultDto.setId(id);
+        DomainException deleteNotFoundEx = Assertions.assertThrows(DomainException.class, () -> service.deleteById(missingId));
+        Assertions.assertEquals(ErrorCode.NOT_FOUND, deleteNotFoundEx.getErrorCode());
 
-        // TestDTO getters/setters on JournalEntryDto, PsychotraumatologyTestDto, UserRequestDto
-        JournalEntryDto jDto = new JournalEntryDto();
-        jDto.setId(id);
-        Assertions.assertEquals(id, jDto.getId());
+        // ErrorCode functional methods
+        ErrorCode.BAD_REQUEST.require(true, "Should not throw");
+        DomainException guardEx = Assertions.assertThrows(DomainException.class,
+                () -> ErrorCode.CONFLICT.require(false, "Slot taken"));
+        Assertions.assertEquals(409, guardEx.getStatus());
+        Assertions.assertEquals("Slot taken", guardEx.getMessage());
 
-        PsychotraumatologyTestDto pDto = new PsychotraumatologyTestDto();
-        pDto.setId(id);
-        Assertions.assertEquals(id, pDto.getId());
+        for (ErrorCode code : ErrorCode.values()) {
+            Assertions.assertTrue(code.httpStatus() >= 400);
+            Assertions.assertNotNull(code.title());
+            Assertions.assertEquals(code, code.toException("msg").getErrorCode());
+            Assertions.assertEquals(code, code.toException("msg %s", 1).getErrorCode());
+            Assertions.assertEquals(code, code.supply("msg").get().getErrorCode());
+        }
 
-        UserRequestDto uDto = new UserRequestDto();
-        uDto.setId(id);
-        Assertions.assertEquals(id, uDto.getId());
+        // BaseController endpoints
+        MockHttpServletRequest servletReq = new MockHttpServletRequest("POST", "/api/dummy");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(servletReq));
+        try {
+            Assertions.assertEquals(HttpStatus.OK, controller.getAll().getStatusCode());
+            Assertions.assertEquals(HttpStatus.OK, controller.getAllPaged(PageRequest.of(0, 5)).getStatusCode());
+            Assertions.assertEquals(HttpStatus.OK, controller.getById(id).getStatusCode());
+            Assertions.assertEquals(HttpStatus.CREATED, controller.create(dto).getStatusCode());
+            Assertions.assertEquals(HttpStatus.OK, controller.update(id, dto).getStatusCode());
+            ResponseEntity<Void> delResp = controller.delete(id);
+            Assertions.assertEquals(HttpStatus.NO_CONTENT, delResp.getStatusCode());
+        } finally {
+            RequestContextHolder.resetRequestAttributes();
+        }
 
-        // Test BaseController
-        DummyController controller = new DummyController();
-        controller.setService(service);
-        Assertions.assertSame(service, controller.getService());
+        // GlobalExceptionHandler (RFC 7807 ProblemDetail)
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        HttpServletRequest mockReq = mock(HttpServletRequest.class);
+        when(mockReq.getRequestURI()).thenReturn("/api/v1/bookings");
 
-        DummyController controller2 = new DummyController(service);
-        Assertions.assertEquals(HttpStatus.OK, controller2.getAll().getStatusCode());
-        Assertions.assertEquals(HttpStatus.OK, controller2.getById(id).getStatusCode());
-        Assertions.assertEquals(HttpStatus.NOT_FOUND, controller2.getById(missingId).getStatusCode());
-        Assertions.assertEquals(HttpStatus.CREATED, controller2.create(e).getStatusCode());
-        Assertions.assertEquals(HttpStatus.OK, controller2.update(id, e).getStatusCode());
-        ResponseEntity<Void> deleteResp = controller2.delete(id);
-        Assertions.assertEquals(HttpStatus.NO_CONTENT, deleteResp.getStatusCode());
+        ResponseEntity<ProblemDetail> domainResp = handler.handleDomainException(guardEx, mockReq);
+        Assertions.assertEquals(HttpStatus.CONFLICT, domainResp.getStatusCode());
+        ProblemDetail domainPd = domainResp.getBody();
+        Assertions.assertNotNull(domainPd);
+        Assertions.assertEquals(409, domainPd.getStatus());
+        Assertions.assertEquals("Ressource-konflikt", domainPd.getTitle());
+        Assertions.assertEquals("Slot taken", domainPd.getDetail());
+        Assertions.assertEquals("CONFLICT", domainPd.getProperties().get("errorCode"));
 
-        // Test BaseService JPA Specification dynamic filtering & sorting
-        when(repo.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(e)));
-        when(repo.findAll(any(Specification.class), any(Sort.class)))
-                .thenReturn(List.of(e));
+        BindingResult bindingResult = mock(BindingResult.class);
+        when(bindingResult.getFieldErrors()).thenReturn(List.of(
+                new FieldError("dto", "startTime", "må ikke være null"),
+                new FieldError("dto", "endTime", "skal være i fremtiden"),
+                new FieldError("dto", "endTime", "duplikeret fejl")
+        ));
+        MethodArgumentNotValidException valEx = mock(MethodArgumentNotValidException.class);
+        when(valEx.getBindingResult()).thenReturn(bindingResult);
 
-        Map<String, String> specFilters = new HashMap<>();
-        specFilters.put("title_like", "abc");
-        specFilters.put("age_gt", "18");
-        specFilters.put("age_lt", "65");
-        specFilters.put("score_gte", "10");
-        specFilters.put("score_lte", "100");
-        specFilters.put("exactField", "42");
-        specFilters.put("blankField", "   ");
-        specFilters.put("nullField", null);
-        specFilters.put("page", "0");
-        specFilters.put("size", "10");
-        specFilters.put("sort", "title,desc");
+        ResponseEntity<ProblemDetail> valResp = handler.handleValidationException(valEx, mockReq);
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, valResp.getStatusCode());
+        ProblemDetail valPd = valResp.getBody();
+        Assertions.assertNotNull(valPd);
+        Assertions.assertEquals(400, valPd.getStatus());
+        Assertions.assertEquals("BAD_REQUEST", valPd.getProperties().get("errorCode"));
+        Assertions.assertNotNull(valPd.getProperties().get("fields"));
 
-        Assertions.assertEquals(1, service.findAllDynamic(0, 10, specFilters, "title,desc").size());
-        Assertions.assertEquals(1, service.findAllDynamic(-1, 0, null, "title,asc").size());
-        Assertions.assertEquals(1, service.findAllDynamic(0, 0, Map.of(), "title").size());
-        Assertions.assertEquals(1, service.findAllDynamic(0, 0, Map.of(), "   ").size());
-        Assertions.assertEquals(1, service.findAllDynamic(0, 0, Map.of(), null).size());
-
-        // Execute the built Specification lambda against mocked Criteria Root/Query/Builder
-        CriteriaBuilder cb = mock(CriteriaBuilder.class);
-        CriteriaQuery<DummyEntity> cq = mock(CriteriaQuery.class);
-        Root<DummyEntity> root = mock(Root.class);
-        Path path = mock(Path.class);
-        Expression lowerExpr = mock(Expression.class);
-        Predicate predicate = mock(Predicate.class);
-
-        when(root.get(anyString())).thenReturn(path);
-        when(path.getJavaType()).thenReturn((Class) Integer.class);
-        when(cb.lower(any())).thenReturn(lowerExpr);
-        when(cb.like(any(), anyString())).thenReturn(predicate);
-        when(cb.greaterThan(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.lessThan(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.greaterThanOrEqualTo(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.lessThanOrEqualTo(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.equal(any(), any())).thenReturn(predicate);
-        when(cb.and(any(Predicate[].class))).thenReturn(predicate);
-
-        Specification<DummyEntity> spec = service.buildSpecification(specFilters);
-        Assertions.assertNotNull(spec.toPredicate(root, cq, cb));
-
-        Specification<DummyEntity> nullSpec = service.buildSpecification(null);
-        Assertions.assertNotNull(nullSpec.toPredicate(root, cq, cb));
-
-        // Test convertFilterValue all type branches in BaseService
-        Assertions.assertEquals(id, service.convertFilterValue(id.toString(), UUID.class));
-        Assertions.assertEquals(42L, service.convertFilterValue("42", Long.class));
-        Assertions.assertEquals(42L, service.convertFilterValue("42", long.class));
-        Assertions.assertEquals(10, service.convertFilterValue("10", Integer.class));
-        Assertions.assertEquals(10, service.convertFilterValue("10", int.class));
-        Assertions.assertEquals(3.14, service.convertFilterValue("3.14", Double.class));
-        Assertions.assertEquals(3.14, service.convertFilterValue("3.14", double.class));
-        Assertions.assertEquals(true, service.convertFilterValue("true", Boolean.class));
-        Assertions.assertEquals(false, service.convertFilterValue("false", boolean.class));
-        Assertions.assertEquals("hello", service.convertFilterValue("hello", String.class));
-
-        // Also test JournalController and PsychotraumatologyController inherited BaseController methods
-        JournalEntryRepository jRepo = mock(JournalEntryRepository.class);
-        when(jRepo.save(any(JournalEntry.class))).thenAnswer(inv -> inv.getArgument(0));
-        JournalController jCtrl = new JournalController(jRepo, null);
-        JournalEntryDto createDto = new JournalEntryDto();
-        createDto.setTitle("Inherited Create");
-        createDto.setContent("Body");
-        Assertions.assertEquals(HttpStatus.OK, jCtrl.create(createDto).getStatusCode());
-        Assertions.assertNull(new JournalService().toEntity(null));
-
-        PsychotraumatologyTestRepository pRepo = mock(PsychotraumatologyTestRepository.class);
-        when(pRepo.save(any(PsychotraumatologyTest.class))).thenAnswer(inv -> inv.getArgument(0));
-        PsychotraumatologyController pCtrl = new PsychotraumatologyController(pRepo);
-        PsychotraumatologyTestDto pclDto = new PsychotraumatologyTestDto();
-        pclDto.setScore(15);
-        Assertions.assertEquals(HttpStatus.OK, pCtrl.create(pclDto).getStatusCode());
-        Assertions.assertNull(new PsychotraumatologyService(pRepo).toEntity(null));
-    }
-
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void testBaseDAOCrudAndDynamicFiltering() {
-        EntityManager em = mock(EntityManager.class);
-        DummyDAO dao = new DummyDAO();
-        Assertions.assertEquals(DummyEntity.class, dao.getEntityClass());
-        dao.setEntityManager(em);
-        dao.setEntityClass(DummyEntity.class);
-        Assertions.assertSame(em, dao.getEntityManager());
-
-        RawDAO rawDao = new RawDAO();
-        Assertions.assertNull(rawDao.getEntityClass());
-
-        DummyDAO daoWithArgs = new DummyDAO(em);
-        Assertions.assertSame(em, daoWithArgs.getEntityManager());
-
-        TypedQuery<DummyEntity> listQuery = mock(TypedQuery.class);
-        when(em.createQuery(anyString(), eq(DummyEntity.class))).thenReturn(listQuery);
-        DummyEntity entity = new DummyEntity();
-        entity.setTitle("Test");
-        when(listQuery.getResultList()).thenReturn(List.of(entity));
-
-        Assertions.assertEquals(1, dao.findAll().size());
-
-        // Save new vs merge existing
-        DummyEntity savedNew = dao.save(entity);
-        verify(em).persist(entity);
-        Assertions.assertSame(entity, savedNew);
-
-        UUID id = UUID.randomUUID();
-        entity.setId(id);
-        when(em.merge(entity)).thenReturn(entity);
-        DummyEntity savedMerged = dao.save(entity);
-        verify(em).merge(entity);
-        Assertions.assertSame(entity, savedMerged);
-
-        // findById, existsById, deleteById, count
-        when(em.find(DummyEntity.class, id)).thenReturn(entity);
-        Assertions.assertTrue(dao.findById(id).isPresent());
-        Assertions.assertTrue(dao.existsById(id));
-        dao.deleteById(id);
-        verify(em).remove(entity);
-
-        UUID missingId = UUID.randomUUID();
-        when(em.find(DummyEntity.class, missingId)).thenReturn(null);
-        Assertions.assertFalse(dao.existsById(missingId));
-        dao.deleteById(missingId);
-
-        TypedQuery<Long> countQuery = mock(TypedQuery.class);
-        when(em.createQuery(anyString(), eq(Long.class))).thenReturn(countQuery);
-        when(countQuery.getSingleResult()).thenReturn(5L);
-        Assertions.assertEquals(5L, dao.count());
-
-        // convertValue branches
-        Assertions.assertEquals(id, dao.exposeConvert(id.toString(), UUID.class));
-        Assertions.assertEquals(42L, dao.exposeConvert("42", Long.class));
-        Assertions.assertEquals(42L, dao.exposeConvert("42", long.class));
-        Assertions.assertEquals(10, dao.exposeConvert("10", Integer.class));
-        Assertions.assertEquals(10, dao.exposeConvert("10", int.class));
-        Assertions.assertEquals(3.14, dao.exposeConvert("3.14", Double.class));
-        Assertions.assertEquals(3.14, dao.exposeConvert("3.14", double.class));
-        Assertions.assertEquals(true, dao.exposeConvert("true", Boolean.class));
-        Assertions.assertEquals(false, dao.exposeConvert("false", boolean.class));
-        Assertions.assertEquals("hello", dao.exposeConvert("hello", String.class));
-
-        // findAllDynamic with filters & sorting
-        CriteriaBuilder cb = mock(CriteriaBuilder.class);
-        CriteriaQuery<DummyEntity> cq = mock(CriteriaQuery.class);
-        Root<DummyEntity> root = mock(Root.class);
-        Path path = mock(Path.class);
-        Expression lowerExpr = mock(Expression.class);
-        Predicate predicate = mock(Predicate.class);
-        Order order = mock(Order.class);
-        TypedQuery<DummyEntity> criteriaTypedQuery = mock(TypedQuery.class);
-
-        when(em.getCriteriaBuilder()).thenReturn(cb);
-        when(cb.createQuery(DummyEntity.class)).thenReturn(cq);
-        when(cq.from(DummyEntity.class)).thenReturn(root);
-        when(root.get(anyString())).thenReturn(path);
-        when(path.getJavaType()).thenReturn((Class) Integer.class);
-        when(cb.lower(any())).thenReturn(lowerExpr);
-        when(cb.like(any(), anyString())).thenReturn(predicate);
-        when(cb.greaterThan(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.lessThan(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.greaterThanOrEqualTo(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.lessThanOrEqualTo(any(), any(Comparable.class))).thenReturn(predicate);
-        when(cb.equal(any(), any())).thenReturn(predicate);
-        when(cb.and(any(Predicate[].class))).thenReturn(predicate);
-        when(cb.asc(any())).thenReturn(order);
-        when(cb.desc(any())).thenReturn(order);
-        when(em.createQuery(cq)).thenReturn(criteriaTypedQuery);
-        when(criteriaTypedQuery.setFirstResult(anyInt())).thenReturn(criteriaTypedQuery);
-        when(criteriaTypedQuery.setMaxResults(anyInt())).thenReturn(criteriaTypedQuery);
-        when(criteriaTypedQuery.getResultList()).thenReturn(List.of(entity));
-
-        Map<String, String> filters = new HashMap<>();
-        filters.put("title_like", "abc");
-        filters.put("age_gt", "18");
-        filters.put("age_lt", "65");
-        filters.put("score_gte", "10");
-        filters.put("score_lte", "100");
-        filters.put("exactField", "42");
-        filters.put("blankField", "   ");
-        filters.put("nullField", null);
-        filters.put("page", "0");
-        filters.put("size", "10");
-        filters.put("sort", "title,desc");
-
-        List<DummyEntity> dynamicDesc = dao.findAllDynamic(0, 10, filters, "title,desc");
-        Assertions.assertEquals(1, dynamicDesc.size());
-
-        List<DummyEntity> dynamicAsc = dao.findAllDynamic(-1, 0, null, "title,asc");
-        Assertions.assertEquals(1, dynamicAsc.size());
-
-        List<DummyEntity> dynamicSingleSort = dao.findAllDynamic(0, 5, Map.of(), "title");
-        Assertions.assertEquals(1, dynamicSingleSort.size());
-
-        List<DummyEntity> dynamicBlankSort = dao.findAllDynamic(0, 5, Map.of(), "   ");
-        Assertions.assertEquals(1, dynamicBlankSort.size());
-
-        List<DummyEntity> dynamicNullSort = dao.findAllDynamic(0, 5, Map.of(), null);
-        Assertions.assertEquals(1, dynamicNullSort.size());
+        // Additional DTO constructors/getters coverage
+        AppointmentDto aptDto = new AppointmentDto(id, id, id, id, "T", "O", "L", null, null, "Title", "CONFIRMED", "hash", id);
+        Assertions.assertEquals(id, aptDto.id());
+        ClientProfileDto cpDto = new ClientProfileDto(id, id, "Name", "1990-01-01", "Addr", "2100", "123", "a@b.dk");
+        Assertions.assertEquals(id, cpDto.id());
     }
 }

@@ -53,3 +53,13 @@ Feature: Appointment Scheduling, Conflict Prevention, and Calendar Management
     Then the response status should be 200 OK
     And the appointment status in PostgreSQL should be updated to "CANCELLED"
     And the corresponding Redisson cache key should be evicted
+
+  # =========================================================================
+  # 3. BOOKING & RFC 7807 PROBLEM DETAIL SCENARIOS (MIGRATED FROM BOOKING)
+  # =========================================================================
+
+  Scenario: Forsøg på dobbeltbooking af samme tidspunkt afvises med 409 Conflict
+    Given der eksisterer en booking på tidspunktet "2027-05-10T10:00:00"
+    When en klient forsøger at oprette en booking på tidspunktet "2027-05-10T10:00:00"
+    Then svarer API'et med HTTP status 409
+    And fejlsvaret indeholder errorCode "CONFLICT"

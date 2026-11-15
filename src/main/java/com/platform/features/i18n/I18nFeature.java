@@ -13,7 +13,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -619,8 +620,9 @@ public final class I18nFeature {
      * [Class: ClinicDatabaseInitializer]
      * Seeder MongoDB med basale portal-oversættelser (`en`, `da`, `fr`, `es`, `de`) ved opstart.
      */
-    @Component
+    @Configuration(proxyBeanMethods = false)
     @Profile("!test")
+    @EnableMongoRepositories(basePackages = "com.platform.features.i18n", considerNestedRepositories = true)
     static class ClinicDatabaseInitializer implements CommandLineRunner {
 
         private static final Logger log = LoggerFactory.getLogger(ClinicDatabaseInitializer.class);

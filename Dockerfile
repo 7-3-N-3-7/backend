@@ -16,7 +16,7 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 COPY --from=build /app/reports /app/reports
 COPY entrypoint-secrets.sh /entrypoint-secrets.sh
-RUN chmod +x /entrypoint-secrets.sh
+RUN sed -i 's/\r$//' /entrypoint-secrets.sh && chmod +x /entrypoint-secrets.sh
 EXPOSE 8081
 ENTRYPOINT ["/entrypoint-secrets.sh", "java", "-jar", "app.jar"]
 

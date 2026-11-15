@@ -49,9 +49,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 /**
  * ============================================================================
@@ -101,6 +103,13 @@ public final class FinanceFeature {
 
     /** Konto 4200: Abonnementsomsætning (Indtægt / INCOME). */
     public static final String GL_ACCOUNT_SUBSCRIPTION_REVENUE = "4200";
+
+    /** Konto 4300: Platform Licens- & Adgangsomsætning (Indtægt / INCOME). */
+    public static final String GL_ACCOUNT_PLATFORM_ACCESS_REVENUE = "4300";
+
+    /** Standardpris for Therapist-adgang (799 DKK/md) og Management-adgang (1.499 DKK/md). */
+    public static final BigDecimal PRICE_THERAPIST_ACCESS_DKK = new BigDecimal("799.00");
+    public static final BigDecimal PRICE_MANAGEMENT_ACCESS_DKK = new BigDecimal("1499.00");
 
     private FinanceFeature() {}
 
@@ -166,6 +175,23 @@ public final class FinanceFeature {
             BigDecimal outstandingReceivablesDkk,
             int invoiceCount,
             int voucherCommitCount
+    ) implements HasId {}
+
+    public record VippsAgreementDto(
+            UUID id,
+            UUID clientUuid,
+            String agreementId,
+            String productType,
+            String planName,
+            BigDecimal amountDkk,
+            String currency,
+            String paymentMethod,
+            String maskedInstrument,
+            String payoutIban,
+            String vippsMsn,
+            String grantedRole,
+            String status,
+            String gitCommitHash
     ) implements HasId {}
 
     // =========================================================================
@@ -379,11 +405,13 @@ public final class FinanceFeature {
             registerGlAccount("2100", "Forudbetalte Klippekort & Klient-saldi", "LIABILITY");
             registerGlAccount("4100", "Konsultationsomsætning", "INCOME");
             registerGlAccount("4200", "Abonnementsomsætning", "INCOME");
+            registerGlAccount(GL_ACCOUNT_PLATFORM_ACCESS_REVENUE, "Platform Licens- & Adgangsomsætning", "INCOME");
         }
 
         private void registerGlAccount(String glCode, String name, String type) {
             Map<String, Object> acc = new LinkedHashMap<>();
             acc.put("glCode", glCode);
+            acc.put("code", glCode);
             acc.put("name", name);
             acc.put("type", type);
             acc.put("totalDebits", BigDecimal.ZERO);
@@ -884,6 +912,22 @@ public final class FinanceFeature {
             return new LinkedHashMap<>(subscription);
         }
 
+        public synchronized void cancelSubscription(UUID clientUuid, String subscriptionId, String createdBy) {
+            if (subscriptionId == null || subscriptionId.isBlank()) {
+                return;
+            }
+            sendKillBillRequest(
+                    "/1.0/kb/subscriptions/" + subscriptionId + "/block",
+                    "{\"billingPolicy\":\"IMMEDIATE\"}",
+                    createdBy
+            );
+            for (Map<String, Object> sub : subscriptionsByClient.getOrDefault(clientUuid, List.of())) {
+                if (subscriptionId.equals(sub.get("subscriptionId"))) {
+                    sub.put("status", "CANCELLED");
+                }
+            }
+        }
+
         public synchronized Map<String, Object> getInvoice(String invoiceId) {
             Map<String, Object> inv = invoicesById.get(invoiceId);
             return inv != null ? new LinkedHashMap<>(inv) : null;
@@ -903,6 +947,14 @@ public final class FinanceFeature {
             List<Map<String, Object>> result = new ArrayList<>();
             for (Map<String, Object> s : subs) {
                 result.add(new LinkedHashMap<>(s));
+            }
+            return result;
+        }
+
+        public synchronized List<Map<String, Object>> getAllInvoices() {
+            List<Map<String, Object>> result = new ArrayList<>(invoicesById.size());
+            for (Map<String, Object> inv : invoicesById.values()) {
+                result.add(new LinkedHashMap<>(inv));
             }
             return result;
         }
@@ -936,6 +988,321 @@ public final class FinanceFeature {
         }
     }
 
+    /**
+     * In-process spejl af det standalone Kill Bill OSGi-plugin ({@code com.platform.killbill.vipps-mobilepay-plugin}),
+     * der kalder Vipps MobilePay Recurring Payments v3 & ePayment v1 direkte og router betalinger til
+     * hardcodede IBAN/MSN destinationer fra Docker Secrets for Therapist- og Management-adgang.
+     */
+    @Service
+    public static class VippsMobilePayOsgiPlugin {
+
+        public static final String BUNDLE_SYMBOLIC_NAME = "com.platform.killbill.vipps-mobilepay-plugin";
+        public static final String BUNDLE_VERSION = "1.0.0";
+        private static final Pattern RAW_PAN_PATTERN = Pattern.compile(".*\\d{12,19}.*");
+
+        @Value("${vipps.api.base.url:${vipps_api_base_url:https://apitest.vipps.no}}")
+        private String apiBaseUrl = "https://apitest.vipps.no";
+
+        @Value("${vipps.client.id:${vipps_client_id:vipps-sandbox-client-id}}")
+        private String clientId = "vipps-sandbox-client-id";
+
+        @Value("${vipps.client.secret:${vipps_client_secret:vipps-sandbox-client-secret}}")
+        private String clientSecret = "vipps-sandbox-client-secret";
+
+        @Value("${vipps.subscription.key:${vipps_subscription_key:vipps-sandbox-ocp-apim-key}}")
+        private String subscriptionKey = "vipps-sandbox-ocp-apim-key";
+
+        @Value("${vipps.therapist.payout.iban:${vipps_therapist_payout_iban:DK8130000012345678}}")
+        private String therapistPayoutIban = "DK8130000012345678";
+
+        @Value("${vipps.therapist.vipps.msn:${vipps_therapist_vipps_msn:700101}}")
+        private String therapistVippsMsn = "700101";
+
+        @Value("${vipps.management.payout.iban:${vipps_management_payout_iban:DK9230000087654321}}")
+        private String managementPayoutIban = "DK9230000087654321";
+
+        @Value("${vipps.management.vipps.msn:${vipps_management_vipps_msn:700202}}")
+        private String managementVippsMsn = "700202";
+
+        @Value("${vipps.clinic.default.iban:${vipps_clinic_default_iban:DK5000400440116243}}")
+        private String clinicDefaultIban = "DK5000400440116243";
+
+        @Value("${vipps.clinic.default.msn:${vipps_clinic_default_msn:700000}}")
+        private String clinicDefaultMsn = "700000";
+
+        @Value("${vipps.remote.enabled:${vipps_remote_enabled:false}}")
+        private boolean remoteEnabled = false;
+
+        private final HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(3))
+                .build();
+
+        private final Map<String, Map<String, Object>> agreementsById = new ConcurrentHashMap<>();
+        private final Map<UUID, List<String>> clientAgreementIds = new ConcurrentHashMap<>();
+        private final Map<UUID, List<String>> upgradedRolesByUser = new ConcurrentHashMap<>();
+
+        public synchronized void resetState() {
+            agreementsById.clear();
+            clientAgreementIds.clear();
+            upgradedRolesByUser.clear();
+        }
+
+        public void setRemoteConfiguration(String baseUrl, boolean enabled) {
+            this.apiBaseUrl = baseUrl;
+            this.remoteEnabled = enabled;
+        }
+
+        public synchronized boolean hasPlatformAccess(UUID userUuid) {
+            return !upgradedRolesByUser.getOrDefault(userUuid, List.of()).isEmpty();
+        }
+
+        public synchronized List<String> getGrantedRoles(UUID userUuid) {
+            return new ArrayList<>(upgradedRolesByUser.getOrDefault(userUuid, List.of()));
+        }
+
+        public synchronized Map<String, Object> getPublicConfig(UUID userUuid) {
+            Map<String, Object> therapistTier = new LinkedHashMap<>();
+            therapistTier.put("productType", "THERAPIST_ACCESS");
+            therapistTier.put("planName", "Therapist-adgang");
+            therapistTier.put("amountDkk", PRICE_THERAPIST_ACCESS_DKK);
+            therapistTier.put("payoutIban", therapistPayoutIban);
+            therapistTier.put("vippsMsn", therapistVippsMsn);
+            therapistTier.put("glAccount", GL_ACCOUNT_PLATFORM_ACCESS_REVENUE);
+            therapistTier.put("grantedRole", "THERAPIST");
+
+            Map<String, Object> managementTier = new LinkedHashMap<>();
+            managementTier.put("productType", "MANAGEMENT_ACCESS");
+            managementTier.put("planName", "Management-adgang");
+            managementTier.put("amountDkk", PRICE_MANAGEMENT_ACCESS_DKK);
+            managementTier.put("payoutIban", managementPayoutIban);
+            managementTier.put("vippsMsn", managementVippsMsn);
+            managementTier.put("glAccount", GL_ACCOUNT_PLATFORM_ACCESS_REVENUE);
+            managementTier.put("grantedRole", "ADMIN");
+
+            Map<String, Object> cfg = new LinkedHashMap<>();
+            cfg.put("bundleSymbolicName", BUNDLE_SYMBOLIC_NAME);
+            cfg.put("bundleVersion", BUNDLE_VERSION);
+            cfg.put("pluginName", "killbill-vipps-mobilepay");
+            cfg.put("apiBaseUrl", apiBaseUrl);
+            cfg.put("clinicPayoutIban", clinicDefaultIban);
+            cfg.put("clinicVippsMsn", clinicDefaultMsn);
+            cfg.put("tiers", Map.of("THERAPIST_ACCESS", therapistTier, "MANAGEMENT_ACCESS", managementTier));
+            cfg.put("grantedRoles", getGrantedRoles(userUuid));
+            cfg.put("agreements", getClientAgreements(userUuid));
+            return cfg;
+        }
+
+        public synchronized List<Map<String, Object>> getClientAgreements(UUID clientUuid) {
+            List<String> ids = clientAgreementIds.getOrDefault(clientUuid, List.of());
+            List<Map<String, Object>> result = new ArrayList<>(ids.size());
+            for (String id : ids) {
+                result.add(new LinkedHashMap<>(agreementsById.get(id)));
+            }
+            return result;
+        }
+
+        public synchronized Map<String, Object> getAgreement(String agreementId) {
+            Map<String, Object> agreement = agreementsById.get(agreementId);
+            return agreement != null ? new LinkedHashMap<>(agreement) : null;
+        }
+
+        public synchronized void attachCommitHash(String agreementId, String commitHash) {
+            Map<String, Object> agreement = agreementsById.get(agreementId);
+            if (agreement != null) {
+                agreement.put("gitCommitHash", commitHash);
+            }
+        }
+
+        public record CheckoutPlanSpec(
+                String productType,
+                String planName,
+                BigDecimal amount,
+                boolean recurring,
+                String glCreditAccount,
+                String payoutIban,
+                String vippsMsn,
+                String grantedRole,
+                String keycloakRealmRole
+        ) {}
+
+        public CheckoutPlanSpec resolveSpec(String rawProductType, BigDecimal requestedAmount, String customPlanName) {
+            String type = rawProductType == null ? "" : rawProductType.trim().toUpperCase(Locale.ROOT);
+            return switch (type) {
+                case "THERAPIST_ACCESS" -> new CheckoutPlanSpec(
+                        "THERAPIST_ACCESS", "Therapist-adgang", PRICE_THERAPIST_ACCESS_DKK,
+                        true, GL_ACCOUNT_PLATFORM_ACCESS_REVENUE, therapistPayoutIban, therapistVippsMsn, "THERAPIST", "therapist"
+                );
+                case "MANAGEMENT_ACCESS" -> new CheckoutPlanSpec(
+                        "MANAGEMENT_ACCESS", "Management-adgang", PRICE_MANAGEMENT_ACCESS_DKK,
+                        true, GL_ACCOUNT_PLATFORM_ACCESS_REVENUE, managementPayoutIban, managementVippsMsn, "ADMIN", "admin"
+                );
+                case "SUBSCRIPTION" -> new CheckoutPlanSpec(
+                        "SUBSCRIPTION", customPlanName, requestedAmount,
+                        true, GL_ACCOUNT_SUBSCRIPTION_REVENUE, clinicDefaultIban, clinicDefaultMsn, null, null
+                );
+                case "CLIP_CARD" -> new CheckoutPlanSpec(
+                        "CLIP_CARD", customPlanName, requestedAmount,
+                        false, GL_ACCOUNT_PREPAID_CLIPS_LIABILITY, clinicDefaultIban, clinicDefaultMsn, null, null
+                );
+                case "SESSION_INVOICE" -> new CheckoutPlanSpec(
+                        "SESSION_INVOICE", customPlanName, requestedAmount,
+                        false, GL_ACCOUNT_CONSULTATION_REVENUE, clinicDefaultIban, clinicDefaultMsn, null, null
+                );
+                default -> throw ErrorCode.BAD_REQUEST.toException("Unsupported Vipps productType: " + rawProductType);
+            };
+        }
+
+        public String validateAndMaskInstrument(String rawMethod, Map<String, Object> payload) {
+            String method = rawMethod == null ? "MOBILEPAY" : rawMethod.trim().toUpperCase(Locale.ROOT);
+            if ("MOBILEPAY".equals(method)) {
+                String digits = String.valueOf(payload.getOrDefault("phoneNumber", "")).replaceAll("[^0-9]", "");
+                ErrorCode.BAD_REQUEST.require(digits.length() >= 8, "Valid MobilePay phone number (min 8 digits) is required");
+                return "Vipps MobilePay (•••" + digits.substring(digits.length() - 4) + ")";
+            }
+            ErrorCode.BAD_REQUEST.require("CREDIT_CARD".equals(method), "Unsupported paymentMethod: " + method);
+            String token = String.valueOf(payload.getOrDefault("cardToken", "")).trim();
+            ErrorCode.BAD_REQUEST.require(!token.isEmpty(), "Tokenized cardToken is required");
+            String compactToken = token.replaceAll("[\\s-]", "");
+            ErrorCode.BAD_REQUEST.require(!RAW_PAN_PATTERN.matcher(compactToken).matches(), "Raw card PAN must never be sent to backend");
+            String last4 = String.valueOf(payload.getOrDefault("cardLast4", "")).trim();
+            ErrorCode.BAD_REQUEST.require(last4.matches("\\d{4}"), "Valid 4-digit cardLast4 is required");
+            String brand = String.valueOf(payload.getOrDefault("cardBrand", "VISA")).trim().toUpperCase(Locale.ROOT);
+            return "Kreditkort (" + brand + " •••• " + last4 + ")";
+        }
+
+        public synchronized Map<String, Object> executeGatewayPayment(
+                UUID clientUuid,
+                CheckoutPlanSpec spec,
+                String paymentMethod,
+                String maskedInstrument,
+                String currency,
+                String subscriptionId
+        ) {
+            long minorUnits = spec.amount().multiply(BigDecimal.valueOf(100)).longValue();
+            String gatewayRef;
+            String chargeId;
+
+            if (spec.recurring()) {
+                String agreementId = "AGR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                chargeId = "CHG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                sendVippsHttp("POST", "/recurring/v3/agreements", spec.vippsMsn(),
+                        "{\"productName\":\"" + spec.planName() + "\",\"amount\":" + minorUnits + ",\"currency\":\"" + currency + "\"}");
+                sendVippsHttp("POST", "/recurring/v3/agreements/" + agreementId + "/charges", spec.vippsMsn(),
+                        "{\"amount\":" + minorUnits + ",\"transactionType\":\"DIRECT_CAPTURE\"}");
+
+                Map<String, Object> agreement = new LinkedHashMap<>();
+                agreement.put("agreementId", agreementId);
+                agreement.put("subscriptionId", subscriptionId);
+                agreement.put("clientUuid", clientUuid.toString());
+                agreement.put("productType", spec.productType());
+                agreement.put("planName", spec.planName());
+                agreement.put("amountDkk", spec.amount());
+                agreement.put("currency", currency);
+                agreement.put("paymentMethod", paymentMethod);
+                agreement.put("maskedInstrument", maskedInstrument);
+                agreement.put("payoutIban", spec.payoutIban());
+                agreement.put("vippsMsn", spec.vippsMsn());
+                agreement.put("glCreditAccount", spec.glCreditAccount());
+                agreement.put("grantedRole", spec.grantedRole());
+                agreement.put("keycloakRealmRole", spec.keycloakRealmRole());
+                agreement.put("status", "ACTIVE");
+                agreement.put("chargeCount", 1);
+                agreement.put("lastChargeId", chargeId);
+                agreement.put("createdAt", Instant.now().toString());
+                agreementsById.put(agreementId, agreement);
+                clientAgreementIds.computeIfAbsent(clientUuid, k -> new ArrayList<>()).add(agreementId);
+                gatewayRef = agreementId;
+            } else {
+                String epayRef = "EPAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                sendVippsHttp("POST", "/epayment/v1/payments", spec.vippsMsn(),
+                        "{\"reference\":\"" + epayRef + "\",\"amount\":{\"currency\":\"" + currency + "\",\"value\":" + minorUnits + "}}");
+                gatewayRef = epayRef;
+                chargeId = epayRef;
+            }
+
+            if (spec.grantedRole() != null) {
+                upgradedRolesByUser.computeIfAbsent(clientUuid, k -> new ArrayList<>()).add(spec.grantedRole());
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("pluginName", "killbill-vipps-mobilepay");
+            result.put("bundleSymbolicName", BUNDLE_SYMBOLIC_NAME);
+            result.put("agreementId", spec.recurring() ? gatewayRef : null);
+            result.put("vippsReferenceId", gatewayRef);
+            result.put("chargeId", chargeId);
+            result.put("payoutIban", spec.payoutIban());
+            result.put("vippsMsn", spec.vippsMsn());
+            result.put("grantedRole", spec.grantedRole());
+            result.put("keycloakRealmRole", spec.keycloakRealmRole());
+            return result;
+        }
+
+        public synchronized Map<String, Object> chargeRecurringAgreement(String agreementId) {
+            Map<String, Object> agreement = agreementsById.get(agreementId);
+            ErrorCode.NOT_FOUND.require(agreement != null, "Vipps agreement not found: " + agreementId);
+            ErrorCode.BAD_REQUEST.require("ACTIVE".equals(agreement.get("status")), "Cannot charge stopped Vipps agreement: " + agreementId);
+
+            String chargeId = "CHG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            BigDecimal amount = (BigDecimal) agreement.get("amountDkk");
+            sendVippsHttp("POST", "/recurring/v3/agreements/" + agreementId + "/charges",
+                    (String) agreement.get("vippsMsn"),
+                    "{\"amount\":" + amount.multiply(BigDecimal.valueOf(100)).longValue() + ",\"transactionType\":\"DIRECT_CAPTURE\"}");
+
+            agreement.put("chargeCount", ((Integer) agreement.get("chargeCount")) + 1);
+            agreement.put("lastChargeId", chargeId);
+            return new LinkedHashMap<>(agreement);
+        }
+
+        public synchronized Map<String, Object> cancelAgreement(String agreementId) {
+            Map<String, Object> agreement = agreementsById.get(agreementId);
+            ErrorCode.NOT_FOUND.require(agreement != null, "Vipps agreement not found: " + agreementId);
+
+            sendVippsHttp("PATCH", "/recurring/v3/agreements/" + agreementId,
+                    (String) agreement.get("vippsMsn"),
+                    "{\"status\":\"STOPPED\"}");
+            agreement.put("status", "STOPPED");
+            return new LinkedHashMap<>(agreement);
+        }
+
+        private void sendVippsHttp(String method, String path, String merchantSerialNumber, String jsonBody) {
+            if (!remoteEnabled) {
+                return;
+            }
+            try {
+                HttpRequest tokenReq = HttpRequest.newBuilder()
+                        .uri(URI.create(apiBaseUrl + "/accesstoken/get"))
+                        .timeout(Duration.ofSeconds(3))
+                        .header("client_id", clientId)
+                        .header("client_secret", clientSecret)
+                        .header("Ocp-Apim-Subscription-Key", subscriptionKey)
+                        .header("Merchant-Serial-Number", merchantSerialNumber)
+                        .POST(HttpRequest.BodyPublishers.noBody())
+                        .build();
+                HttpResponse<String> tokenRes = httpClient.send(tokenReq, HttpResponse.BodyHandlers.ofString());
+                if (tokenRes.statusCode() >= 400) {
+                    throw new IllegalStateException("Vipps token endpoint returned HTTP " + tokenRes.statusCode());
+                }
+                HttpRequest apiReq = HttpRequest.newBuilder()
+                        .uri(URI.create(apiBaseUrl + path))
+                        .timeout(Duration.ofSeconds(3))
+                        .header("Content-Type", "application/json")
+                        .header("Ocp-Apim-Subscription-Key", subscriptionKey)
+                        .header("Merchant-Serial-Number", merchantSerialNumber)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .method(method, HttpRequest.BodyPublishers.ofString(jsonBody))
+                        .build();
+                HttpResponse<String> apiRes = httpClient.send(apiReq, HttpResponse.BodyHandlers.ofString());
+                if (apiRes.statusCode() >= 400) {
+                    throw new IllegalStateException("Vipps API returned HTTP " + apiRes.statusCode());
+                }
+            } catch (IllegalStateException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IllegalStateException("Failed to communicate with Vipps MobilePay API at " + apiBaseUrl, e);
+            }
+        }
+    }
+
     // =========================================================================
     // 4. DOMAIN SERVICES (Package-Private)
     // =========================================================================
@@ -946,21 +1313,25 @@ public final class FinanceFeature {
         private final KillBillClient killBillClient;
         private final FineractClient fineractClient;
         private final FinanceGitService financeGitService;
+        private final VippsMobilePayOsgiPlugin vippsPlugin;
         private final Map<String, String> invoiceCommitHashes = new ConcurrentHashMap<>();
 
         FinanceService(
                 KillBillClient killBillClient,
                 FineractClient fineractClient,
-                FinanceGitService financeGitService
+                FinanceGitService financeGitService,
+                VippsMobilePayOsgiPlugin vippsPlugin
         ) {
             this.killBillClient = killBillClient;
             this.fineractClient = fineractClient;
             this.financeGitService = financeGitService;
+            this.vippsPlugin = vippsPlugin;
         }
 
         public synchronized void resetAll() {
             killBillClient.resetState();
             fineractClient.initChartOfAccounts();
+            vippsPlugin.resetState();
             invoiceCommitHashes.clear();
         }
 
@@ -968,7 +1339,8 @@ public final class FinanceFeature {
             UUID clientUuid = parseUuid(payload.get("clientUuid"), "clientUuid");
             requireClientSelfOrTherapist(clientUuid, auth);
 
-            BigDecimal amount = parsePositiveAmount(payload.get("amount"), "amount");
+            Object rawAmount = payload.get("amount") != null ? payload.get("amount") : payload.get("amountGrossDkk");
+            BigDecimal amount = parsePositiveAmount(rawAmount, "amount");
             String currency = parseString(payload.get("currency"), "DKK");
             String description = parseString(payload.get("description"), "Klinisk Terapisession");
             String appointmentUuid = parseString(payload.get("appointmentUuid"), null);
@@ -1024,6 +1396,9 @@ public final class FinanceFeature {
             invoiceCommitHashes.put(invoiceId, commitHash);
 
             Map<String, Object> response = new LinkedHashMap<>(invoice);
+            response.put("id", invoiceId);
+            response.put("invoiceNumber", invoiceId);
+            response.put("amountGrossDkk", amount);
             response.put("journalEntryId", invoiceGl.get("journalEntryId"));
             response.put("settlementJournalEntryId", settlementJournalEntryId);
             response.put("gitCommitHash", commitHash);
@@ -1305,18 +1680,191 @@ public final class FinanceFeature {
             overview.put("prepaidSavings", fineractClient.getOrCreateSavingsAccount(clientUuid, "DKK"));
             overview.put("subscriptions", killBillClient.getClientSubscriptions(clientUuid));
             overview.put("installmentPlans", fineractClient.getClientLoans(clientUuid));
+            overview.put("vippsAgreements", vippsPlugin.getClientAgreements(clientUuid));
+            overview.put("vippsConfig", vippsPlugin.getPublicConfig(clientUuid));
             overview.put("gitHistory", financeGitService.getClientFinanceHistory(clientUuid));
             return overview;
         }
 
         public Map<String, Object> getGeneralLedgerSummary(Authentication auth) {
             requireTherapist(auth);
+            UUID callerUuid = extractUserUuid(auth);
 
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("chartOfAccounts", fineractClient.getChartOfAccounts());
             summary.put("journalEntries", fineractClient.getJournalEntries());
+            summary.put("vippsAgreements", vippsPlugin.getClientAgreements(callerUuid));
+            summary.put("vippsConfig", vippsPlugin.getPublicConfig(callerUuid));
             summary.put("gitHistory", financeGitService.getGeneralLedgerHistory());
             return summary;
+        }
+
+        public Map<String, Object> getVippsConfig(Authentication auth) {
+            UUID callerUuid = extractUserUuid(auth);
+            return vippsPlugin.getPublicConfig(callerUuid);
+        }
+
+        public Map<String, Object> processVippsCheckout(Map<String, Object> payload, Authentication auth) {
+            UUID callerUuid = extractUserUuid(auth);
+            UUID clientUuid = payload.get("clientUuid") != null
+                    ? parseUuid(payload.get("clientUuid"), "clientUuid")
+                    : callerUuid;
+            requireClientSelfOrTherapist(clientUuid, auth);
+
+            String rawProductType = parseString(payload.get("productType"), "SUBSCRIPTION");
+            BigDecimal requestedAmount = payload.get("amount") != null
+                    ? parsePositiveAmount(payload.get("amount"), "amount")
+                    : new BigDecimal("499.00");
+            String customPlanName = parseString(payload.get("planName"), "EduJournal Betaling");
+            VippsMobilePayOsgiPlugin.CheckoutPlanSpec spec = vippsPlugin.resolveSpec(rawProductType, requestedAmount, customPlanName);
+
+            String paymentMethod = parseString(payload.get("paymentMethod"), "MOBILEPAY").toUpperCase(Locale.ROOT);
+            String maskedInstrument = vippsPlugin.validateAndMaskInstrument(paymentMethod, payload);
+            String currency = parseString(payload.get("currency"), "DKK");
+            String authorName = extractAuthorName(auth);
+
+            String invoiceId;
+            String subscriptionId = null;
+            String journalEntryId;
+            Map<String, Object> extras = new LinkedHashMap<>();
+
+            if ("CLIP_CARD".equals(spec.productType())) {
+                int clips = Integer.parseInt(String.valueOf(payload.getOrDefault("clips", 5)));
+                Map<String, Object> invoice = killBillClient.createInvoiceAndCharge(
+                        clientUuid, "Vipps Klippekort (" + clips + " klip)", spec.amount(), currency, true, null, authorName
+                );
+                invoiceId = (String) invoice.get("invoiceId");
+                Map<String, Object> savings = fineractClient.depositToSavings(clientUuid, spec.amount(), clips, currency, invoiceId);
+                journalEntryId = (String) savings.get("journalEntryId");
+                extras.put("prepaidSavings", savings);
+            } else if (spec.recurring()) {
+                Map<String, Object> subscription = killBillClient.createSubscription(
+                        clientUuid, spec.planName(), spec.amount(), currency, authorName
+                );
+                subscriptionId = (String) subscription.get("subscriptionId");
+                invoiceId = (String) subscription.get("initialInvoiceId");
+                Map<String, Object> glEntry = fineractClient.postJournalEntry(
+                        GL_ACCOUNT_BANK, spec.glCreditAccount(), spec.amount(), currency, invoiceId,
+                        "Vipps OSGi Abonnement (" + spec.planName() + ") -> " + spec.payoutIban()
+                );
+                journalEntryId = (String) glEntry.get("journalEntryId");
+                extras.put("subscription", subscription);
+            } else {
+                Map<String, Object> invoice = killBillClient.createInvoiceAndCharge(
+                        clientUuid, spec.planName(), spec.amount(), currency, true, null, authorName
+                );
+                invoiceId = (String) invoice.get("invoiceId");
+                Map<String, Object> glEntry = fineractClient.postJournalEntry(
+                        GL_ACCOUNT_BANK, spec.glCreditAccount(), spec.amount(), currency, invoiceId,
+                        "Vipps OSGi Konsultation (" + spec.planName() + ")"
+                );
+                journalEntryId = (String) glEntry.get("journalEntryId");
+            }
+
+            Map<String, Object> gatewayResult = vippsPlugin.executeGatewayPayment(
+                    clientUuid, spec, paymentMethod, maskedInstrument, currency, subscriptionId
+            );
+
+            String markdown = "- **Kill Bill OSGi Plugin:** `" + gatewayResult.get("bundleSymbolicName") + "`\n"
+                    + "- **Produkt / Adgang:** `" + spec.productType() + "` (" + spec.planName() + ")\n"
+                    + "- **Betalingsinstrument:** " + maskedInstrument + "\n"
+                    + "- **Payout Destination:** IBAN `" + spec.payoutIban() + "` | Vipps MSN `" + spec.vippsMsn() + "`\n"
+                    + "- **Kill Bill Faktura:** `" + invoiceId + "` | Ref `" + gatewayResult.get("vippsReferenceId") + "`\n"
+                    + "- **Fineract Bogføring:** `" + journalEntryId + "` (Debet 1100 / Kredit " + spec.glCreditAccount() + ")";
+
+            String commitHash = financeGitService.commitFinancialVoucher(
+                    clientUuid,
+                    "VIPPS_OSGI_CHECKOUT",
+                    spec.planName() + " (" + spec.amount() + " " + currency + ") -> " + spec.payoutIban(),
+                    markdown,
+                    authorName,
+                    null
+            );
+            invoiceCommitHashes.put(invoiceId, commitHash);
+            if (gatewayResult.get("agreementId") != null) {
+                vippsPlugin.attachCommitHash((String) gatewayResult.get("agreementId"), commitHash);
+            }
+
+            Map<String, Object> response = new LinkedHashMap<>(gatewayResult);
+            response.put("status", "PAID");
+            response.put("clientUuid", clientUuid.toString());
+            response.put("productType", spec.productType());
+            response.put("planName", spec.planName());
+            response.put("amountDkk", spec.amount());
+            response.put("currency", currency);
+            response.put("paymentMethod", paymentMethod);
+            response.put("maskedInstrument", maskedInstrument);
+            response.put("invoiceId", invoiceId);
+            response.put("subscriptionId", subscriptionId);
+            response.put("journalEntryId", journalEntryId);
+            response.put("glCreditAccount", spec.glCreditAccount());
+            response.put("gitCommitHash", commitHash);
+            response.putAll(extras);
+            return response;
+        }
+
+        public Map<String, Object> chargeVippsAgreement(String agreementId, Authentication auth) {
+            Map<String, Object> existing = vippsPlugin.getAgreement(agreementId);
+            ErrorCode.NOT_FOUND.require(existing != null, "Vipps agreement not found: " + agreementId);
+            UUID clientUuid = UUID.fromString((String) existing.get("clientUuid"));
+            requireClientSelfOrTherapist(clientUuid, auth);
+
+            Map<String, Object> updatedAgreement = vippsPlugin.chargeRecurringAgreement(agreementId);
+            BigDecimal amount = (BigDecimal) updatedAgreement.get("amountDkk");
+            String currency = (String) updatedAgreement.get("currency");
+            String glCreditAccount = (String) updatedAgreement.get("glCreditAccount");
+            String authorName = extractAuthorName(auth);
+
+            Map<String, Object> invoice = killBillClient.createInvoiceAndCharge(
+                    clientUuid,
+                    "Vipps Recurring rate #" + updatedAgreement.get("chargeCount") + " (" + updatedAgreement.get("planName") + ")",
+                    amount,
+                    currency,
+                    true,
+                    null,
+                    authorName
+            );
+            String invoiceId = (String) invoice.get("invoiceId");
+            Map<String, Object> glEntry = fineractClient.postJournalEntry(
+                    GL_ACCOUNT_BANK, glCreditAccount, amount, currency, invoiceId,
+                    "Vipps Recurring trækning " + agreementId
+            );
+
+            String markdown = "- **Vipps Aftale:** `" + agreementId + "` | Charge `" + updatedAgreement.get("lastChargeId") + "`\n"
+                    + "- **Payout Destination:** IBAN `" + updatedAgreement.get("payoutIban") + "` | MSN `" + updatedAgreement.get("vippsMsn") + "`\n"
+                    + "- **Fineract Bogføring:** `" + glEntry.get("journalEntryId") + "` (Debet 1100 / Kredit " + glCreditAccount + ")";
+            String commitHash = financeGitService.commitFinancialVoucher(
+                    clientUuid, "VIPPS_RECURRING_CHARGE",
+                    "Vipps rate #" + updatedAgreement.get("chargeCount") + " (" + amount + " " + currency + ")",
+                    markdown, authorName, null
+            );
+            invoiceCommitHashes.put(invoiceId, commitHash);
+            updatedAgreement.put("invoiceId", invoiceId);
+            updatedAgreement.put("journalEntryId", glEntry.get("journalEntryId"));
+            updatedAgreement.put("gitCommitHash", commitHash);
+            return updatedAgreement;
+        }
+
+        public Map<String, Object> cancelVippsAgreement(String agreementId, Authentication auth) {
+            Map<String, Object> existing = vippsPlugin.getAgreement(agreementId);
+            ErrorCode.NOT_FOUND.require(existing != null, "Vipps agreement not found: " + agreementId);
+            UUID clientUuid = UUID.fromString((String) existing.get("clientUuid"));
+            requireClientSelfOrTherapist(clientUuid, auth);
+
+            String authorName = extractAuthorName(auth);
+            Map<String, Object> stopped = vippsPlugin.cancelAgreement(agreementId);
+            killBillClient.cancelSubscription(clientUuid, (String) stopped.get("subscriptionId"), authorName);
+
+            String commitHash = financeGitService.commitFinancialVoucher(
+                    clientUuid,
+                    "VIPPS_AGREEMENT_STOPPED",
+                    "Vipps Recurring aftale opsagt: " + agreementId,
+                    "- **Vipps Aftale:** `" + agreementId + "` (`STOPPED`)\n- **Kill Bill Abonnement:** `" + stopped.get("subscriptionId") + "` (`CANCELLED`)",
+                    authorName,
+                    null
+            );
+            stopped.put("gitCommitHash", commitHash);
+            return stopped;
         }
 
         public Map<String, Object> getCommitSnapshot(String commitHash, Authentication auth) {
@@ -1332,6 +1880,24 @@ public final class FinanceFeature {
                 );
             }
             return snapshot;
+        }
+
+        public List<Map<String, Object>> listInvoicesForCaller(Authentication auth) {
+            UUID callerUuid = extractUserUuid(auth);
+            List<Map<String, Object>> rawInvoices = isTherapist(auth)
+                    ? killBillClient.getAllInvoices()
+                    : killBillClient.getClientInvoices(callerUuid);
+            List<Map<String, Object>> result = new ArrayList<>(rawInvoices.size());
+            for (Map<String, Object> inv : rawInvoices) {
+                Map<String, Object> enriched = new LinkedHashMap<>(inv);
+                String invoiceId = (String) inv.get("invoiceId");
+                enriched.put("id", invoiceId);
+                enriched.put("invoiceNumber", invoiceId);
+                enriched.put("amountGrossDkk", inv.get("amount"));
+                enriched.put("gitCommitHash", invoiceCommitHashes.get(invoiceId));
+                result.add(enriched);
+            }
+            return result;
         }
 
         private void requireTherapist(Authentication auth) {
@@ -1357,7 +1923,7 @@ public final class FinanceFeature {
                     return true;
                 }
             }
-            return false;
+            return vippsPlugin.hasPlatformAccess(extractUserUuid(auth));
         }
 
         private UUID extractUserUuid(Authentication auth) {
@@ -1421,6 +1987,19 @@ public final class FinanceFeature {
 
         FinanceController(FinanceService financeService) {
             this.financeService = financeService;
+        }
+
+        @GetMapping
+        public ResponseEntity<List<Map<String, Object>>> listInvoices(Authentication auth) {
+            return ResponseEntity.ok(financeService.listInvoicesForCaller(auth));
+        }
+
+        @PostMapping
+        public ResponseEntity<Map<String, Object>> createInvoice(
+                @RequestBody Map<String, Object> payload,
+                Authentication auth
+        ) {
+            return billSingleSession(payload, auth);
         }
 
         @GetMapping("/client/{clientUuid}/overview")
@@ -1504,6 +2083,36 @@ public final class FinanceFeature {
                 Authentication auth
         ) {
             return ResponseEntity.ok(financeService.getCommitSnapshot(commitHash, auth));
+        }
+
+        @GetMapping("/vipps/config")
+        public ResponseEntity<Map<String, Object>> getVippsConfig(Authentication auth) {
+            return ResponseEntity.ok(financeService.getVippsConfig(auth));
+        }
+
+        @PostMapping("/vipps/checkout")
+        public ResponseEntity<Map<String, Object>> vippsCheckout(
+                @RequestBody Map<String, Object> payload,
+                Authentication auth
+        ) {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(financeService.processVippsCheckout(payload, auth));
+        }
+
+        @PostMapping("/vipps/agreements/{agreementId}/charge")
+        public ResponseEntity<Map<String, Object>> chargeVippsAgreement(
+                @PathVariable String agreementId,
+                Authentication auth
+        ) {
+            return ResponseEntity.ok(financeService.chargeVippsAgreement(agreementId, auth));
+        }
+
+        @PostMapping("/vipps/agreements/{agreementId}/cancel")
+        public ResponseEntity<Map<String, Object>> cancelVippsAgreement(
+                @PathVariable String agreementId,
+                Authentication auth
+        ) {
+            return ResponseEntity.ok(financeService.cancelVippsAgreement(agreementId, auth));
         }
     }
 }

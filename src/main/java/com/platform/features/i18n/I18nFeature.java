@@ -12,6 +12,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -373,6 +375,52 @@ public final class I18nFeature {
             repository.findByLocale(locale.trim().toLowerCase()).ifPresent(repository::delete);
         }
 
+        public List<Map<String, Object>> getAllTranslationEntries() {
+            List<I18nDictionary> dicts = repository.findAll();
+            dicts.sort(Comparator.comparing(d -> Objects.requireNonNullElse(d.getLocale(), "")));
+            List<Map<String, Object>> entries = new ArrayList<>();
+            for (I18nDictionary dict : dicts) {
+                String locale = dict.getLocale();
+                if (locale == null) continue;
+                Map<String, String> flat = flattenMap(dict.getTranslations(), "");
+                for (Map.Entry<String, String> e : flat.entrySet()) {
+                    entries.add(toEntryMap(locale, e.getKey(), e.getValue(), dict.getUpdatedAt()));
+                }
+            }
+            return entries;
+        }
+
+        public Map<String, Object> createTranslationEntry(Map<String, Object> payload) {
+            String locale = Objects.toString(payload.get("locale"), "").trim().toLowerCase();
+            String key = Objects.toString(payload.get("translationKey"), "").trim();
+            String value = Objects.toString(payload.get("translationValue"), "").trim();
+            ErrorCode.BAD_REQUEST.require(
+                    !locale.isEmpty() && !key.isEmpty() && !value.isEmpty(),
+                    "locale, translationKey and translationValue are required"
+            );
+            I18nDictionary saved = updateTranslation(locale, key, value);
+            return toEntryMap(locale, key, value, saved.getUpdatedAt());
+        }
+
+        public void deleteTranslationEntryById(String entryId) {
+            int sep = entryId != null ? entryId.indexOf("::") : -1;
+            ErrorCode.BAD_REQUEST.require(sep > 0 && sep + 2 < entryId.length(), "Invalid translation entry id");
+            deleteTranslationKey(entryId.substring(0, sep), entryId.substring(sep + 2));
+        }
+
+        private Map<String, Object> toEntryMap(String locale, String key, String value, Instant updatedAt) {
+            int dot = key.indexOf('.');
+            String namespace = dot > 0 ? key.substring(0, dot) : "Common";
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", locale + "::" + key);
+            entry.put("locale", locale);
+            entry.put("namespace", namespace);
+            entry.put("translationKey", key);
+            entry.put("translationValue", value);
+            entry.put("updatedAt", updatedAt != null ? updatedAt.toString() : null);
+            return entry;
+        }
+
         /**
          * #getLocaleSummaries(referenceLocale) — Beregner oversættelsesdækning (`completionPct`)
          * for samtlige sprog målt mod referencesproget (`da` eller fallback `en`).
@@ -494,6 +542,22 @@ public final class I18nFeature {
 
         I18nController(I18nService i18nService) {
             this.i18nService = i18nService;
+        }
+
+        @GetMapping
+        public ResponseEntity<List<Map<String, Object>>> getAllEntries() {
+            return ResponseEntity.ok(i18nService.getAllTranslationEntries());
+        }
+
+        @PostMapping
+        public ResponseEntity<Map<String, Object>> createEntry(@RequestBody Map<String, Object> payload) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(i18nService.createTranslationEntry(payload));
+        }
+
+        @DeleteMapping("/{entryId}")
+        public ResponseEntity<Void> deleteEntry(@PathVariable String entryId) {
+            i18nService.deleteTranslationEntryById(entryId);
+            return ResponseEntity.noContent().build();
         }
 
         @GetMapping("/locales")

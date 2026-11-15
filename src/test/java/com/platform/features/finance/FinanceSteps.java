@@ -25,6 +25,7 @@ public class FinanceSteps {
 
     private final FinanceService financeService;
     private final DomainScenarioState state;
+    private String lastAgreementId;
 
     public FinanceSteps(FinanceService financeService, DomainScenarioState state) {
         this.financeService = financeService;
@@ -285,5 +286,107 @@ public class FinanceSteps {
     @Then("the clinic general ledger summary should be accessible")
     public void glSummaryAccessible() {
         assertThat(state.getLastResponse().statusCode(), is(200));
+    }
+
+    @When("client {string} pays via Vipps OSGi checkout for {string} of {int} {word} with payment method {string} and {int} clips")
+    public void clientPaysVippsClipCardCheckout(String clientUsername, String productType, int amount, String currency, String paymentMethod, int clips) {
+        UUID clientUuid = state.getUserIdsByUsername().get(clientUsername);
+        Map<String, Object> payload = buildCheckoutPayload(clientUuid, productType, amount, currency, paymentMethod);
+        payload.put("clips", clips);
+        executeVippsCheckout(clientUsername, "CLIENT", payload);
+    }
+
+    @When("client {string} pays via Vipps OSGi checkout for {string} of {int} {word} with payment method {string}")
+    public void clientPaysVippsCheckout(String clientUsername, String productType, int amount, String currency, String paymentMethod) {
+        UUID clientUuid = state.getUserIdsByUsername().get(clientUsername);
+        executeVippsCheckout(clientUsername, "CLIENT", buildCheckoutPayload(clientUuid, productType, amount, currency, paymentMethod));
+    }
+
+    @When("the active Vipps agreement is charged for the next recurring period by {string}")
+    public void chargeActiveVippsAgreement(String username) {
+        assertThat("Expected active Vipps agreementId", lastAgreementId, notNullValue());
+        Response response = state.requestAs(username, "CLIENT")
+                .contentType(ContentType.JSON)
+                .body(Map.of())
+                .post("/api/v1/finance/vipps/agreements/{agreementId}/charge", lastAgreementId);
+        state.setLastResponse(response);
+        assertThat(response.statusCode(), is(200));
+    }
+
+    @When("the active Vipps agreement is cancelled by {string}")
+    public void cancelActiveVippsAgreement(String username) {
+        assertThat("Expected active Vipps agreementId", lastAgreementId, notNullValue());
+        Response response = state.requestAs(username, "CLIENT")
+                .contentType(ContentType.JSON)
+                .body(Map.of())
+                .post("/api/v1/finance/vipps/agreements/{agreementId}/cancel", lastAgreementId);
+        state.setLastResponse(response);
+        assertThat(response.statusCode(), is(200));
+    }
+
+    @Then("the Vipps agreement status should be {string}")
+    public void vippsAgreementStatusShouldBe(String expectedStatus) {
+        assertThat(state.getLastResponse().statusCode(), is(200));
+        assertThat(state.getLastResponse().jsonPath().getString("status"), is(expectedStatus));
+    }
+
+    @When("user {string} with role {string} purchases platform access {string} via payment method {string}")
+    public void userPurchasesPlatformAccess(String username, String role, String accessTier, String paymentMethod) {
+        UUID userUuid = state.getUserIdsByUsername().get(username);
+        Map<String, Object> payload = buildCheckoutPayload(userUuid, accessTier, 0, "DKK", paymentMethod);
+        payload.remove("amount");
+        executeVippsCheckout(username, role, payload);
+    }
+
+    @Then("the Vipps payout destination should have IBAN {string}, MSN {string}, amount {int} {word}, and granted role {string}")
+    public void verifyVippsPayoutRouting(String expectedIban, String expectedMsn, int expectedAmount, String currency, String expectedRole) {
+        Response res = state.getLastResponse();
+        assertThat(res.statusCode(), is(201));
+        assertThat(res.jsonPath().getString("payoutIban"), is(expectedIban));
+        assertThat(res.jsonPath().getString("vippsMsn"), is(expectedMsn));
+        assertThat(res.jsonPath().getString("grantedRole"), is(expectedRole));
+        assertThat(res.jsonPath().getString("currency"), is(currency));
+        BigDecimal actualAmount = new BigDecimal(res.jsonPath().getString("amountDkk"));
+        assertThat(actualAmount.compareTo(BigDecimal.valueOf(expectedAmount)), is(0));
+    }
+
+    @Then("user {string} should be able to access the clinic general ledger summary")
+    public void userCanAccessClinicGlSummary(String username) {
+        Response response = state.requestAs(username, "CLIENT")
+                .get("/api/v1/finance/ledger/summary");
+        state.setLastResponse(response);
+        assertThat(response.statusCode(), is(200));
+    }
+
+    private Map<String, Object> buildCheckoutPayload(UUID clientUuid, String productType, int amount, String currency, String paymentMethod) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("clientUuid", clientUuid);
+        payload.put("productType", productType);
+        payload.put("amount", amount);
+        payload.put("currency", currency);
+        payload.put("paymentMethod", paymentMethod);
+        if ("MOBILEPAY".equalsIgnoreCase(paymentMethod)) {
+            payload.put("phoneNumber", "+4520123456");
+        } else {
+            payload.put("cardToken", "tok_card_bdd_4242");
+            payload.put("cardLast4", "4242");
+            payload.put("cardBrand", "VISA");
+        }
+        return payload;
+    }
+
+    private void executeVippsCheckout(String username, String role, Map<String, Object> payload) {
+        Response response = state.requestAs(username, role)
+                .contentType(ContentType.JSON)
+                .body(payload)
+                .post("/api/v1/finance/vipps/checkout");
+        state.setLastResponse(response);
+        assertThat(response.body().asString(), response.statusCode(), is(201));
+        String agr = response.jsonPath().getString("agreementId");
+        if (agr != null && !agr.isBlank()) {
+            this.lastAgreementId = agr;
+        }
+        state.setLastInvoiceId(response.jsonPath().getString("invoiceId"));
+        state.setLastCommitHash(response.jsonPath().getString("gitCommitHash"));
     }
 }

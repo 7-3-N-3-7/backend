@@ -263,4 +263,54 @@ public class I18nServiceTest {
         when(initRepo.findByLocale("da")).thenReturn(Optional.of(blankMetaDict));
         new ClinicDatabaseInitializer(initRepo).run();
     }
+
+    @Test
+    public void testAdminEntryCrudEndpoints() {
+        when(repository.save(any(I18nDictionary.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Map<String, Object> daTrans = new LinkedHashMap<>();
+        daTrans.put("portal", new LinkedHashMap<>(Map.of("welcome", "Velkommen")));
+        daTrans.put("greeting", "Hej");
+        I18nDictionary daDict = new I18nDictionary("da", "Dansk", "🇩🇰", true, daTrans);
+        daDict.setUpdatedAt(null);
+        I18nDictionary nullLocaleDict = new I18nDictionary(null, Map.of("x", "y"));
+        when(repository.findAll()).thenReturn(new ArrayList<>(List.of(daDict, nullLocaleDict)));
+
+        List<Map<String, Object>> entries = i18nController.getAllEntries().getBody();
+        Assertions.assertNotNull(entries);
+        Assertions.assertEquals(2, entries.size());
+        Assertions.assertEquals("da::portal.welcome", entries.get(0).get("id"));
+        Assertions.assertEquals("portal", entries.get(0).get("namespace"));
+        Assertions.assertNull(entries.get(0).get("updatedAt"));
+        Assertions.assertEquals("Common", entries.get(1).get("namespace"));
+
+        // Create entry validation errors
+        Assertions.assertThrows(DomainException.class, () ->
+                i18nController.createEntry(Map.of("locale", "", "translationKey", "k", "translationValue", "v"))
+        );
+        Assertions.assertThrows(DomainException.class, () ->
+                i18nController.createEntry(Map.of("locale", "da", "translationKey", "", "translationValue", "v"))
+        );
+        Assertions.assertThrows(DomainException.class, () ->
+                i18nController.createEntry(Map.of("locale", "da", "translationKey", "k", "translationValue", ""))
+        );
+
+        when(repository.findByLocale("da")).thenReturn(Optional.of(daDict));
+        ResponseEntity<Map<String, Object>> created = i18nController.createEntry(
+                Map.of("locale", "DA", "translationKey", "Common.save", "translationValue", "Gem")
+        );
+        Assertions.assertEquals(201, created.getStatusCode().value());
+        Assertions.assertEquals("da::Common.save", created.getBody().get("id"));
+        Assertions.assertEquals("Common", created.getBody().get("namespace"));
+        Assertions.assertNotNull(created.getBody().get("updatedAt"));
+
+        // Delete entry validation errors & success
+        Assertions.assertThrows(DomainException.class, () -> i18nService.deleteTranslationEntryById(null));
+        Assertions.assertThrows(DomainException.class, () -> i18nController.deleteEntry("invalid"));
+        Assertions.assertThrows(DomainException.class, () -> i18nController.deleteEntry("::key"));
+        Assertions.assertThrows(DomainException.class, () -> i18nController.deleteEntry("da::"));
+
+        ResponseEntity<Void> deleted = i18nController.deleteEntry("da::portal.welcome");
+        Assertions.assertEquals(204, deleted.getStatusCode().value());
+    }
 }

@@ -1,5 +1,6 @@
 package com.platform.features.clinic;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.platform.core.BaseDomainCore.BaseRepository;
 import com.platform.core.BaseDomainCore.BaseService;
@@ -24,8 +25,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -110,7 +114,7 @@ public final class ClinicPlatformFeature {
             String dateOfBirth,
             String homeAddress,
             String postalCode,
-            String phoneNumber,
+            @JsonAlias("phone") String phoneNumber,
             String email
     ) implements HasId {}
 
@@ -1017,16 +1021,24 @@ public final class ClinicPlatformFeature {
                 return null;
             }
             ClientProfile clientProfileEntity = new ClientProfile(
-                    clientProfileDto.userId(),
-                    clientProfileDto.fullName(),
-                    clientProfileDto.dateOfBirth(),
-                    clientProfileDto.homeAddress(),
-                    clientProfileDto.postalCode(),
-                    clientProfileDto.phoneNumber(),
+                    Objects.requireNonNullElseGet(clientProfileDto.userId(), UUID::randomUUID),
+                    Objects.requireNonNullElse(clientProfileDto.fullName(), ""),
+                    Objects.requireNonNullElse(clientProfileDto.dateOfBirth(), ""),
+                    Objects.requireNonNullElse(clientProfileDto.homeAddress(), ""),
+                    Objects.requireNonNullElse(clientProfileDto.postalCode(), ""),
+                    Objects.requireNonNullElse(clientProfileDto.phoneNumber(), ""),
                     clientProfileDto.email()
             );
             clientProfileEntity.setId(clientProfileDto.id());
             return clientProfileEntity;
+        }
+
+        @Override
+        protected void validateBeforeCreate(ClientProfileDto dto) {
+            ErrorCode.BAD_REQUEST.require(
+                    dto != null && dto.fullName() != null && !dto.fullName().isBlank(),
+                    "Client full name is required"
+            );
         }
 
         public Map<String, Object> getCurrentUserContext(Authentication auth) {
@@ -1896,6 +1908,42 @@ public final class ClinicPlatformFeature {
         ClinicPlatformController(ClinicPlatformService clinicPlatformService) {
             super(clinicPlatformService);
             this.clinicPlatformService = clinicPlatformService;
+        }
+
+        @Override
+        @GetMapping("/clinic/clients")
+        public ResponseEntity<List<ClientProfileDto>> getAll() {
+            return super.getAll();
+        }
+
+        @Override
+        @GetMapping("/clinic/clients/paged")
+        public ResponseEntity<Page<ClientProfileDto>> getAllPaged(Pageable pageable) {
+            return super.getAllPaged(pageable);
+        }
+
+        @Override
+        @GetMapping("/clinic/clients/{id}")
+        public ResponseEntity<ClientProfileDto> getById(@PathVariable UUID id) {
+            return super.getById(id);
+        }
+
+        @Override
+        @PostMapping("/clinic/clients")
+        public ResponseEntity<ClientProfileDto> create(@Valid @RequestBody ClientProfileDto dto) {
+            return super.create(dto);
+        }
+
+        @Override
+        @PutMapping("/clinic/clients/{id}")
+        public ResponseEntity<ClientProfileDto> update(@PathVariable UUID id, @Valid @RequestBody ClientProfileDto dto) {
+            return super.update(id, dto);
+        }
+
+        @Override
+        @DeleteMapping("/clinic/clients/{id}")
+        public ResponseEntity<Void> delete(@PathVariable UUID id) {
+            return super.delete(id);
         }
 
         @GetMapping("/clinic/me")

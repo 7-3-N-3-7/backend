@@ -37,14 +37,20 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.time.Instant;
@@ -1581,5 +1587,61 @@ public class ClinicPlatformServiceTest {
         Assertions.assertEquals("Dr. A", onboardReqDto.displayName());
         HandshakeRequestDto hsReqDto = new HandshakeRequestDto(UUID.randomUUID(), clientUuid, "Anders", UUID.randomUUID(), "Bo", "Org", "ACTIVE");
         Assertions.assertEquals("ACTIVE", hsReqDto.status());
+    }
+
+    @Test
+    public void testClinicClientsBaseCrudRoutesAndValidation() {
+        UUID clientId = UUID.randomUUID();
+        ClientProfile existing = new ClientProfile(
+                UUID.randomUUID(), "Maja Klient", "1990-01-01", "Vej 1", "1000", "+4511223344", "maja@example.dk"
+        );
+        existing.setId(clientId);
+
+        Mockito.when(clientProfileRepository.findAll()).thenReturn(List.of(existing));
+        Mockito.when(clientProfileRepository.findAll(PageRequest.of(0, 10)))
+                .thenReturn(new PageImpl<>(List.of(existing)));
+        Mockito.when(clientProfileRepository.findById(clientId)).thenReturn(Optional.of(existing));
+        Mockito.when(clientProfileRepository.existsById(clientId)).thenReturn(true);
+        Mockito.when(clientProfileRepository.save(any(ClientProfile.class))).thenAnswer(i -> {
+            ClientProfile cp = i.getArgument(0);
+            if (cp.getId() == null) {
+                cp.setId(clientId);
+            }
+            return cp;
+        });
+
+        Assertions.assertEquals(1, controller.getAll().getBody().size());
+        Assertions.assertEquals(1, controller.getAllPaged(PageRequest.of(0, 10)).getBody().getTotalElements());
+        Assertions.assertEquals("Maja Klient", controller.getById(clientId).getBody().fullName());
+
+        // Partial DTO with null optional fields & validation checks
+        Assertions.assertThrows(DomainException.class, () -> controller.create(null));
+        Assertions.assertThrows(DomainException.class, () ->
+                controller.create(new ClientProfileDto(null, null, null, null, null, null, null, "x@example.dk"))
+        );
+        Assertions.assertThrows(DomainException.class, () ->
+                controller.create(new ClientProfileDto(null, null, "   ", null, null, null, null, "x@example.dk"))
+        );
+
+        try {
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest()));
+            ResponseEntity<ClientProfileDto> created = controller.create(
+                    new ClientProfileDto(null, null, "Ny Klient", null, null, null, null, "ny@example.dk")
+            );
+            Assertions.assertEquals(HttpStatus.CREATED, created.getStatusCode());
+            Assertions.assertEquals("Ny Klient", created.getBody().fullName());
+            Assertions.assertNotNull(created.getBody().userId());
+        } finally {
+            RequestContextHolder.resetRequestAttributes();
+        }
+
+        ResponseEntity<ClientProfileDto> updated = controller.update(
+                clientId,
+                new ClientProfileDto(clientId, existing.getUserId(), "Opdateret Klient", "1990-01-01", "Vej 2", "2000", "+4599887766", "maja2@example.dk")
+        );
+        Assertions.assertEquals(HttpStatus.OK, updated.getStatusCode());
+        Assertions.assertEquals("Opdateret Klient", updated.getBody().fullName());
+
+        Assertions.assertEquals(HttpStatus.NO_CONTENT, controller.delete(clientId).getStatusCode());
     }
 }

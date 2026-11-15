@@ -11,6 +11,8 @@ import com.platform.features.finance.FinanceFeature.KillBillClient;
 import com.platform.features.finance.FinanceFeature.LedgerSummaryDto;
 import com.platform.features.finance.FinanceFeature.PaymentDto;
 import com.platform.features.finance.FinanceFeature.RefundDto;
+import com.platform.features.finance.FinanceFeature.VippsAgreementDto;
+import com.platform.features.finance.FinanceFeature.VippsMobilePayOsgiPlugin;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +49,7 @@ class FinanceServiceTest {
     private FinanceGitService financeGitService;
     private KillBillClient killBillClient;
     private FineractClient fineractClient;
+    private VippsMobilePayOsgiPlugin vippsPlugin;
     private FinanceService financeService;
     private FinanceController financeController;
     private HttpServer mockServer;
@@ -76,7 +79,10 @@ class FinanceServiceTest {
         fineractClient.setRemoteConfiguration("http://127.0.0.1:18090/fineract-provider/api/v1", false);
         fineractClient.initChartOfAccounts();
 
-        financeService = new FinanceService(killBillClient, fineractClient, financeGitService);
+        vippsPlugin = new VippsMobilePayOsgiPlugin();
+        vippsPlugin.setRemoteConfiguration("http://127.0.0.1:18090", false);
+
+        financeService = new FinanceService(killBillClient, fineractClient, financeGitService, vippsPlugin);
         financeController = new FinanceController(financeService);
 
         mockServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -446,5 +452,199 @@ class FinanceServiceTest {
         assertEquals(id1, voucherDto.id());
         LedgerSummaryDto ledgerDto = new LedgerSummaryDto(id1, clientA, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, 1, 2);
         assertEquals(id1, ledgerDto.id());
+    }
+
+    @Test
+    void testRootInvoiceListAndCreateEndpoints() {
+        // Root GET /api/v1/finance & POST /api/v1/finance (listInvoices & createInvoice)
+        Authentication therapistJwtAuth = createJwtAuth(therapistUuid, "Behandler Bo", "therapist");
+        Authentication clientAJwtAuth = createJwtAuth(clientA, "Anders Sand", "client");
+        Authentication clientBJwtAuth = createJwtAuth(clientB, "Anden Klient", "client");
+        financeService.resetAll();
+
+        ResponseEntity<Map<String, Object>> createdA = financeController.createInvoice(
+                Map.of("clientUuid", clientA.toString(), "amountGrossDkk", "950", "description", "Session A"),
+                therapistJwtAuth
+        );
+        assertEquals(HttpStatus.CREATED, createdA.getStatusCode());
+        assertNotNull(createdA.getBody().get("id"));
+        assertEquals(new BigDecimal("950"), createdA.getBody().get("amountGrossDkk"));
+
+        ResponseEntity<Map<String, Object>> createdB = financeController.createInvoice(
+                Map.of("clientUuid", clientB.toString(), "amount", "500", "description", "Session B"),
+                therapistJwtAuth
+        );
+        assertEquals(HttpStatus.CREATED, createdB.getStatusCode());
+
+        List<Map<String, Object>> therapistInvoices = financeController.listInvoices(therapistJwtAuth).getBody();
+        assertNotNull(therapistInvoices);
+        assertEquals(2, therapistInvoices.size());
+
+        List<Map<String, Object>> clientAInvoices = financeController.listInvoices(clientAJwtAuth).getBody();
+        assertNotNull(clientAInvoices);
+        assertEquals(1, clientAInvoices.size());
+        assertEquals("Session A", clientAInvoices.get(0).get("description"));
+
+        List<Map<String, Object>> clientBInvoices = financeController.listInvoices(clientBJwtAuth).getBody();
+        assertNotNull(clientBInvoices);
+        assertEquals(1, clientBInvoices.size());
+    }
+
+    @Test
+    void testVippsMobilePayOsgiCheckoutAccessRoutingAndRemoteBranches() {
+        int port = mockServer.getAddress().getPort();
+        String baseUrl = "http://127.0.0.1:" + port;
+        vippsPlugin.setRemoteConfiguration(baseUrl, true);
+        mockStatusCode.set(200);
+        financeService.resetAll();
+
+        Authentication therapistAuth = createJwtAuth(therapistUuid, "Behandler Bo", "therapist");
+        Authentication clientAAuth = createJwtAuth(clientA, "Anders Sand", "client");
+        Authentication clientBAuth = createJwtAuth(clientB, "Client B", "client");
+
+        // 1. Public config endpoint
+        ResponseEntity<Map<String, Object>> cfgResp = financeController.getVippsConfig(clientAAuth);
+        assertEquals(HttpStatus.OK, cfgResp.getStatusCode());
+        assertEquals("com.platform.killbill.vipps-mobilepay-plugin", cfgResp.getBody().get("bundleSymbolicName"));
+
+        // 2. Client A purchases THERAPIST_ACCESS via MOBILEPAY -> upgrades role & allows GL summary access
+        Map<String, Object> therapistCheckout = new LinkedHashMap<>();
+        therapistCheckout.put("productType", "THERAPIST_ACCESS");
+        therapistCheckout.put("paymentMethod", "MOBILEPAY");
+        therapistCheckout.put("phoneNumber", "+4520123456");
+        ResponseEntity<Map<String, Object>> tResp = financeController.vippsCheckout(therapistCheckout, clientAAuth);
+        assertEquals(HttpStatus.CREATED, tResp.getStatusCode());
+        assertEquals("DK8130000012345678", tResp.getBody().get("payoutIban"));
+        assertEquals("700101", tResp.getBody().get("vippsMsn"));
+        assertEquals("THERAPIST", tResp.getBody().get("grantedRole"));
+        assertTrue(vippsPlugin.hasPlatformAccess(clientA));
+        assertEquals(HttpStatus.OK, financeController.getGeneralLedgerSummary(clientAAuth).getStatusCode());
+
+        String therapistAgreementId = (String) tResp.getBody().get("agreementId");
+        ResponseEntity<Map<String, Object>> chargedResp = financeController.chargeVippsAgreement(therapistAgreementId, clientAAuth);
+        assertEquals(HttpStatus.OK, chargedResp.getStatusCode());
+        assertEquals(2, chargedResp.getBody().get("chargeCount"));
+
+        // 3. Purchase MANAGEMENT_ACCESS, SUBSCRIPTION (with omitted amount/clientUuid), CLIP_CARD, SESSION_INVOICE
+        ResponseEntity<Map<String, Object>> mgmtResp = financeController.vippsCheckout(
+                Map.of(
+                        "clientUuid", therapistUuid.toString(),
+                        "productType", "MANAGEMENT_ACCESS",
+                        "paymentMethod", "CREDIT_CARD",
+                        "cardToken", "tok_card_mgmt_4242",
+                        "cardLast4", "4242"
+                ),
+                therapistAuth
+        );
+        assertEquals("DK9230000087654321", mgmtResp.getBody().get("payoutIban"));
+        assertEquals("700202", mgmtResp.getBody().get("vippsMsn"));
+        assertEquals("ADMIN", mgmtResp.getBody().get("grantedRole"));
+
+        ResponseEntity<Map<String, Object>> subResp = financeController.vippsCheckout(
+                Map.of(
+                        "productType", "SUBSCRIPTION",
+                        "paymentMethod", "MOBILEPAY",
+                        "phoneNumber", "40112233"
+                ),
+                clientBAuth
+        );
+        assertEquals(HttpStatus.CREATED, subResp.getStatusCode());
+        String subAgreementId = (String) subResp.getBody().get("agreementId");
+
+        ResponseEntity<Map<String, Object>> clipResp = financeController.vippsCheckout(
+                Map.of(
+                        "clientUuid", clientB.toString(),
+                        "productType", "CLIP_CARD",
+                        "amount", "5000",
+                        "clips", 5,
+                        "paymentMethod", "CREDIT_CARD",
+                        "cardToken", "tok_card_clip_1234",
+                        "cardLast4", "1234",
+                        "cardBrand", "Mastercard"
+                ),
+                clientBAuth
+        );
+        assertEquals(HttpStatus.CREATED, clipResp.getStatusCode());
+
+        ResponseEntity<Map<String, Object>> sessionResp = financeController.vippsCheckout(
+                Map.of(
+                        "clientUuid", clientB.toString(),
+                        "productType", "SESSION_INVOICE",
+                        "amount", "1200",
+                        "paymentMethod", "MOBILEPAY",
+                        "phoneNumber", "+4530405060"
+                ),
+                clientBAuth
+        );
+        assertEquals(HttpStatus.CREATED, sessionResp.getStatusCode());
+
+        // Cancel one subscription agreement (exercises both matching & non-matching subscription loop branches)
+        ResponseEntity<Map<String, Object>> cancelResp = financeController.cancelVippsAgreement(therapistAgreementId, clientAAuth);
+        assertEquals("STOPPED", cancelResp.getBody().get("status"));
+        ResponseEntity<Map<String, Object>> cancelSubResp = financeController.cancelVippsAgreement(subAgreementId, clientBAuth);
+        assertEquals("STOPPED", cancelSubResp.getBody().get("status"));
+
+        // Direct KillBillClient.cancelSubscription null/blank guards + multiple subs branch
+        killBillClient.cancelSubscription(clientA, null, "tester");
+        killBillClient.cancelSubscription(clientA, "   ", "tester");
+        killBillClient.createSubscription(clientB, "extra-plan", BigDecimal.TEN, "DKK", "tester");
+        killBillClient.cancelSubscription(clientB, "NON-MATCHING-SUB", "tester");
+
+        // Stopped agreement cannot be charged again (400)
+        assertThrows(DomainException.class, () ->
+                financeController.chargeVippsAgreement(therapistAgreementId, clientAAuth)
+        );
+
+        // Missing agreement returns 404 on both charge and cancel & attachCommitHash no-ops safely
+        vippsPlugin.attachCommitHash("MISSING-AGR", "abc12345");
+        assertThrows(DomainException.class, () -> financeController.chargeVippsAgreement("MISSING-AGR", clientAAuth));
+        assertThrows(DomainException.class, () -> financeController.cancelVippsAgreement("MISSING-AGR", clientAAuth));
+        assertThrows(DomainException.class, () -> vippsPlugin.chargeRecurringAgreement("MISSING-AGR"));
+        assertThrows(DomainException.class, () -> vippsPlugin.cancelAgreement("MISSING-AGR"));
+
+        // Validation guards in VippsMobilePayOsgiPlugin
+        assertThrows(DomainException.class, () -> vippsPlugin.resolveSpec(null, BigDecimal.TEN, "Plan"));
+        assertThrows(DomainException.class, () -> vippsPlugin.resolveSpec("UNKNOWN_TIER", BigDecimal.TEN, "Plan"));
+        assertEquals("Vipps MobilePay (•••5678)", vippsPlugin.validateAndMaskInstrument(null, Map.of("phoneNumber", "+4512345678")));
+        assertThrows(DomainException.class, () -> vippsPlugin.validateAndMaskInstrument("MOBILEPAY", Map.of("phoneNumber", "123")));
+        assertThrows(DomainException.class, () -> vippsPlugin.validateAndMaskInstrument("CRYPTO", Map.of()));
+        assertThrows(DomainException.class, () -> vippsPlugin.validateAndMaskInstrument("CREDIT_CARD", Map.of("cardToken", "  ")));
+        assertThrows(DomainException.class, () -> vippsPlugin.validateAndMaskInstrument("CREDIT_CARD", Map.of("cardToken", "4532015112830366", "cardLast4", "0366")));
+        assertThrows(DomainException.class, () -> vippsPlugin.validateAndMaskInstrument("CREDIT_CARD", Map.of("cardToken", "tok_safe", "cardLast4", "12")));
+
+        // Remote HTTP error handling on token endpoint & API endpoint + unreachable port
+        mockStatusCode.set(500);
+        assertThrows(IllegalStateException.class, () ->
+                financeController.vippsCheckout(therapistCheckout, clientAAuth)
+        );
+        AtomicInteger callSeq = new AtomicInteger(0);
+        vippsPlugin.setRemoteConfiguration(baseUrl, true);
+        mockServer.removeContext("/");
+        mockServer.createContext("/", exchange -> {
+            int code = callSeq.getAndIncrement() == 0 ? 200 : 500;
+            byte[] resp = "{\"access_token\":\"t\"}".getBytes();
+            exchange.sendResponseHeaders(code, resp.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(resp);
+            }
+        });
+        assertThrows(IllegalStateException.class, () ->
+                financeController.vippsCheckout(therapistCheckout, clientAAuth)
+        );
+        vippsPlugin.setRemoteConfiguration("http://127.0.0.1:1", true);
+        assertThrows(IllegalStateException.class, () ->
+                financeController.vippsCheckout(therapistCheckout, clientAAuth)
+        );
+
+        // Exercise VippsAgreementDto record
+        UUID agrUuid = UUID.randomUUID();
+        VippsAgreementDto dto = new VippsAgreementDto(
+                agrUuid, clientA, "AGR-1", "THERAPIST_ACCESS", "Therapist-adgang",
+                FinanceFeature.PRICE_THERAPIST_ACCESS_DKK, "DKK", "MOBILEPAY",
+                "Vipps MobilePay (•••3456)", "DK8130000012345678", "700101",
+                "THERAPIST", "ACTIVE", "abc12345"
+        );
+        assertEquals(agrUuid, dto.id());
+        assertEquals("AGR-1", dto.agreementId());
     }
 }

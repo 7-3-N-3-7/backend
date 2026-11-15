@@ -27,6 +27,7 @@ import com.platform.features.finance.FinanceFeature.InvoiceDto;
 import com.platform.features.finance.FinanceFeature.LedgerSummaryDto;
 import com.platform.features.finance.FinanceFeature.PaymentDto;
 import com.platform.features.finance.FinanceFeature.RefundDto;
+import com.platform.features.finance.FinanceFeature.VippsAgreementDto;
 import com.platform.features.i18n.I18nFeature.I18nDictionary;
 import com.platform.features.i18n.I18nFeature.I18nDictionaryDto;
 import com.platform.features.i18n.I18nFeature.TranslationUpdateRequest;
@@ -182,7 +183,8 @@ public class GenericBaseArchitectureTest {
                 PaymentDto.class,
                 RefundDto.class,
                 FinancialVoucherDto.class,
-                LedgerSummaryDto.class
+                LedgerSummaryDto.class,
+                VippsAgreementDto.class
         );
         for (Class<?> dtoClass : recordDtos) {
             Assertions.assertTrue(dtoClass.isRecord(), dtoClass.getSimpleName() + " must be a Java record");

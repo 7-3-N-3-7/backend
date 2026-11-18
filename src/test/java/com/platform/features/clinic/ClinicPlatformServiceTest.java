@@ -1644,4 +1644,85 @@ public class ClinicPlatformServiceTest {
 
         Assertions.assertEquals(HttpStatus.NO_CONTENT, controller.delete(clientId).getStatusCode());
     }
+
+    @Test
+    public void testTherapistFilteredServicesAndOverviewSelfExclusion() {
+        UUID therapistUuidA = UUID.randomUUID();
+        UUID therapistUuidB = UUID.randomUUID();
+        UUID unknownTherapistUuid = UUID.randomUUID();
+
+        Organisation sharedOrg = new Organisation("55667788", "Fælles Klinik");
+        sharedOrg.setId(UUID.randomUUID());
+
+        ProviderProfile providerA = new ProviderProfile();
+        providerA.setId(UUID.randomUUID());
+        providerA.setUserUuid(therapistUuidA);
+        providerA.setDisplayName("Behandler A");
+        providerA.setOrganisation(sharedOrg);
+
+        ProviderProfile providerB = new ProviderProfile();
+        providerB.setId(UUID.randomUUID());
+        providerB.setUserUuid(therapistUuidB);
+        providerB.setDisplayName("Behandler B");
+        providerB.setOrganisation(sharedOrg);
+
+        Service activeServiceA = new Service();
+        activeServiceA.setId(UUID.randomUUID());
+        activeServiceA.setName("Ydelse A Aktiv");
+        activeServiceA.setProvider(providerA);
+        activeServiceA.setOrganisation(sharedOrg);
+        activeServiceA.setIsActive(true);
+
+        Service inactiveServiceA = new Service();
+        inactiveServiceA.setId(UUID.randomUUID());
+        inactiveServiceA.setName("Ydelse A Inaktiv");
+        inactiveServiceA.setProvider(providerA);
+        inactiveServiceA.setOrganisation(sharedOrg);
+        inactiveServiceA.setIsActive(false);
+
+        Service personalServiceB = new Service();
+        personalServiceB.setId(UUID.randomUUID());
+        personalServiceB.setName("Ydelse B Personlig");
+        personalServiceB.setProvider(providerB);
+        personalServiceB.setOrganisation(sharedOrg);
+        personalServiceB.setIsActive(true);
+
+        Service orgSharedService = new Service();
+        orgSharedService.setId(UUID.randomUUID());
+        orgSharedService.setName("Fælles Organisationsydelse");
+        orgSharedService.setOrganisation(sharedOrg);
+        orgSharedService.setIsActive(true);
+
+        Mockito.when(providerProfileRepository.findByUserUuid(therapistUuidA)).thenReturn(Optional.of(providerA));
+        Mockito.when(providerProfileRepository.findByUserUuid(unknownTherapistUuid)).thenReturn(Optional.empty());
+        Mockito.when(providerProfileRepository.findAll()).thenReturn(List.of(providerA, providerB));
+        Mockito.when(serviceRepository.findAll()).thenReturn(
+                List.of(activeServiceA, inactiveServiceA, personalServiceB, orgSharedService)
+        );
+        Mockito.when(serviceRepository.findById(activeServiceA.getId())).thenReturn(Optional.of(activeServiceA));
+        Mockito.doCallRealMethod().when(serviceRepository).findServiceById(any());
+
+        // Active-only filter without therapist filters globally
+        Assertions.assertEquals(4, controller.getServices(null, false).getBody().size());
+        Assertions.assertEquals(3, controller.getServices(null, true).getBody().size());
+
+        // Therapist A receives personal A + shared org service, NOT Therapist B's personal service
+        List<Service> allForA = controller.getServices(therapistUuidA, false).getBody();
+        Assertions.assertEquals(3, allForA.size());
+        Assertions.assertFalse(allForA.stream().anyMatch(s -> "Ydelse B Personlig".equals(s.getName())));
+
+        List<Service> activeForA = controller.getServices(therapistUuidA, true).getBody();
+        Assertions.assertEquals(2, activeForA.size());
+
+        // Unknown therapist returns empty list without falling back to all services
+        Assertions.assertTrue(controller.getServices(unknownTherapistUuid, true).getBody().isEmpty());
+
+        // Default port method delegates to findById
+        Assertions.assertTrue(serviceRepository.findServiceById(activeServiceA.getId()).isPresent());
+
+        // Overview excludes viewing user from providers list
+        Map<String, Object> overviewForA = controller.getClientOverview(therapistUuidA).getBody();
+        List<?> visibleProviders = (List<?>) overviewForA.get("providers");
+        Assertions.assertEquals(1, visibleProviders.size());
+    }
 }

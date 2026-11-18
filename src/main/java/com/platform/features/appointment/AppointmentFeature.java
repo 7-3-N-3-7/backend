@@ -12,11 +12,13 @@ import ai.timefold.solver.core.api.score.buildin.hardsoft.HardSoftScore;
 import ai.timefold.solver.core.api.score.stream.Constraint;
 import ai.timefold.solver.core.api.score.stream.ConstraintFactory;
 import ai.timefold.solver.core.api.score.stream.ConstraintProvider;
-import ai.timefold.solver.core.api.solver.Solver;
+import ai.timefold.solver.core.api.score.stream.Joiners;
 import ai.timefold.solver.core.api.solver.SolverFactory;
 import ai.timefold.solver.core.config.solver.SolverConfig;
 import ai.timefold.solver.core.config.solver.termination.TerminationConfig;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.platform.config.PlatformCacheService;
 import com.platform.config.PlatformEventService;
 import com.platform.core.BaseDomainCore.BaseRepository;
@@ -27,6 +29,7 @@ import com.platform.core.BaseDomainCore.Identifiable;
 import com.platform.core.BaseWebCore.BaseController;
 import com.platform.features.clinic.ClinicPlatformFeature.ProviderProfile;
 import com.platform.features.clinic.ClinicPlatformFeature.ProviderProfilePort;
+import com.platform.features.clinic.ClinicPlatformFeature.ServiceLookupPort;
 import com.platform.features.journal.JournalFeature;
 import com.platform.features.journal.JournalFeature.JournalGitService;
 
@@ -42,6 +45,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,10 +69,12 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -308,16 +316,33 @@ public final class AppointmentFeature {
     @Service
     public static class TimefoldBookingService {
 
-        private static final List<LocalTime> DEFAULT_DAILY_SLOTS = List.of(
-                LocalTime.of(9, 0),
-                LocalTime.of(10, 0),
-                LocalTime.of(11, 0),
-                LocalTime.of(13, 0),
-                LocalTime.of(14, 0),
-                LocalTime.of(15, 0)
-        );
-
+        private static final int SLOT_STEP_MINUTES = 30;
+        private static final int OUTSIDE_HOURS_START_MINUTE = 7 * 60;
+        private static final int OUTSIDE_HOURS_END_MINUTE = 21 * 60;
+        private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
         private static final Pattern HOURS_RANGE_PATTERN = Pattern.compile("(\\d{2}:\\d{2})\\s*-\\s*(\\d{2}:\\d{2})");
+
+        public record TimeWindowFact(@PlanningId String id, int startMinute, int endMinute) {
+            public boolean contains(LocalDateTime startTime, LocalDateTime endTime) {
+                if (startTime == null || endTime == null) {
+                    return false;
+                }
+                int slotStart = startTime.getHour() * 60 + startTime.getMinute();
+                boolean endsAtMidnight = endTime.toLocalTime().equals(LocalTime.MIDNIGHT)
+                        && endTime.toLocalDate().equals(startTime.toLocalDate().plusDays(1));
+                int slotEnd = endsAtMidnight ? 1440 : (endTime.getHour() * 60 + endTime.getMinute());
+                boolean sameDayOrMidnight = startTime.toLocalDate().equals(endTime.toLocalDate()) || endsAtMidnight;
+                return sameDayOrMidnight && slotStart >= startMinute && slotEnd <= endMinute && slotEnd > slotStart;
+            }
+
+            public String formatWindow() {
+                return formatMinute(startMinute) + "-" + formatMinute(endMinute);
+            }
+
+            private static String formatMinute(int minuteOfDay) {
+                return String.format("%02d:%02d", (minuteOfDay / 60) % 24, minuteOfDay % 60);
+            }
+        }
 
         public static class CandidateSlot {
             @PlanningId
@@ -420,6 +445,9 @@ public final class AppointmentFeature {
             @ProblemFactCollectionProperty
             private List<ExistingBookingFact> existingBookings;
 
+            @ProblemFactCollectionProperty
+            private List<TimeWindowFact> workingWindows = List.of();
+
             @PlanningEntityCollectionProperty
             private List<BookingAssignment> assignments;
 
@@ -431,15 +459,18 @@ public final class AppointmentFeature {
             public TherapistScheduleSolution(
                     List<CandidateSlot> candidateSlots,
                     List<ExistingBookingFact> existingBookings,
-                    List<BookingAssignment> assignments
+                    List<BookingAssignment> assignments,
+                    List<TimeWindowFact> workingWindows
             ) {
                 this.candidateSlots = candidateSlots;
                 this.existingBookings = existingBookings;
                 this.assignments = assignments;
+                this.workingWindows = workingWindows;
             }
 
             public List<CandidateSlot> getCandidateSlots() { return candidateSlots; }
             public List<ExistingBookingFact> getExistingBookings() { return existingBookings; }
+            public List<TimeWindowFact> getWorkingWindows() { return workingWindows; }
             public List<BookingAssignment> getAssignments() { return assignments; }
             public HardSoftScore getScore() { return score; }
             public void setScore(HardSoftScore score) { this.score = score; }
@@ -479,7 +510,14 @@ public final class AppointmentFeature {
 
             private Constraint withinWorkingHoursConstraint(ConstraintFactory factory) {
                 return factory.forEach(BookingAssignment.class)
-                        .filter(a -> !a.getAssignedSlot().isWithinWorkingHours())
+                        .ifNotExists(
+                                TimeWindowFact.class,
+                                Joiners.filtering((assignment, window) ->
+                                        window.contains(
+                                                assignment.getAssignedSlot().getStartTime(),
+                                                assignment.getAssignedSlot().getEndTime()
+                                        ))
+                        )
                         .penalize(HardSoftScore.ofHard(10))
                         .asConstraint("Must be within therapist working hours");
             }
@@ -535,32 +573,57 @@ public final class AppointmentFeature {
                 ProviderProfile providerProfile,
                 UUID excludeAppointmentId
         ) {
+            return suggestOptimalSlots(
+                    therapistUuid,
+                    date,
+                    durationMinutes,
+                    preferredTime,
+                    existingAppointments,
+                    providerProfile,
+                    excludeAppointmentId,
+                    false
+            );
+        }
+
+        public Map<String, Object> suggestOptimalSlots(
+                UUID therapistUuid,
+                LocalDate date,
+                int durationMinutes,
+                LocalTime preferredTime,
+                List<Appointment> existingAppointments,
+                ProviderProfile providerProfile,
+                UUID excludeAppointmentId,
+                boolean includeOutsideHours
+        ) {
             int effectiveDuration = durationMinutes > 0 ? durationMinutes : 60;
             LocalTime targetPreferred = preferredTime != null ? preferredTime : LocalTime.of(10, 0);
             LocalDateTime preferredDateTime = LocalDateTime.of(date, targetPreferred);
             LocalDateTime now = LocalDateTime.now();
 
-            LocalTime[] workingWindow = parseWorkingWindow(providerProfile != null ? providerProfile.getWorkingHoursJson() : null);
-            LocalTime workStart = workingWindow[0];
-            LocalTime workEnd = workingWindow[1];
+            List<TimeWindowFact> normalWindows = resolveWorkingWindowsForDate(providerProfile, date);
+            List<TimeWindowFact> solverWindows = includeOutsideHours
+                    ? List.of(new TimeWindowFact("extended-0", OUTSIDE_HOURS_START_MINUTE, OUTSIDE_HOURS_END_MINUTE))
+                    : normalWindows;
+            String workingHoursSummary = normalWindows.isEmpty()
+                    ? "Lukket"
+                    : normalWindows.stream().map(TimeWindowFact::formatWindow).collect(Collectors.joining(", "));
 
-            List<ExistingBookingFact> existingFacts = (existingAppointments == null ? List.<Appointment>of() : existingAppointments)
-                    .stream()
-                    .filter(a -> a != null
-                            && !"CANCELLED".equalsIgnoreCase(a.getStatus())
-                            && a.getStartTime() != null
-                            && a.getEndTime() != null
-                            && (excludeAppointmentId == null || !excludeAppointmentId.equals(a.getId())))
-                    .map(a -> new ExistingBookingFact(a.getId(), therapistUuid, a.getStartTime(), a.getEndTime()))
-                    .collect(Collectors.toList());
+            List<ExistingBookingFact> existingFacts = toExistingFacts(therapistUuid, existingAppointments, excludeAppointmentId);
 
-            List<CandidateSlot> candidateSlots = new ArrayList<>();
-            for (LocalTime slotTime : DEFAULT_DAILY_SLOTS) {
-                LocalDateTime start = LocalDateTime.of(date, slotTime);
-                LocalDateTime end = start.plusMinutes(effectiveDuration);
-                boolean withinHours = !slotTime.isBefore(workStart) && !end.toLocalTime().isAfter(workEnd);
-                boolean inPast = start.isBefore(now);
-                candidateSlots.add(new CandidateSlot(slotTime.toString(), start, end, withinHours, inPast));
+            List<CandidateSlot> candidateSlots = buildCandidateSlots(date, effectiveDuration, now, normalWindows, solverWindows);
+            if (candidateSlots.isEmpty()) {
+                Map<String, Object> closedResult = new LinkedHashMap<>();
+                closedResult.put("solver", "Timefold Solver 1.16.0");
+                closedResult.put("therapistUuid", therapistUuid);
+                closedResult.put("date", date.toString());
+                closedResult.put("durationMinutes", effectiveDuration);
+                closedResult.put("workingHoursWindow", workingHoursSummary);
+                closedResult.put("closed", normalWindows.isEmpty());
+                closedResult.put("recommendedSlot", null);
+                closedResult.put("solverScore", "0hard/0soft");
+                closedResult.put("feasible", false);
+                closedResult.put("slots", List.of());
+                return closedResult;
             }
 
             BookingAssignment assignment = new BookingAssignment(
@@ -574,62 +637,18 @@ public final class AppointmentFeature {
             TherapistScheduleSolution problem = new TherapistScheduleSolution(
                     candidateSlots,
                     existingFacts,
-                    List.of(assignment)
+                    List.of(assignment),
+                    solverWindows
             );
 
-            Solver<TherapistScheduleSolution> solver = solverFactory.buildSolver();
-            TherapistScheduleSolution solved = solver.solve(problem);
-
-            CandidateSlot bestSlot = solved.getAssignments().get(0).getAssignedSlot();
+            TherapistScheduleSolution solved = solverFactory.buildSolver().solve(problem);
             HardSoftScore bestScore = solved.getScore();
 
             List<Map<String, Object>> evaluatedSlots = new ArrayList<>();
             for (CandidateSlot candidate : candidateSlots) {
-                boolean overlaps = existingFacts.stream()
-                        .anyMatch(f -> f.overlaps(candidate.getStartTime(), candidate.getEndTime()));
-                boolean feasible = !overlaps && !candidate.isInPast() && candidate.isWithinWorkingHours();
-
-                int hardPenalty = (overlaps ? -100 : 0)
-                        + (candidate.isInPast() ? -50 : 0)
-                        + (!candidate.isWithinWorkingHours() ? -10 : 0);
-
-                long minutesFromPreferred = Math.abs(Duration.between(preferredDateTime, candidate.getStartTime()).toMinutes());
-                int softScore = -(int) Math.min(1000, minutesFromPreferred / 15);
-                boolean adjacentBonus = existingFacts.stream().anyMatch(f ->
-                        f.getStartTime().toLocalDate().equals(date)
-                                && (candidate.getStartTime().equals(f.getEndTime())
-                                        || candidate.getEndTime().equals(f.getStartTime()))
-                );
-                if (adjacentBonus) {
-                    softScore += 12;
-                }
-
-                String reason;
-                if (overlaps) {
-                    reason = "CONFLICT_OVERLAP";
-                } else if (candidate.isInPast()) {
-                    reason = "IN_PAST";
-                } else if (!candidate.isWithinWorkingHours()) {
-                    reason = "OUTSIDE_WORKING_HOURS";
-                } else if (adjacentBonus) {
-                    reason = "OPTIMAL_ADJACENT_SLOT";
-                } else {
-                    reason = "AVAILABLE";
-                }
-
-                Map<String, Object> slotInfo = new LinkedHashMap<>();
-                slotInfo.put("slot", candidate.getId());
-                slotInfo.put("startTime", candidate.getStartTime().toString());
-                slotInfo.put("endTime", candidate.getEndTime().toString());
-                slotInfo.put("available", feasible);
-                slotInfo.put("overlaps", overlaps);
-                slotInfo.put("inPast", candidate.isInPast());
-                slotInfo.put("withinWorkingHours", candidate.isWithinWorkingHours());
-                slotInfo.put("hardScore", hardPenalty);
-                slotInfo.put("softScore", softScore);
-                slotInfo.put("score", hardPenalty + "hard/" + softScore + "soft");
-                slotInfo.put("reason", reason);
-                evaluatedSlots.add(slotInfo);
+                evaluatedSlots.add(evaluateCandidateSlot(
+                        candidate, date, preferredDateTime, existingFacts, includeOutsideHours
+                ));
             }
 
             List<Map<String, Object>> rankedAvailable = evaluatedSlots.stream()
@@ -650,12 +669,229 @@ public final class AppointmentFeature {
             result.put("therapistUuid", therapistUuid);
             result.put("date", date.toString());
             result.put("durationMinutes", effectiveDuration);
-            result.put("workingHoursWindow", workStart + "-" + workEnd);
+            result.put("workingHoursWindow", workingHoursSummary);
+            result.put("closed", false);
             result.put("recommendedSlot", recommendedSlotStr);
             result.put("solverScore", String.valueOf(bestScore));
             result.put("feasible", recommendedSlotStr != null);
             result.put("slots", evaluatedSlots);
             return result;
+        }
+
+        public void assertBookingAllowed(
+                UUID therapistUuid,
+                LocalDateTime startTime,
+                LocalDateTime endTime,
+                List<Appointment> existingAppointments,
+                ProviderProfile providerProfile,
+                UUID excludeAppointmentId,
+                boolean enforceWorkingHours
+        ) {
+            if (therapistUuid == null || startTime == null || endTime == null) {
+                return;
+            }
+            List<ExistingBookingFact> existingFacts = toExistingFacts(therapistUuid, existingAppointments, excludeAppointmentId);
+            boolean hasConfiguredSchedule = providerProfile != null
+                    && providerProfile.getWorkingHoursJson() != null
+                    && !providerProfile.getWorkingHoursJson().isBlank();
+            List<TimeWindowFact> constraintWindows = (enforceWorkingHours && hasConfiguredSchedule)
+                    ? resolveWorkingWindowsForDate(providerProfile, startTime.toLocalDate())
+                    : List.of(new TimeWindowFact("allow-all", 0, 1440));
+
+            CandidateSlot requestedSlot = new CandidateSlot(
+                    "requested",
+                    startTime,
+                    endTime,
+                    fitsAnyWindow(constraintWindows, startTime, endTime),
+                    false
+            );
+            int durationMinutes = (int) Math.max(1L, Duration.between(startTime, endTime).toMinutes());
+            BookingAssignment assignment = new BookingAssignment(
+                    UUID.randomUUID(), therapistUuid, durationMinutes, startTime, requestedSlot
+            );
+            TherapistScheduleSolution problem = new TherapistScheduleSolution(
+                    List.of(requestedSlot), existingFacts, List.of(assignment), constraintWindows
+            );
+
+            TherapistScheduleSolution solved = solverFactory.buildSolver().solve(problem);
+            HardSoftScore score = solved.getScore();
+            if (score.hardScore() < 0) {
+                boolean overlaps = existingFacts.stream().anyMatch(f -> f.overlaps(startTime, endTime));
+                ErrorCode.CONFLICT.require(
+                        !overlaps,
+                        "Timefold AI rejected booking: Therapist is already booked during the requested slot"
+                );
+                throw ErrorCode.CONFLICT.toException(
+                        "Timefold AI rejected booking: Requested time is outside the therapist's available working hours"
+                );
+            }
+        }
+
+        private List<ExistingBookingFact> toExistingFacts(
+                UUID therapistUuid,
+                List<Appointment> existingAppointments,
+                UUID excludeAppointmentId
+        ) {
+            return (existingAppointments == null ? List.<Appointment>of() : existingAppointments)
+                    .stream()
+                    .filter(a -> a != null
+                            && !"CANCELLED".equalsIgnoreCase(a.getStatus())
+                            && a.getStartTime() != null
+                            && a.getEndTime() != null
+                            && (excludeAppointmentId == null || !excludeAppointmentId.equals(a.getId())))
+                    .map(a -> new ExistingBookingFact(a.getId(), therapistUuid, a.getStartTime(), a.getEndTime()))
+                    .collect(Collectors.toList());
+        }
+
+        private List<CandidateSlot> buildCandidateSlots(
+                LocalDate date,
+                int effectiveDuration,
+                LocalDateTime now,
+                List<TimeWindowFact> normalWindows,
+                List<TimeWindowFact> generationWindows
+        ) {
+            List<CandidateSlot> candidateSlots = new ArrayList<>();
+            Set<Integer> seenStarts = new LinkedHashSet<>();
+            for (TimeWindowFact win : generationWindows) {
+                for (int m = win.startMinute(); m + effectiveDuration <= win.endMinute(); m += SLOT_STEP_MINUTES) {
+                    if (!seenStarts.add(m)) {
+                        continue;
+                    }
+                    LocalTime slotTime = LocalTime.of(m / 60, m % 60);
+                    LocalDateTime start = LocalDateTime.of(date, slotTime);
+                    LocalDateTime end = start.plusMinutes(effectiveDuration);
+                    boolean withinNormal = fitsAnyWindow(normalWindows, start, end);
+                    boolean inPast = start.isBefore(now);
+                    candidateSlots.add(new CandidateSlot(slotTime.toString(), start, end, withinNormal, inPast));
+                }
+            }
+            candidateSlots.sort(Comparator.comparing(CandidateSlot::getStartTime));
+            return candidateSlots;
+        }
+
+        private Map<String, Object> evaluateCandidateSlot(
+                CandidateSlot candidate,
+                LocalDate date,
+                LocalDateTime preferredDateTime,
+                List<ExistingBookingFact> existingFacts,
+                boolean includeOutsideHours
+        ) {
+            boolean overlaps = existingFacts.stream()
+                    .anyMatch(f -> f.overlaps(candidate.getStartTime(), candidate.getEndTime()));
+            boolean feasible = !overlaps && !candidate.isInPast();
+
+            int hardPenalty = (overlaps ? -100 : 0) + (candidate.isInPast() ? -50 : 0);
+
+            long minutesFromPreferred = Math.abs(Duration.between(preferredDateTime, candidate.getStartTime()).toMinutes());
+            int softScore = -(int) Math.min(1000, minutesFromPreferred / 15);
+            boolean adjacentBonus = existingFacts.stream().anyMatch(f ->
+                    f.getStartTime().toLocalDate().equals(date)
+                            && (candidate.getStartTime().equals(f.getEndTime())
+                                    || candidate.getEndTime().equals(f.getStartTime()))
+            );
+            if (adjacentBonus) {
+                softScore += 12;
+            }
+
+            String reason = overlaps ? "CONFLICT_OVERLAP"
+                    : candidate.isInPast() ? "IN_PAST"
+                    : adjacentBonus ? "OPTIMAL_ADJACENT_SLOT"
+                    : "AVAILABLE";
+
+            Map<String, Object> slotInfo = new LinkedHashMap<>();
+            slotInfo.put("slot", candidate.getId());
+            slotInfo.put("startTime", candidate.getStartTime().toString());
+            slotInfo.put("endTime", candidate.getEndTime().toString());
+            slotInfo.put("available", feasible);
+            slotInfo.put("overlaps", overlaps);
+            slotInfo.put("inPast", candidate.isInPast());
+            slotInfo.put("withinWorkingHours", candidate.isWithinWorkingHours());
+            slotInfo.put("hardScore", hardPenalty);
+            slotInfo.put("softScore", softScore);
+            slotInfo.put("score", hardPenalty + "hard/" + softScore + "soft");
+            slotInfo.put("reason", reason);
+            return slotInfo;
+        }
+
+        private boolean fitsAnyWindow(List<TimeWindowFact> windows, LocalDateTime start, LocalDateTime end) {
+            return windows.stream().anyMatch(w -> w.contains(start, end));
+        }
+
+        public List<TimeWindowFact> resolveWorkingWindowsForDate(ProviderProfile profile, LocalDate date) {
+            String raw = profile != null ? profile.getWorkingHoursJson() : null;
+            if (raw == null || raw.isBlank()) {
+                return List.of(new TimeWindowFact("default-0", 8 * 60, 17 * 60));
+            }
+            String trimmed = raw.trim();
+            if (trimmed.startsWith("{")) {
+                List<TimeWindowFact> structured = tryParseStructuredSchedule(trimmed, date);
+                if (structured != null) {
+                    return structured;
+                }
+            }
+            List<TimeWindowFact> regexWindows = parseRegexWindows(trimmed);
+            return regexWindows.isEmpty()
+                    ? List.of(new TimeWindowFact("default-0", 8 * 60, 17 * 60))
+                    : regexWindows;
+        }
+
+        private List<TimeWindowFact> tryParseStructuredSchedule(String json, LocalDate date) {
+            try {
+                JsonNode root = OBJECT_MAPPER.readTree(json);
+                JsonNode days = root.get("days");
+                if (days == null || !days.isArray()) {
+                    return null;
+                }
+                String targetDay = date.getDayOfWeek().name();
+                List<TimeWindowFact> result = new ArrayList<>();
+                for (JsonNode dayNode : days) {
+                    if (targetDay.equalsIgnoreCase(dayNode.path("day").asText())) {
+                        if (!dayNode.path("enabled").asBoolean(false)) {
+                            return List.of();
+                        }
+                        int idx = 0;
+                        for (JsonNode interval : dayNode.path("intervals")) {
+                            Integer startMin = parseTimeMinute(interval.path("start").asText(""), false);
+                            Integer endMin = parseTimeMinute(interval.path("end").asText(""), true);
+                            if (startMin != null && endMin != null && endMin > startMin) {
+                                result.add(new TimeWindowFact("win-" + idx++, startMin, endMin));
+                            }
+                        }
+                        return result;
+                    }
+                }
+                return List.of();
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+
+        private List<TimeWindowFact> parseRegexWindows(String text) {
+            List<TimeWindowFact> windows = new ArrayList<>();
+            Matcher matcher = HOURS_RANGE_PATTERN.matcher(text);
+            int idx = 0;
+            while (matcher.find()) {
+                Integer startMin = parseTimeMinute(matcher.group(1), false);
+                Integer endMin = parseTimeMinute(matcher.group(2), true);
+                if (startMin != null && endMin != null && endMin > startMin) {
+                    windows.add(new TimeWindowFact("win-" + idx++, startMin, endMin));
+                }
+            }
+            return windows;
+        }
+
+        private static Integer parseTimeMinute(String raw, boolean isEnd) {
+            String trimmed = raw.trim();
+            if ("24:00".equals(trimmed) && isEnd) {
+                return 1440;
+            }
+            try {
+                LocalTime t = LocalTime.parse(trimmed);
+                int mins = t.getHour() * 60 + t.getMinute();
+                return (isEnd && mins == 0) ? 1440 : mins;
+            } catch (Exception ignored) {
+                return null;
+            }
         }
 
         public LocalTime[] parseWorkingWindow(String workingHoursJson) {
@@ -733,9 +969,10 @@ public final class AppointmentFeature {
         private final TimefoldBookingService timefoldBookingService;
         private final ProviderProfilePort providerProfileRepository;
         private final JournalGitService journalGitService;
+        private final ServiceLookupPort serviceLookupPort;
 
         AppointmentService(AppointmentRepository appointmentRepository) {
-            this(appointmentRepository, new PlatformCacheService(), new PlatformEventService(), new TimefoldBookingService(), null, null);
+            this(appointmentRepository, new PlatformCacheService(), new PlatformEventService(), new TimefoldBookingService(), null, null, null);
         }
 
         AppointmentService(
@@ -743,7 +980,7 @@ public final class AppointmentFeature {
                 PlatformCacheService cacheService,
                 PlatformEventService eventService
         ) {
-            this(appointmentRepository, cacheService, eventService, new TimefoldBookingService(), null, null);
+            this(appointmentRepository, cacheService, eventService, new TimefoldBookingService(), null, null, null);
         }
 
         AppointmentService(
@@ -753,7 +990,18 @@ public final class AppointmentFeature {
                 TimefoldBookingService timefoldBookingService,
                 ProviderProfilePort providerProfileRepository
         ) {
-            this(appointmentRepository, cacheService, eventService, timefoldBookingService, providerProfileRepository, null);
+            this(appointmentRepository, cacheService, eventService, timefoldBookingService, providerProfileRepository, null, null);
+        }
+
+        AppointmentService(
+                AppointmentRepository appointmentRepository,
+                PlatformCacheService cacheService,
+                PlatformEventService eventService,
+                TimefoldBookingService timefoldBookingService,
+                ProviderProfilePort providerProfileRepository,
+                JournalGitService journalGitService
+        ) {
+            this(appointmentRepository, cacheService, eventService, timefoldBookingService, providerProfileRepository, journalGitService, null);
         }
 
         @Autowired
@@ -763,7 +1011,8 @@ public final class AppointmentFeature {
                 PlatformEventService eventService,
                 TimefoldBookingService timefoldBookingService,
                 @Autowired(required = false) ProviderProfilePort providerProfileRepository,
-                @Autowired(required = false) JournalGitService journalGitService
+                @Autowired(required = false) JournalGitService journalGitService,
+                @Autowired(required = false) ServiceLookupPort serviceLookupPort
         ) {
             super(appointmentRepository);
             this.appointmentRepository = appointmentRepository;
@@ -772,6 +1021,7 @@ public final class AppointmentFeature {
             this.timefoldBookingService = Objects.requireNonNullElseGet(timefoldBookingService, TimefoldBookingService::new);
             this.providerProfileRepository = providerProfileRepository;
             this.journalGitService = journalGitService;
+            this.serviceLookupPort = serviceLookupPort;
         }
 
         @Override
@@ -821,21 +1071,49 @@ public final class AppointmentFeature {
             return appointmentEntity;
         }
 
-        /**
-         * #isTimeSlotOverlapping(startTime, endTime, existingAppointment) — Returnerer `true`,
-         * hvis intervallet `[startTime, endTime)` overlapper med `existingAppointment`.
-         */
-        private boolean isTimeSlotOverlapping(
+        private void validateNoSelfBooking(UUID clientUuid, UUID therapistUuid) {
+            ErrorCode.BAD_REQUEST.require(
+                    clientUuid == null || therapistUuid == null || !Objects.equals(clientUuid, therapistUuid),
+                    "A therapist cannot book themselves as their own therapist"
+            );
+        }
+
+        private LocalDateTime resolveEndTime(
                 LocalDateTime startTime,
                 LocalDateTime endTime,
-                Appointment existingAppointment
+                UUID serviceId,
+                int fallbackMinutes
         ) {
-            return startTime.isBefore(existingAppointment.getEndTime())
-                    && endTime.isAfter(existingAppointment.getStartTime());
+            if (startTime == null) {
+                return endTime;
+            }
+            if (endTime != null) {
+                ErrorCode.BAD_REQUEST.require(
+                        endTime.isAfter(startTime),
+                        "Invalid time range: End time must be after start time"
+                );
+                return endTime;
+            }
+            int duration = (serviceId != null && serviceLookupPort != null)
+                    ? serviceLookupPort.findServiceById(serviceId)
+                            .map(com.platform.features.clinic.ClinicPlatformFeature.Service::getDurationMinutes)
+                            .filter(d -> d > 0)
+                            .orElse(fallbackMinutes)
+                    : fallbackMinutes;
+            return startTime.plusMinutes(duration);
+        }
+
+        private boolean shouldEnforceWorkingHours(UUID therapistUuid) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof Jwt jwt && jwt.getSubject() != null) {
+                return !therapistUuid.toString().equals(jwt.getSubject().trim());
+            }
+            return false;
         }
 
         @Override
         protected void validateBeforeCreate(AppointmentDto dto) {
+            validateNoSelfBooking(dto.clientUuid(), dto.therapistUuid());
             if (dto.therapistUuid() == null && dto.startTime() != null) {
                 ErrorCode.CONFLICT.require(
                         !appointmentRepository.existsByStartTime(dto.startTime()),
@@ -901,6 +1179,19 @@ public final class AppointmentFeature {
                 LocalTime preferredTime,
                 UUID excludeAppointmentId
         ) {
+            return getTimefoldSlotSuggestions(
+                    therapistUuid, date, durationMinutes, preferredTime, excludeAppointmentId, false
+            );
+        }
+
+        public Map<String, Object> getTimefoldSlotSuggestions(
+                UUID therapistUuid,
+                LocalDate date,
+                int durationMinutes,
+                LocalTime preferredTime,
+                UUID excludeAppointmentId,
+                boolean includeOutsideHours
+        ) {
             List<Appointment> existingAppointments = appointmentRepository.findByTherapistUuid(therapistUuid);
             ProviderProfile profile = providerProfileRepository != null
                     ? providerProfileRepository.findByUserUuid(therapistUuid).orElse(null)
@@ -912,28 +1203,36 @@ public final class AppointmentFeature {
                     preferredTime,
                     existingAppointments,
                     profile,
-                    excludeAppointmentId
+                    excludeAppointmentId,
+                    includeOutsideHours
             );
         }
 
         @Transactional
         public Appointment createAppointment(Appointment appointment) {
-            // Trin 1: Valider at sluttidspunkt ligger efter starttidspunkt
-            ErrorCode.BAD_REQUEST.require(
-                    !appointment.getEndTime().isBefore(appointment.getStartTime()),
-                    "Invalid time range: End time must be after start time"
-            );
+            // Trin 1: Valider selv-booking samt kronologisk interval (eller udled sluttid fra ydelse)
+            validateNoSelfBooking(appointment.getClientUuid(), appointment.getTherapistUuid());
+            appointment.setEndTime(resolveEndTime(
+                    appointment.getStartTime(),
+                    appointment.getEndTime(),
+                    appointment.getServiceId(),
+                    60
+            ));
 
-            // Trin 2: Tjek for kollision mod terapeutens eksisterende (ikke-aflyste) aftaler via #isTimeSlotOverlapping
-            List<Appointment> existingAppointments = appointmentRepository.findByTherapistUuid(appointment.getTherapistUuid());
-            for (Appointment existing : existingAppointments) {
-                if ("CANCELLED".equalsIgnoreCase(existing.getStatus())) {
-                    continue;
-                }
-                boolean overlaps = isTimeSlotOverlapping(appointment.getStartTime(), appointment.getEndTime(), existing);
-                ErrorCode.CONFLICT.require(
-                        !overlaps,
-                        "Therapist is already booked during the requested slot"
+            // Trin 2: Lad Timefold Solver nægte bookingen ved overlap eller ugyldig arbejdstid for klient
+            if (appointment.getTherapistUuid() != null) {
+                List<Appointment> existingAppointments = appointmentRepository.findByTherapistUuid(appointment.getTherapistUuid());
+                ProviderProfile profile = providerProfileRepository != null
+                        ? providerProfileRepository.findByUserUuid(appointment.getTherapistUuid()).orElse(null)
+                        : null;
+                timefoldBookingService.assertBookingAllowed(
+                        appointment.getTherapistUuid(),
+                        appointment.getStartTime(),
+                        appointment.getEndTime(),
+                        existingAppointments,
+                        profile,
+                        null,
+                        shouldEnforceWorkingHours(appointment.getTherapistUuid())
                 );
             }
 
@@ -1002,20 +1301,30 @@ public final class AppointmentFeature {
                     updated.getStartTime() == null || !updated.getStartTime().isBefore(now),
                     "Cannot reschedule an appointment to a time in the past"
             );
-            ErrorCode.BAD_REQUEST.require(
-                    !updated.getEndTime().isBefore(updated.getStartTime()),
-                    "Invalid time range: End time must be after start time"
+
+            int existingDurationMinutes = (existing.getStartTime() != null && existing.getEndTime() != null)
+                    ? (int) Math.max(15L, Duration.between(existing.getStartTime(), existing.getEndTime()).toMinutes())
+                    : 60;
+            LocalDateTime resolvedEnd = resolveEndTime(
+                    updated.getStartTime(),
+                    updated.getEndTime(),
+                    existing.getServiceId(),
+                    existingDurationMinutes
             );
 
-            List<Appointment> therapistAppointments = appointmentRepository.findByTherapistUuid(existing.getTherapistUuid());
-            for (Appointment other : therapistAppointments) {
-                if (other.getId().equals(id) || "CANCELLED".equalsIgnoreCase(other.getStatus())) {
-                    continue;
-                }
-                boolean overlaps = isTimeSlotOverlapping(updated.getStartTime(), updated.getEndTime(), other);
-                ErrorCode.CONFLICT.require(
-                        !overlaps,
-                        "Therapist is already booked during the requested slot"
+            if (existing.getTherapistUuid() != null && updated.getStartTime() != null) {
+                List<Appointment> therapistAppointments = appointmentRepository.findByTherapistUuid(existing.getTherapistUuid());
+                ProviderProfile profile = providerProfileRepository != null
+                        ? providerProfileRepository.findByUserUuid(existing.getTherapistUuid()).orElse(null)
+                        : null;
+                timefoldBookingService.assertBookingAllowed(
+                        existing.getTherapistUuid(),
+                        updated.getStartTime(),
+                        resolvedEnd,
+                        therapistAppointments,
+                        profile,
+                        id,
+                        shouldEnforceWorkingHours(existing.getTherapistUuid())
                 );
             }
 
@@ -1023,7 +1332,7 @@ public final class AppointmentFeature {
             String previousHash = existing.getGitCommitHash();
 
             existing.setStartTime(updated.getStartTime());
-            existing.setEndTime(updated.getEndTime());
+            existing.setEndTime(resolvedEnd);
             if (updated.getClientName() != null) {
                 existing.setClientName(updated.getClientName());
             }
@@ -1196,13 +1505,24 @@ public final class AppointmentFeature {
             return ResponseEntity.ok(dtos);
         }
 
+        public ResponseEntity<Map<String, Object>> getTimefoldOptimalSlots(
+                UUID therapistUuid,
+                String date,
+                int durationMinutes,
+                String preferredTime,
+                UUID excludeAppointmentId
+        ) {
+            return getTimefoldOptimalSlots(therapistUuid, date, durationMinutes, preferredTime, excludeAppointmentId, false);
+        }
+
         @GetMapping("/timefold-slots")
         public ResponseEntity<Map<String, Object>> getTimefoldOptimalSlots(
                 @RequestParam UUID therapistUuid,
                 @RequestParam String date,
                 @RequestParam(required = false, defaultValue = "60") int durationMinutes,
                 @RequestParam(required = false) String preferredTime,
-                @RequestParam(required = false) UUID excludeAppointmentId
+                @RequestParam(required = false) UUID excludeAppointmentId,
+                @RequestParam(required = false, defaultValue = "false") boolean includeOutsideHours
         ) {
             LocalDate parsedDate = LocalDate.parse(date);
             LocalTime parsedPreferred = (preferredTime != null && !preferredTime.isBlank())
@@ -1213,7 +1533,8 @@ public final class AppointmentFeature {
                     parsedDate,
                     durationMinutes,
                     parsedPreferred,
-                    excludeAppointmentId
+                    excludeAppointmentId,
+                    includeOutsideHours
             ));
         }
 

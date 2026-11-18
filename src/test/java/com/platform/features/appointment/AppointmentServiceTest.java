@@ -13,15 +13,24 @@ import com.platform.features.appointment.AppointmentFeature.AppointmentService;
 import com.platform.features.appointment.AppointmentFeature.TimefoldBookingService;
 import com.platform.features.clinic.ClinicPlatformFeature.ProviderProfile;
 import com.platform.features.clinic.ClinicPlatformFeature.ProviderProfilePort;
+import com.platform.features.clinic.ClinicPlatformFeature.Service;
+import com.platform.features.clinic.ClinicPlatformFeature.ServiceLookupPort;
 import com.platform.features.journal.JournalFeature.JournalGitService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -442,7 +451,7 @@ public class AppointmentServiceTest {
         assertEquals("09:00-15:00", result.get("workingHoursWindow"));
 
         List<Map<String, Object>> slots = (List<Map<String, Object>>) result.get("slots");
-        assertEquals(6, slots.size());
+        assertEquals(11, slots.size());
 
         // Past date & exclusions
         LocalDate pastDate = LocalDate.now().minusDays(5);
@@ -501,6 +510,8 @@ public class AppointmentServiceTest {
         assertEquals(HardSoftScore.ZERO, emptySolution.getScore());
         assertNull(emptySolution.getCandidateSlots());
         assertNull(emptySolution.getExistingBookings());
+        assertNull(emptySolution.getAssignments());
+        assertNotNull(emptySolution.getWorkingWindows());
 
         solverService.suggestOptimalSlots(therapistUuid, futureDate, 60, LocalTime.of(9, 0), null, null, null);
         Appointment nullStartApt = new Appointment(UUID.randomUUID(), therapistUuid, null, null, "Null Start", "CONFIRMED");
@@ -513,5 +524,292 @@ public class AppointmentServiceTest {
         mixedList.add(nullEndApt);
         mixedList.add(diffDayApt);
         solverService.suggestOptimalSlots(therapistUuid, futureDate, 60, LocalTime.of(9, 0), mixedList, null, UUID.randomUUID());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testMultiWindowSchedulesTimefoldRejectionAndServiceDuration() {
+        UUID therapistUuid = UUID.randomUUID();
+        UUID clientUuid = UUID.randomUUID();
+        LocalDate nextMonday = LocalDate.now().plusWeeks(2).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        LocalDate nextSunday = nextMonday.plusDays(6);
+
+        // 1. Version 1 structured JSON schedule (Monday two windows, Sunday closed, midnight end)
+        String structuredJson = """
+                {
+                  "version": 1,
+                  "days": [
+                    {"day": "monday", "enabled": true, "intervals": [{"start": "08:30", "end": "12:00"}, {"start": "12:45", "end": "16:00"}]},
+                    {"day": "tuesday", "enabled": true, "intervals": [{"start": "20:00", "end": "00:00"}]},
+                    {"day": "wednesday", "enabled": true, "intervals": [{"start": "10:00", "end": "24:00"}]},
+                    {"day": "thursday", "enabled": true, "intervals": [{"start": "bad", "end": "12:00"}]},
+                    {"day": "sunday", "enabled": false, "intervals": []}
+                  ]
+                }
+                """;
+        ProviderProfile structuredProfile = new ProviderProfile();
+        structuredProfile.setWorkingHoursJson(structuredJson);
+
+        Map<String, Object> mondaySlotsResp = solverService.suggestOptimalSlots(
+                therapistUuid, nextMonday, 45, LocalTime.of(12, 0), List.of(), structuredProfile, null, false
+        );
+        assertEquals(Boolean.TRUE, mondaySlotsResp.get("feasible"));
+        List<Map<String, Object>> mondaySlots = (List<Map<String, Object>>) mondaySlotsResp.get("slots");
+        Assertions.assertTrue(mondaySlots.stream().noneMatch(s -> "12:00".equals(s.get("slot"))));
+
+        // Tuesday shift ending at 00:00 midnight & Wednesday ending 24:00
+        Assertions.assertFalse(solverService.resolveWorkingWindowsForDate(structuredProfile, nextMonday.plusDays(1)).isEmpty());
+        Assertions.assertFalse(solverService.resolveWorkingWindowsForDate(structuredProfile, nextMonday.plusDays(2)).isEmpty());
+        // Thursday malformed interval & Friday missing from days[] & Sunday disabled -> closed
+        Assertions.assertTrue(solverService.resolveWorkingWindowsForDate(structuredProfile, nextMonday.plusDays(3)).isEmpty());
+        Assertions.assertTrue(solverService.resolveWorkingWindowsForDate(structuredProfile, nextMonday.plusDays(4)).isEmpty());
+
+        Map<String, Object> sundayClosedResp = solverService.suggestOptimalSlots(
+                therapistUuid, nextSunday, 60, LocalTime.of(10, 0), List.of(), structuredProfile, null, false
+        );
+        assertEquals(Boolean.FALSE, sundayClosedResp.get("feasible"));
+        assertEquals(Boolean.TRUE, sundayClosedResp.get("closed"));
+        assertEquals("Lukket", sundayClosedResp.get("workingHoursWindow"));
+
+        // includeOutsideHours = true opens 07:00-21:00 even on Sunday
+        Map<String, Object> sundayExtendedResp = solverService.suggestOptimalSlots(
+                therapistUuid, nextSunday, 60, LocalTime.of(19, 0), List.of(), structuredProfile, null, true
+        );
+        assertEquals(Boolean.TRUE, sundayExtendedResp.get("feasible"));
+        List<Map<String, Object>> extendedSlots = (List<Map<String, Object>>) sundayExtendedResp.get("slots");
+        Assertions.assertFalse(extendedSlots.isEmpty());
+        Assertions.assertTrue(extendedSlots.stream().anyMatch(s -> Boolean.FALSE.equals(s.get("withinWorkingHours"))));
+
+        // Malformed JSON, non-array days, invalid interval bounds, blank/null profiles & plain multi-window text
+        Assertions.assertEquals(1, solverService.resolveWorkingWindowsForDate(null, nextMonday).size());
+        Assertions.assertEquals(1, solverService.resolveWorkingWindowsForDate(new ProviderProfile(), nextMonday).size());
+
+        ProviderProfile brokenJsonProfile = new ProviderProfile();
+        brokenJsonProfile.setWorkingHoursJson("{broken");
+        assertEquals(1, solverService.resolveWorkingWindowsForDate(brokenJsonProfile, nextMonday).size());
+
+        ProviderProfile nonArrayDaysProfile = new ProviderProfile();
+        nonArrayDaysProfile.setWorkingHoursJson("{\"days\":\"invalid\"}");
+        assertEquals(1, solverService.resolveWorkingWindowsForDate(nonArrayDaysProfile, nextMonday).size());
+
+        ProviderProfile badBoundsProfile = new ProviderProfile();
+        badBoundsProfile.setWorkingHoursJson("""
+                {"days":[{"day":"monday","enabled":true,"intervals":[{"start":"24:00","end":"23:00"},{"start":"09:00","end":"bad"},{"start":"15:00","end":"13:00"}]}]}
+                """);
+        Assertions.assertTrue(solverService.resolveWorkingWindowsForDate(badBoundsProfile, nextMonday).isEmpty());
+
+        ProviderProfile multiTextProfile = new ProviderProfile();
+        multiTextProfile.setWorkingHoursJson("09:00-12:00, 10:00-13:00, 14:00-16:00, 17:00-15:00, 09:00-99:99, 99:00-12:00");
+        assertEquals(3, solverService.resolveWorkingWindowsForDate(multiTextProfile, nextMonday).size());
+        Appointment rightAfterOverlapCheck = new Appointment(
+                UUID.randomUUID(), therapistUuid,
+                LocalDateTime.of(nextMonday, LocalTime.of(10, 0)),
+                LocalDateTime.of(nextMonday, LocalTime.of(11, 0)),
+                "Adjacent", "CONFIRMED"
+        );
+        rightAfterOverlapCheck.setId(UUID.randomUUID());
+        solverService.suggestOptimalSlots(
+                therapistUuid, nextMonday, 60, LocalTime.of(9, 0),
+                List.of(rightAfterOverlapCheck), multiTextProfile, null, false
+        );
+
+        // TimeWindowFact edge cases (null args, midnight crossing, out-of-range, inverted range)
+        TimefoldBookingService.TimeWindowFact eveningWin = new TimefoldBookingService.TimeWindowFact("ev", 20 * 60, 1440);
+        Assertions.assertFalse(eveningWin.contains(null, LocalDateTime.now()));
+        Assertions.assertFalse(eveningWin.contains(LocalDateTime.now(), null));
+        Assertions.assertTrue(eveningWin.contains(
+                LocalDateTime.of(nextMonday, LocalTime.of(22, 0)),
+                LocalDateTime.of(nextMonday.plusDays(1), LocalTime.MIDNIGHT)
+        ));
+        Assertions.assertFalse(eveningWin.contains(
+                LocalDateTime.of(nextMonday, LocalTime.of(22, 0)),
+                LocalDateTime.of(nextMonday.plusDays(2), LocalTime.MIDNIGHT)
+        ));
+        Assertions.assertFalse(eveningWin.contains(
+                LocalDateTime.of(nextMonday, LocalTime.of(22, 0)),
+                LocalDateTime.of(nextMonday.plusDays(1), LocalTime.of(1, 0))
+        ));
+        TimefoldBookingService.TimeWindowFact middayWin = new TimefoldBookingService.TimeWindowFact("mid", 9 * 60, 12 * 60);
+        Assertions.assertFalse(middayWin.contains(
+                LocalDateTime.of(nextMonday, LocalTime.of(8, 0)),
+                LocalDateTime.of(nextMonday, LocalTime.of(9, 0))
+        ));
+        Assertions.assertFalse(middayWin.contains(
+                LocalDateTime.of(nextMonday, LocalTime.of(11, 30)),
+                LocalDateTime.of(nextMonday, LocalTime.of(12, 30))
+        ));
+        Assertions.assertFalse(middayWin.contains(
+                LocalDateTime.of(nextMonday, LocalTime.of(10, 0)),
+                LocalDateTime.of(nextMonday, LocalTime.of(10, 0))
+        ));
+
+        // 2. ServiceLookupPort endTime derivation + Self-booking rejection + Timefold JWT enforcement
+        UUID serviceId = UUID.randomUUID();
+        Service emdrService = new Service();
+        emdrService.setId(serviceId);
+        emdrService.setDurationMinutes(45);
+
+        ProviderProfilePort ppPort = Mockito.mock(ProviderProfilePort.class);
+        ServiceLookupPort svcPort = Mockito.mock(ServiceLookupPort.class);
+        Mockito.when(ppPort.findByUserUuid(therapistUuid)).thenReturn(Optional.of(structuredProfile));
+        Mockito.when(svcPort.findServiceById(serviceId)).thenReturn(Optional.of(emdrService));
+        Mockito.when(appointmentRepository.findByTherapistUuid(therapistUuid)).thenReturn(List.of());
+        Mockito.when(appointmentRepository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
+
+        AppointmentService fullSvc = new AppointmentService(
+                appointmentRepository,
+                new PlatformCacheService(),
+                new PlatformEventService(),
+                solverService,
+                ppPort,
+                journalGitService,
+                svcPort
+        );
+        AppointmentController fullCtrl = new AppointmentController(fullSvc);
+
+        // Self-booking rejected
+        AppointmentDto selfDto = new AppointmentDto(
+                null, therapistUuid, therapistUuid, serviceId, "Bo", "Bo", "Org", "Klinik",
+                LocalDateTime.of(nextMonday, LocalTime.of(9, 0)), null, "Self", "SCHEDULED", null, null
+        );
+        Assertions.assertThrows(DomainException.class, () -> fullCtrl.create(selfDto));
+
+        // Client JWT authenticated -> enforces working hours & derives 45m endTime
+        try {
+            Jwt clientJwt = Jwt.withTokenValue("cli-tok")
+                    .header("alg", "none")
+                    .claim("sub", clientUuid.toString())
+                    .issuedAt(Instant.now())
+                    .expiresAt(Instant.now().plusSeconds(3600))
+                    .build();
+            SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(clientJwt));
+
+            // Lunch break (12:00 - 12:45) rejected as 409 CONFLICT by Timefold
+            AppointmentDto breakBooking = new AppointmentDto(
+                    null, clientUuid, therapistUuid, serviceId, "Anders", "Maja", "Org", "Klinik",
+                    LocalDateTime.of(nextMonday, LocalTime.of(12, 0)), null, "Frokost", "SCHEDULED", null, null
+            );
+            DomainException breakEx = Assertions.assertThrows(DomainException.class, () -> fullCtrl.create(breakBooking));
+            assertEquals(ErrorCode.CONFLICT, breakEx.getErrorCode());
+
+            // Inside Monday morning window (09:00) derives 09:45 endTime and succeeds
+            AppointmentDto validClientBooking = new AppointmentDto(
+                    null, clientUuid, therapistUuid, serviceId, "Anders", "Maja", "Org", "Klinik",
+                    LocalDateTime.of(nextMonday, LocalTime.of(9, 0)), null, "EMDR", "SCHEDULED", null, null
+            );
+            AppointmentDto created45 = fullCtrl.create(validClientBooking).getBody();
+            assertEquals(LocalDateTime.of(nextMonday, LocalTime.of(9, 45)), created45.endTime());
+
+            // Equal endTime == startTime rejected as BAD_REQUEST
+            AppointmentDto equalTime = new AppointmentDto(
+                    null, clientUuid, therapistUuid, serviceId, "Anders", "Maja", "Org", "Klinik",
+                    LocalDateTime.of(nextMonday, LocalTime.of(10, 0)),
+                    LocalDateTime.of(nextMonday, LocalTime.of(10, 0)),
+                    "Bad Range", "SCHEDULED", null, null
+            );
+            Assertions.assertThrows(DomainException.class, () -> fullCtrl.create(equalTime));
+
+            // Therapist JWT (sub == therapistUuid) allowed to book outside working hours (19:00)
+            Jwt therapistJwt = Jwt.withTokenValue("th-tok")
+                    .header("alg", "none")
+                    .claim("sub", therapistUuid.toString())
+                    .issuedAt(Instant.now())
+                    .expiresAt(Instant.now().plusSeconds(3600))
+                    .build();
+            SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(therapistJwt));
+
+            AppointmentDto eveningTherapistBooking = new AppointmentDto(
+                    null, clientUuid, therapistUuid, serviceId, "Anders", "Maja", "Org", "Klinik",
+                    LocalDateTime.of(nextMonday, LocalTime.of(19, 0)), null, "Aften", "SCHEDULED", null, null
+            );
+            AppointmentDto createdEvening = fullCtrl.create(eveningTherapistBooking).getBody();
+            assertEquals(LocalDateTime.of(nextMonday, LocalTime.of(19, 45)), createdEvening.endTime());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+
+        // Controller includeOutsideHours query param
+        assertEquals(200, fullCtrl.getTimefoldOptimalSlots(therapistUuid, nextSunday.toString(), 60, "19:00", null, true).getStatusCode().value());
+
+        // Direct assertBookingAllowed & AppointmentService defensive branch coverage
+        solverService.assertBookingAllowed(null, null, null, null, null, null, true);
+        solverService.assertBookingAllowed(therapistUuid, null, LocalDateTime.now(), null, null, null, true);
+        solverService.assertBookingAllowed(therapistUuid, LocalDateTime.now(), null, null, null, null, true);
+
+        ProviderProfile blankHoursProfile = new ProviderProfile();
+        blankHoursProfile.setWorkingHoursJson("   ");
+        solverService.assertBookingAllowed(
+                therapistUuid,
+                LocalDateTime.of(nextMonday, LocalTime.of(9, 0)),
+                LocalDateTime.of(nextMonday, LocalTime.of(10, 0)),
+                List.of(),
+                new ProviderProfile(),
+                null,
+                true
+        );
+        solverService.assertBookingAllowed(
+                therapistUuid,
+                LocalDateTime.of(nextMonday, LocalTime.of(9, 0)),
+                LocalDateTime.of(nextMonday, LocalTime.of(10, 0)),
+                List.of(),
+                blankHoursProfile,
+                null,
+                true
+        );
+
+        UUID zeroDurationServiceId = UUID.randomUUID();
+        Service zeroDurSvc = new Service();
+        zeroDurSvc.setId(zeroDurationServiceId);
+        zeroDurSvc.setDurationMinutes(0);
+        Mockito.when(svcPort.findServiceById(zeroDurationServiceId)).thenReturn(Optional.of(zeroDurSvc));
+
+        try {
+            // Non-JWT auth + JWT with null sub + missing therapist profile + fallback service duration
+            SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("user", "pass"));
+            Mockito.when(ppPort.findByUserUuid(therapistUuid)).thenReturn(Optional.empty());
+
+            AppointmentDto noServiceFallback = new AppointmentDto(
+                    null, null, therapistUuid, null, "Anders", "Maja", "Org", "Klinik",
+                    LocalDateTime.of(nextMonday, LocalTime.of(14, 0)), null, "Fallback60", "SCHEDULED", null, null
+            );
+            assertEquals(
+                    LocalDateTime.of(nextMonday, LocalTime.of(15, 0)),
+                    fullCtrl.create(noServiceFallback).getBody().endTime()
+            );
+
+            Jwt nullSubJwt = Jwt.withTokenValue("null-sub")
+                    .header("alg", "none")
+                    .claim("preferred_username", "x")
+                    .issuedAt(Instant.now())
+                    .expiresAt(Instant.now().plusSeconds(3600))
+                    .build();
+            SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(nullSubJwt));
+            AppointmentDto zeroDurReq = new AppointmentDto(
+                    null, clientUuid, null, zeroDurationServiceId, "WalkIn", null, null, null,
+                    LocalDateTime.of(nextMonday, LocalTime.of(16, 0)), null, "ZeroDur", "SCHEDULED", null, null
+            );
+            assertEquals(
+                    LocalDateTime.of(nextMonday, LocalTime.of(17, 0)),
+                    fullCtrl.create(zeroDurReq).getBody().endTime()
+            );
+
+            // Null startTime on createAppointment + reschedule with missing provider profile & null startTime
+            Appointment nullStartEntity = new Appointment(clientUuid, therapistUuid, null, null, "NoStart", "PENDING");
+            Assertions.assertNotNull(fullSvc.createAppointment(nullStartEntity));
+
+            UUID aptExistingId = UUID.randomUUID();
+            Appointment existingScheduled = new Appointment(
+                    clientUuid, therapistUuid,
+                    LocalDateTime.of(nextMonday, LocalTime.of(10, 0)),
+                    LocalDateTime.of(nextMonday, LocalTime.of(11, 0)),
+                    "Existing", "CONFIRMED"
+            );
+            existingScheduled.setId(aptExistingId);
+            Mockito.when(appointmentRepository.findById(aptExistingId)).thenReturn(Optional.of(existingScheduled));
+            Appointment nullStartUpdate = new Appointment(clientUuid, therapistUuid, null, null, "UpdatedTitle", "CONFIRMED");
+            Assertions.assertNotNull(fullSvc.rescheduleAppointment(aptExistingId, nullStartUpdate));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }

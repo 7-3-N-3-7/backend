@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
@@ -919,6 +920,10 @@ public final class ClinicPlatformFeature {
         Optional<ClientTherapistHandshake> findByClientUuidAndTherapistUuid(UUID clientUuid, UUID therapistUuid);
     }
 
+    public interface ServiceLookupPort {
+        Optional<Service> findServiceById(UUID id);
+    }
+
     @Repository
     interface ClientProfileRepository extends BaseRepository<ClientProfile> {
         Optional<ClientProfile> findByUserId(UUID userId);
@@ -936,9 +941,14 @@ public final class ClinicPlatformFeature {
     }
 
     @Repository
-    interface ServiceRepository extends BaseRepository<Service> {
+    interface ServiceRepository extends BaseRepository<Service>, ServiceLookupPort {
         List<Service> findByProviderId(UUID providerId);
         List<Service> findByOrganisationId(UUID organisationId);
+
+        @Override
+        default Optional<Service> findServiceById(UUID id) {
+            return findById(id);
+        }
     }
 
     @Repository
@@ -1180,6 +1190,10 @@ public final class ClinicPlatformFeature {
                             .filter(s -> !isTherapistService(s, providerProfile))
                             .collect(Collectors.toList());
 
+            List<ProviderProfile> visibleProviders = allProviders.stream()
+                    .filter(p -> p.getUserUuid() == null || !Objects.equals(clientUuid, p.getUserUuid()))
+                    .collect(Collectors.toList());
+
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("clientProfile", clientProfile);
             response.put("providerProfile", providerProfile);
@@ -1187,7 +1201,7 @@ public final class ClinicPlatformFeature {
             response.put("handshakes", enrichedHandshakes);
             response.put("journals", journals);
             response.put("pcl5Tests", tests);
-            response.put("providers", allProviders);
+            response.put("providers", visibleProviders);
             response.put("services", marketplaceServices);
             return response;
         }
@@ -1354,8 +1368,9 @@ public final class ClinicPlatformFeature {
         }
 
         private boolean isTherapistService(Service s, ProviderProfile provider) {
-            if (s.findProvider().map(ProviderProfile::getId).filter(id -> Objects.equals(provider.getId(), id)).isPresent()) {
-                return true;
+            Optional<ProviderProfile> serviceProvider = s.findProvider();
+            if (serviceProvider.isPresent()) {
+                return Objects.equals(provider.getId(), serviceProvider.get().getId());
             }
             return provider.findOrganisation()
                     .map(Organisation::getId)
@@ -1485,7 +1500,28 @@ public final class ClinicPlatformFeature {
         }
 
         public List<Service> getAllServices() {
-            return serviceRepository.findAll();
+            return getServices(null, false);
+        }
+
+        public List<Service> getServices(UUID therapistUuid, boolean activeOnly) {
+            List<Service> pool;
+            if (therapistUuid == null) {
+                pool = serviceRepository.findAll();
+            } else {
+                ProviderProfile provider = providerProfileRepository.findByUserUuid(therapistUuid).orElse(null);
+                if (provider == null) {
+                    return List.of();
+                }
+                pool = serviceRepository.findAll().stream()
+                        .filter(s -> isTherapistService(s, provider))
+                        .collect(Collectors.toList());
+            }
+            if (!activeOnly) {
+                return pool;
+            }
+            return pool.stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getIsActive()))
+                    .collect(Collectors.toList());
         }
 
         public List<String> getMissingProfileFields(ProviderProfile provider, Organisation organisation, ClientProfile clientProfile) {
@@ -2000,9 +2036,16 @@ public final class ClinicPlatformFeature {
             return ResponseEntity.ok(clinicPlatformService.onboardTherapist(payload, auth));
         }
 
-        @GetMapping("/clinic/services")
         public ResponseEntity<List<Service>> getAllServices() {
             return ResponseEntity.ok(clinicPlatformService.getAllServices());
+        }
+
+        @GetMapping("/clinic/services")
+        public ResponseEntity<List<Service>> getServices(
+                @RequestParam(required = false) UUID therapistUuid,
+                @RequestParam(required = false, defaultValue = "false") boolean activeOnly
+        ) {
+            return ResponseEntity.ok(clinicPlatformService.getServices(therapistUuid, activeOnly));
         }
 
         @PostMapping("/clinic/services")

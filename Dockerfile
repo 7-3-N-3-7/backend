@@ -3,6 +3,7 @@ FROM maven:3.9-eclipse-temurin-17-alpine AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
+COPY --from=specs . /specs
 RUN mkdir -p /root/.m2 && echo '<?xml version="1.0" encoding="UTF-8"?><toolchains><toolchain><type>jdk</type><provides><version>17</version></provides><configuration><jdkHome>/opt/java/openjdk</jdkHome></configuration></toolchain></toolchains>' > /root/.m2/toolchains.xml
 RUN mvn clean package jacoco:report jacoco:check && \
     mkdir -p /app/reports/backend-coverage /app/reports/backend-cucumber && \
@@ -16,7 +17,7 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 COPY --from=build /app/reports /app/reports
 COPY entrypoint-secrets.sh /entrypoint-secrets.sh
-RUN chmod +x /entrypoint-secrets.sh
+RUN sed -i 's/\r$//' /entrypoint-secrets.sh && chmod +x /entrypoint-secrets.sh
 EXPOSE 8081
 ENTRYPOINT ["/entrypoint-secrets.sh", "java", "-jar", "app.jar"]
 

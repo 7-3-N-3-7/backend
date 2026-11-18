@@ -53,7 +53,7 @@ public class SecurityConfig implements org.springframework.web.servlet.config.an
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/public/**", "/actuator/health", "/backend-coverage/**", "/backend-cucumber/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/i18n", "/api/v1/i18n/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> 

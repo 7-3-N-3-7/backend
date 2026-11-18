@@ -73,7 +73,8 @@ public class AppointmentServiceTest {
         UUID therapistUuid = UUID.randomUUID();
         UUID serviceId = UUID.randomUUID();
         UUID journalEntryId = UUID.randomUUID();
-        Appointment appointment = new Appointment(clientUuid, therapistUuid, LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(1), "Initial Assessment", "PENDING");
+        LocalDateTime initialStart = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0).withNano(0);
+        Appointment appointment = new Appointment(clientUuid, therapistUuid, initialStart, initialStart.plusHours(1), "Initial Assessment", "PENDING");
         appointment.setId(UUID.randomUUID());
         appointment.setServiceId(serviceId);
         appointment.setTherapistName("Dr. Maja Holm");
@@ -220,14 +221,14 @@ public class AppointmentServiceTest {
         UUID clientUuid = UUID.randomUUID();
         UUID therapistUuid = UUID.randomUUID();
         UUID aptId = UUID.randomUUID();
-        LocalDateTime now = LocalDateTime.now().plusDays(2);
+        LocalDateTime now = LocalDateTime.now().plusDays(2).withHour(10).withMinute(0).withSecond(0).withNano(0);
 
         // 1. Git commit on create, reschedule, cancel, and git history filter
         Appointment appointment = new Appointment(
                 clientUuid,
                 therapistUuid,
-                LocalDateTime.now().plusDays(1),
-                LocalDateTime.now().plusDays(1).plusHours(1),
+                now.minusDays(1),
+                now.minusDays(1).plusHours(1),
                 "Traumeterapi Session 1",
                 "PENDING"
         );
@@ -379,7 +380,7 @@ public class AppointmentServiceTest {
         appointmentService.deleteById(aptId);
 
         // Migrated BookingServiceTest scenarios (clientName + startTime bookings)
-        LocalDateTime bookTime = LocalDateTime.now().plusDays(7).withNano(0);
+        LocalDateTime bookTime = LocalDateTime.now().plusDays(7).withHour(10).withMinute(0).withSecond(0).withNano(0);
         AppointmentDto conflictBookingDto = new AppointmentDto(null, "Anders And", bookTime);
         Mockito.when(appointmentRepository.existsByStartTime(bookTime)).thenReturn(true);
         DomainException conflictEx = Assertions.assertThrows(DomainException.class, () -> appointmentService.create(conflictBookingDto));

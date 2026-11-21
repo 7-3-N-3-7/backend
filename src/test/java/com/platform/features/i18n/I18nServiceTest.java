@@ -313,4 +313,22 @@ public class I18nServiceTest {
         ResponseEntity<Void> deleted = i18nController.deleteEntry("da::portal.welcome");
         Assertions.assertEquals(204, deleted.getStatusCode().value());
     }
+
+    @Test
+    public void testNoArgDictionaryCtorAndNewLocaleBlankMetaBranches() {
+        I18nDictionary blankCtor = new I18nDictionary();
+        Assertions.assertNotNull(blankCtor.getId());
+        Assertions.assertTrue(blankCtor.getPublished());
+
+        when(repository.save(any(I18nDictionary.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(repository.findByLocale("nb")).thenReturn(Optional.empty());
+        I18nDictionary blankMetaNew = i18nService.createOrUpdateLocale("nb", "   ", "   ", null, null, false);
+        Assertions.assertEquals("NB", blankMetaNew.getDisplayName());
+        Assertions.assertEquals("🌐", blankMetaNew.getFlag());
+
+        when(repository.findByLocale("fi")).thenReturn(Optional.empty());
+        I18nDictionary namedNew = i18nService.createOrUpdateLocale("fi", "Suomi", "🇫🇮", true, null, false);
+        Assertions.assertEquals("Suomi", namedNew.getDisplayName());
+        Assertions.assertEquals("🇫🇮", namedNew.getFlag());
+    }
 }

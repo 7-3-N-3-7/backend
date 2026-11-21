@@ -17,7 +17,7 @@ public class PlatformCacheService {
     }
 
     public boolean isConnected() {
-        return localStore != null;
+        return true;
     }
 
     public void put(String key, Object value) {

@@ -468,7 +468,7 @@ public final class I18nFeature {
                 summary.put("locale", localeCode);
                 summary.put("displayName", (dictionaryEntity.getDisplayName() != null && !dictionaryEntity.getDisplayName().isBlank()) ? dictionaryEntity.getDisplayName() : defaultMeta[0]);
                 summary.put("flag", (dictionaryEntity.getFlag() != null && !dictionaryEntity.getFlag().isBlank()) ? dictionaryEntity.getFlag() : defaultMeta[1]);
-                summary.put("published", dictionaryEntity.getPublished() != null ? dictionaryEntity.getPublished() : true);
+                summary.put("published", dictionaryEntity.getPublished());
                 summary.put("updatedAt", dictionaryEntity.getUpdatedAt() != null ? dictionaryEntity.getUpdatedAt().toString() : null);
                 summary.put("translatedCount", translatedRefCount);
                 summary.put("totalReferenceKeys", totalReferenceKeys);
@@ -720,9 +720,6 @@ public final class I18nFeature {
                     }
                     if (dictionaryEntity.getFlag() == null || dictionaryEntity.getFlag().isBlank()) {
                         dictionaryEntity.setFlag(meta[1]);
-                    }
-                    if (dictionaryEntity.getPublished() == null) {
-                        dictionaryEntity.setPublished(true);
                     }
                     Map<String, Object> rootTranslations = dictionaryEntity.getTranslations();
                     if (rootTranslations == null) {

@@ -384,4 +384,39 @@ public class GenericBaseArchitectureTest {
         ClientProfileDto cpDto = new ClientProfileDto(id, id, "Name", "1990-01-01", "Addr", "2100", "123", "a@b.dk");
         Assertions.assertEquals(id, cpDto.id());
     }
+
+    @Test
+    public void testBackendApplicationMainAndSecurityNullAuthTokenBranch() throws Exception {
+        try (org.mockito.MockedStatic<org.springframework.boot.SpringApplication> mocked =
+                     org.mockito.Mockito.mockStatic(org.springframework.boot.SpringApplication.class)) {
+            String[] args = new String[]{"--spring.main.web-application-type=none"};
+            mocked.when(() -> org.springframework.boot.SpringApplication.run(com.platform.BackendApplication.class, args))
+                    .thenReturn(null);
+            com.platform.BackendApplication.main(args);
+            mocked.verify(() -> org.springframework.boot.SpringApplication.run(com.platform.BackendApplication.class, args));
+        }
+
+        com.platform.config.SecurityConfig customSecurity = new com.platform.config.SecurityConfig() {
+            @Override
+            public org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter jwtAuthenticationConverter() {
+                var conv = mock(org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter.class);
+                when(conv.convert(any(org.springframework.security.oauth2.jwt.Jwt.class))).thenReturn(null);
+                return conv;
+            }
+        };
+        org.springframework.web.filter.OncePerRequestFilter filter =
+                org.springframework.test.util.ReflectionTestUtils.invokeMethod(customSecurity, "bffSessionHeaderFilter");
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/test");
+        req.addHeader("X-Auth-User-Uuid", UUID.randomUUID().toString());
+        org.springframework.mock.web.MockHttpServletResponse resp = new org.springframework.mock.web.MockHttpServletResponse();
+        jakarta.servlet.FilterChain chain = mock(jakarta.servlet.FilterChain.class);
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        try {
+            filter.doFilter(req, resp, chain);
+            Assertions.assertNull(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication());
+            verify(chain).doFilter(req, resp);
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
 }

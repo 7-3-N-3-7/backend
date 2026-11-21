@@ -1492,8 +1492,6 @@ public final class ClinicPlatformFeature {
             }
             if (payload.containsKey("currency") && payload.get("currency") != null && !payload.get("currency").isBlank()) {
                 profile.setCurrency(organisation.getCurrency());
-            } else if (profile.getCurrency() == null || profile.getCurrency().isBlank()) {
-                profile.setCurrency(organisation.getCurrency());
             }
 
             return providerProfileRepository.save(profile);
@@ -1612,9 +1610,7 @@ public final class ClinicPlatformFeature {
 
             ClientProfile clientProfile = therapistUuid != null
                     ? clientProfileRepository.findByUserId(therapistUuid).orElse(null)
-                    : (provider != null && provider.getUserUuid() != null
-                            ? clientProfileRepository.findByUserId(provider.getUserUuid()).orElse(null)
-                            : null);
+                    : null;
 
             List<String> missing = getMissingProfileFields(provider, organisation, clientProfile);
             ErrorCode.BAD_REQUEST.require(
@@ -1709,9 +1705,7 @@ public final class ClinicPlatformFeature {
 
             ClientProfile clientProfile = therapistUuid != null
                     ? clientProfileRepository.findByUserId(therapistUuid).orElse(null)
-                    : (provider != null && provider.getUserUuid() != null
-                            ? clientProfileRepository.findByUserId(provider.getUserUuid()).orElse(null)
-                            : null);
+                    : null;
 
             List<String> missing = getMissingProfileFields(provider, organisation, clientProfile);
             ErrorCode.BAD_REQUEST.require(

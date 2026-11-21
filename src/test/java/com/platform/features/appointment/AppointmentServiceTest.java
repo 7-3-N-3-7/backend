@@ -813,4 +813,75 @@ public class AppointmentServiceTest {
             SecurityContextHolder.clearContext();
         }
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testRemainingJaCoCoBranches() {
+        UUID clientUuid = UUID.randomUUID();
+        UUID therapistUuid = UUID.randomUUID();
+        UUID otherTherapistUuid = UUID.randomUUID();
+        UUID serviceId = UUID.randomUUID();
+        LocalDateTime futureStart = LocalDateTime.now().plusDays(3).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        // 1. BookingConstraintProvider: preferredStartTime == null (L527) & different therapistUuid in ExistingBookingFact (L495)
+        var solverFactory = (ai.timefold.solver.core.api.solver.SolverFactory<AppointmentFeature.TimefoldBookingService.TherapistScheduleSolution>)
+                org.springframework.test.util.ReflectionTestUtils.getField(solverService, "solverFactory");
+        var slot = new AppointmentFeature.TimefoldBookingService.CandidateSlot("10:00", futureStart, futureStart.plusHours(1), true, false);
+        var otherFact = new AppointmentFeature.TimefoldBookingService.ExistingBookingFact(UUID.randomUUID(), otherTherapistUuid, futureStart, futureStart.plusHours(1));
+        var winFact = new AppointmentFeature.TimefoldBookingService.TimeWindowFact("08:00-17:00", 8 * 60, 17 * 60);
+        var nullPrefAssign = new AppointmentFeature.TimefoldBookingService.BookingAssignment(UUID.randomUUID(), therapistUuid, 60, null, slot);
+        var problem = new AppointmentFeature.TimefoldBookingService.TherapistScheduleSolution(
+                List.of(slot), List.of(otherFact), List.of(nullPrefAssign), List.of(winFact)
+        );
+        Assertions.assertNotNull(solverFactory.buildSolver().solve(problem));
+
+        // 2. resolveWorkingWindowsForDate with blank whitespace workingHoursJson (L822)
+        ProviderProfile whitespaceProfile = new ProviderProfile();
+        whitespaceProfile.setWorkingHoursJson("   ");
+        Assertions.assertFalse(solverService.resolveWorkingWindowsForDate(whitespaceProfile, LocalDate.now().plusDays(1)).isEmpty());
+
+        // 3. AppointmentService with journalGitService == null and serviceLookupPort == null (L1097, L1117, L1157, L1244, L1305, L1347, L1393)
+        AppointmentService bareSvc = new AppointmentService(
+                appointmentRepository, new PlatformCacheService(), new PlatformEventService(), solverService, null
+        );
+        AppointmentController bareCtrl = new AppointmentController(bareSvc);
+        Mockito.when(appointmentRepository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
+        Mockito.when(appointmentRepository.findByClientUuid(clientUuid)).thenReturn(List.of());
+
+        // getAppointmentsForClient with fromDate != null && toDate == null (L1157)
+        Assertions.assertTrue(bareSvc.getAppointmentsForClient(clientUuid, LocalDate.now(), null).isEmpty());
+
+        // createAppointment: journalGitService == null with clientUuid != null (L1244)
+        Appointment aptBare = new Appointment(clientUuid, null, null, null, "NoStartNoTherapist", "PENDING");
+        aptBare.setServiceId(serviceId);
+        Assertions.assertNotNull(bareSvc.createAppointment(aptBare));
+
+        // createAppointment with non-null journalGitService & clientUuid == null (L1244) + validateBeforeCreate therapistUuid == null && startTime == null (L1117)
+        AppointmentDto noClientStartDto = new AppointmentDto(null, null, null, serviceId, "   ", null, null, null, futureStart, null, "NoClient", "CONFIRMED", null, null);
+        // Also hits AppointmentController.create L1546 with clientName != null && isBlank() -> status CONFIRMED & serviceId == null returns 200
+        AppointmentDto ctrlBlankName = new AppointmentDto(null, null, null, null, "   ", null, null, null, null, null, "BlankClient", "CONFIRMED", null, null);
+        Assertions.assertEquals(200, bareCtrl.create(ctrlBlankName).getStatusCode().value());
+
+        Appointment nullClientApt = new Appointment(null, therapistUuid, futureStart, futureStart.plusHours(1), "NoClientGit", "PENDING");
+        Mockito.when(appointmentRepository.findByTherapistUuid(therapistUuid)).thenReturn(List.of());
+        Assertions.assertNotNull(appointmentService.createAppointment(nullClientApt));
+
+        // rescheduleAppointment: existing.startTime != null && existing.endTime == null (L1305), journalGitService == null (L1347), clientUuid == null (L1347)
+        UUID noEndId = UUID.randomUUID();
+        Appointment existingNoEnd = new Appointment(clientUuid, null, futureStart, null, "NoEnd", "CONFIRMED");
+        existingNoEnd.setId(noEndId);
+        existingNoEnd.setServiceId(serviceId);
+        Mockito.when(appointmentRepository.findById(noEndId)).thenReturn(Optional.of(existingNoEnd));
+        Assertions.assertNotNull(bareSvc.rescheduleAppointment(noEndId, new Appointment(clientUuid, null, futureStart.plusHours(1), null, "Resch", "CONFIRMED")));
+
+        UUID noClientAptId = UUID.randomUUID();
+        Appointment existingNoClient = new Appointment(null, null, futureStart, futureStart.plusHours(1), "NoClient", "CONFIRMED");
+        existingNoClient.setId(noClientAptId);
+        Mockito.when(appointmentRepository.findById(noClientAptId)).thenReturn(Optional.of(existingNoClient));
+        Assertions.assertNotNull(appointmentService.rescheduleAppointment(noClientAptId, new Appointment(null, null, futureStart.plusHours(2), null, "Resch2", "CONFIRMED")));
+
+        // cancelAppointment: journalGitService == null (L1393) & clientUuid == null (L1393)
+        bareSvc.cancelAppointment(noEndId);
+        appointmentService.cancelAppointment(noClientAptId);
+    }
 }

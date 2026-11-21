@@ -1725,4 +1725,41 @@ public class ClinicPlatformServiceTest {
         List<?> visibleProviders = (List<?>) overviewForA.get("providers");
         Assertions.assertEquals(1, visibleProviders.size());
     }
+
+    @Test
+    public void testOnboardTherapistBioDaAndIbanBranches() {
+        UUID thUuid = UUID.randomUUID();
+        Organisation org = new Organisation("55667788", "Onboard Org");
+        org.setId(UUID.randomUUID());
+        org.setIban("DK00ORG00001234");
+        org.setVideoMeetingUrl("https://meet.org.dk/room");
+
+        Mockito.when(organisationRepository.findByCvrNumber("55667788")).thenReturn(Optional.of(org));
+        Mockito.when(organisationRepository.save(any(Organisation.class))).thenAnswer(i -> i.getArgument(0));
+        Mockito.when(providerProfileRepository.save(any(ProviderProfile.class))).thenAnswer(i -> i.getArgument(0));
+
+        // 1. Existing profile with non-blank IBAN & bioDa key only (omits biography and iban)
+        ProviderProfile existingWithIban = new ProviderProfile();
+        existingWithIban.setUserUuid(thUuid);
+        existingWithIban.setIban("DK99OWN00005678");
+        Mockito.when(providerProfileRepository.findByUserUuid(thUuid)).thenReturn(Optional.of(existingWithIban));
+
+        ProviderProfile savedOwn = service.onboardTherapist(Map.of(
+                "cvrNumber", "55667788",
+                "userUuid", thUuid.toString(),
+                "bioDa", "Dansk biografi tekst"
+        ), null);
+        Assertions.assertEquals("DK99OWN00005678", savedOwn.getIban());
+        Assertions.assertEquals("Dansk biografi tekst", savedOwn.getBiography());
+
+        // 2. Existing profile with blank whitespace IBAN & neither biography nor bioDa
+        existingWithIban.setIban("   ");
+        existingWithIban.setBiography("Keep existing");
+        ProviderProfile savedBlankIban = service.onboardTherapist(Map.of(
+                "cvrNumber", "55667788",
+                "userUuid", thUuid.toString()
+        ), null);
+        Assertions.assertEquals("DK00ORG00001234", savedBlankIban.getIban());
+        Assertions.assertEquals("Keep existing", savedBlankIban.getBiography());
+    }
 }

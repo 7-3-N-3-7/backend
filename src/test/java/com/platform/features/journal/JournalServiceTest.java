@@ -739,5 +739,85 @@ public class JournalServiceTest {
         Assertions.assertEquals(tnSample.getId(), tnDto.id());
 
         okGit.close();
+
+        // Remaining JaCoCo branches:
+        // 1. commitJournalEntryWithHash IOException catch block (L593-595)
+        Path ioRepo = Files.createTempDirectory("jgit-io-fail");
+        JournalGitService ioGitSvc = new JournalGitService();
+        ReflectionTestUtils.setField(ioGitSvc, "repoPath", ioRepo.toString());
+        ioGitSvc.init();
+        Files.createDirectories(ioRepo.resolve("bad-patient.md"));
+        Assertions.assertThrows(RuntimeException.class,
+                () -> ioGitSvc.commitJournalEntryWithHash("bad-patient", "c", "m", "a", "main"));
+        ioGitSvc.close();
+
+        // 2. getCommitHistory null fullMessage, null authorIdent, plain commit msg, unclosed [Branch: (L645, L647, L650, L726)
+        Path spyRepo = Files.createTempDirectory("jgit-spy-repo");
+        JournalGitService realGitSvc = new JournalGitService();
+        ReflectionTestUtils.setField(realGitSvc, "repoPath", spyRepo.toString());
+        realGitSvc.init();
+        String patientSpyId = "patient-spy";
+        realGitSvc.commitJournalEntry(patientSpyId, "Snapshot body", "[Branch: main] Initial commit");
+        org.eclipse.jgit.api.Git realGit = realGitSvc.getGit();
+        org.eclipse.jgit.revwalk.RevCommit realCommit = realGit.log().addPath(patientSpyId + ".md").call().iterator().next();
+
+        org.eclipse.jgit.revwalk.RevCommit cNullMsg = Mockito.spy(realCommit);
+        Mockito.doReturn(null).when(cNullMsg).getFullMessage();
+
+        org.eclipse.jgit.revwalk.RevCommit cNullAuthorBooking = Mockito.spy(realCommit);
+        Mockito.doReturn(null).when(cNullAuthorBooking).getAuthorIdent();
+        Mockito.doReturn("aftale oprettet").when(cNullAuthorBooking).getFullMessage();
+
+        org.eclipse.jgit.revwalk.RevCommit cPlainMsg = Mockito.spy(realCommit);
+        Mockito.doReturn("plain commit message").when(cPlainMsg).getFullMessage();
+
+        org.eclipse.jgit.revwalk.RevCommit cUnclosed = Mockito.spy(realCommit);
+        Mockito.doReturn("[Branch:unclosed").when(cUnclosed).getFullMessage();
+
+        JournalGitService spyGitSvc = new JournalGitService();
+        ReflectionTestUtils.setField(spyGitSvc, "repoPath", spyRepo.toString());
+        org.eclipse.jgit.api.Git mockGit = Mockito.mock(org.eclipse.jgit.api.Git.class);
+        org.eclipse.jgit.api.LogCommand mockLog = Mockito.mock(org.eclipse.jgit.api.LogCommand.class);
+        Mockito.when(mockGit.log()).thenReturn(mockLog);
+        Mockito.when(mockLog.addPath(patientSpyId + ".md")).thenReturn(mockLog);
+        Mockito.when(mockLog.call()).thenReturn(List.of(cNullMsg, cNullAuthorBooking, cPlainMsg, cUnclosed));
+        Mockito.when(mockGit.getRepository()).thenReturn(realGit.getRepository());
+        ReflectionTestUtils.setField(spyGitSvc, "git", mockGit);
+
+        List<Map<String, String>> spyHistory = spyGitSvc.getCommitHistory(patientSpyId, true, null);
+        Assertions.assertEquals(3, spyHistory.size());
+        realGitSvc.close();
+
+        // 3. createJournalEntry: save() returning null (L934) & saved with appointmentId != null when appointmentRepository == null (L934)
+        JournalEntryRepository nullSaveRepo = Mockito.mock(JournalEntryRepository.class);
+        Mockito.when(nullSaveRepo.save(any(JournalEntry.class))).thenReturn(null);
+        JournalService nullSaveSvc = new JournalService(
+                nullSaveRepo, null, null, Mockito.mock(PlatformCacheService.class), null, null
+        );
+        Assertions.assertNull(nullSaveSvc.createJournalEntry(
+                new JournalEntryDto(null, "T", "C", 7, true, null, clientUuid, null, "main"), null));
+
+        JournalService bareJeSvc = new JournalService(mockJeRepo);
+        Assertions.assertNotNull(bareJeSvc.createJournalEntry(
+                new JournalEntryDto(null, "T2", "C2", 7, true, null, clientUuid, UUID.randomUUID(), "main"), null));
+
+        // 4. getClientJournalBundle: therapist viewing client with handshakeRepository == null -> activeHandshake == null & sharedWithTherapists = true (L1076)
+        JournalService noHsTherapistSvc = new JournalService(mockJeRepo, null, null, customCache, null, null);
+        Map<String, Object> bundleNoHs = noHsTherapistSvc.getClientJournalBundle(clientUuid, therapistUuid, tAuth);
+        Assertions.assertFalse(((List<?>) bundleNoHs.get("entries")).isEmpty());
+
+        // 5. getClientJournalBundle: shared entry on a branch disallowed by active handshake is filtered out (L1076 false arm)
+        ClientTherapistHandshake mainOnlyHs = new ClientTherapistHandshake(clientUuid, "C", therapistUuid, "T", "O", "ACTIVE");
+        mainOnlyHs.setAllowedBranches("main");
+        HandshakePort mainOnlyPort = Mockito.mock(HandshakePort.class);
+        Mockito.when(mainOnlyPort.findByClientUuidAndTherapistUuid(clientUuid, therapistUuid)).thenReturn(Optional.of(mainOnlyHs));
+        JournalEntry blockedBranchEntry = new JournalEntry("Blocked", "Hidden branch", 6, LocalDateTime.now(), clientUuid);
+        blockedBranchEntry.setSharedWithTherapists(true);
+        blockedBranchEntry.setGitBranch("trauma");
+        JournalEntryRepository blockedRepo = Mockito.mock(JournalEntryRepository.class);
+        Mockito.when(blockedRepo.findByClientUuidOrderByTimestampDesc(clientUuid)).thenReturn(List.of(blockedBranchEntry));
+        JournalService mainOnlySvc = new JournalService(blockedRepo, null, null, customCache, null, mainOnlyPort);
+        Map<String, Object> blockedBranchBundle = mainOnlySvc.getClientJournalBundle(clientUuid, therapistUuid, tAuth);
+        Assertions.assertTrue(((List<?>) blockedBranchBundle.get("entries")).isEmpty());
     }
 }

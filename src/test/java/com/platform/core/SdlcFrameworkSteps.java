@@ -30,7 +30,7 @@ public class SdlcFrameworkSteps {
                 .replaceAll("^-+|-+$", "");
     }
 
-    @Given("SDLC configuration loaded from {string} with strict 98% thresholds on JaCoCo and Istanbul")
+    @Given("SDLC configuration loaded from {string} with strict 100% thresholds on JaCoCo and Istanbul")
     public void loadSdlcConfiguration(String configName) throws Exception {
         Path candidate = Files.exists(Path.of("..", configName))
                 ? Path.of("..", configName)
@@ -44,18 +44,18 @@ public class SdlcFrameworkSteps {
         Assertions.assertEquals("feature", branchPrefix);
 
         JsonNode be = configRoot.path("gates").path("targets").path("backend");
-        Assertions.assertEquals(0.98, be.path("minLineCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, be.path("minBranchCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, be.path("minInstructionCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, be.path("minComplexityCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, be.path("minMethodCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, be.path("minClassCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, be.path("minLineCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, be.path("minBranchCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, be.path("minInstructionCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, be.path("minComplexityCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, be.path("minMethodCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, be.path("minClassCoverage").asDouble(), 0.0001);
 
         JsonNode fe = configRoot.path("gates").path("targets").path("frontend");
-        Assertions.assertEquals(0.98, fe.path("minLineCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, fe.path("minStatementCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, fe.path("minFunctionCoverage").asDouble(), 0.0001);
-        Assertions.assertEquals(0.98, fe.path("minBranchCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, fe.path("minLineCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, fe.path("minStatementCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, fe.path("minFunctionCoverage").asDouble(), 0.0001);
+        Assertions.assertEquals(1.0, fe.path("minBranchCoverage").asDouble(), 0.0001);
 
         Assertions.assertNotNull(
                 getClass().getClassLoader().getResource("features/shared/generic_sdlc_framework.feature"),
@@ -92,7 +92,7 @@ public class SdlcFrameworkSteps {
         resolvedBaseBranch = parentBranch;
     }
 
-    @When("SDLC evaluates Issue {int} with passing Backend and Frontend 98% gates while Sub-Issue {int} has status {string}")
+    @When("SDLC evaluates Issue {int} with passing Backend and Frontend 100% gates while Sub-Issue {int} has status {string}")
     public void evaluateWithSubIssueStatus(int parentIssueId, int childIssueId, String childStatus) {
         Assertions.assertTrue(parentIssueId > 0 && childIssueId > 0);
         boolean subIssueDone = "Done".equals(childStatus);
